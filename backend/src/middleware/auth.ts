@@ -1,0 +1,37 @@
+import { Response, NextFunction } from 'express';
+import { AuthRequest } from '../types';
+import { verifyToken } from '../utils/jwt';
+import { errorResponse } from '../utils/response';
+
+/**
+ * JWT 鉴权中间件
+ */
+export const authenticate = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // 从 header 中获取 token
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return errorResponse(res, '未提供认证令牌', 'UNAUTHORIZED', 401);
+    }
+
+    const token = authHeader.substring(7); // 移除 'Bearer ' 前缀
+
+    // 验证 token
+    const decoded = verifyToken(token);
+
+    if (!decoded) {
+      return errorResponse(res, '无效或过期的认证令牌', 'INVALID_TOKEN', 401);
+    }
+
+    // 将用户信息附加到请求对象
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return errorResponse(res, '认证失败', 'AUTH_ERROR', 401);
+  }
+};
