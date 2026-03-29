@@ -1,13 +1,8 @@
 import { useState, useEffect } from 'react';
-import { getErrorMessage } from '../utils/error';
 import { Form, Input, Button, message, Divider, Typography } from 'antd';
-import { getErrorMessage } from '../utils/error';
 import { MailOutlined, LockOutlined, UserOutlined, FireOutlined, RocketOutlined } from '@ant-design/icons';
-import { getErrorMessage } from '../utils/error';
 import { useNavigate } from 'react-router-dom';
-import { getErrorMessage } from '../utils/error';
 import { login, register } from '../api/auth';
-import { getErrorMessage } from '../utils/error';
 import { useAuthStore } from '../store/auth';
 import { getErrorMessage } from '../utils/error';
 
