@@ -94,8 +94,8 @@ export default function PublishModal({ open, onClose }: Props) {
     // 文字审查
     try {
       const checkResult = await checkContent(values.content);
-      if (!checkResult.valid) {
-        void message.error(checkResult.message || '内容包含违规词汇，请修改后重试');
+      if (!checkResult.data.valid) {
+        void message.error(checkResult.data.message || '内容包含违规词汇，请修改后重试');
         return;
       }
     } catch (error: any) {

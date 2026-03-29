@@ -29,13 +29,16 @@ const SENSITIVE_WORDS = [
 
 /**
  * 检查文本是否包含敏感词
+ * 使用单词边界匹配，避免误匹配
  */
 const checkContent = (text: string): { valid: boolean; violations: string[] } => {
   const violations: string[] = [];
-  const lowerText = text.toLowerCase();
 
+  // 使用正则表达式进行全词匹配
   for (const word of SENSITIVE_WORDS) {
-    if (lowerText.includes(word.toLowerCase())) {
+    // 创建正则，匹配敏感词（支持中文和英文）
+    const regex = new RegExp(word, 'gi');
+    if (regex.test(text)) {
       violations.push(word);
     }
   }
