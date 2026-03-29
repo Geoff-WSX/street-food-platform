@@ -414,7 +414,7 @@ export default function HomePage() {
       {/* 右下角刷新按钮 */}
       <FloatButton.Group
         shape="circle"
-        style={{ right: 24, bottom: 80 }}
+        style={{ right: 24, bottom: 24, zIndex: 1001 }}
       >
         <FloatButton
           icon={<ReloadOutlined spin={refreshing} />}
