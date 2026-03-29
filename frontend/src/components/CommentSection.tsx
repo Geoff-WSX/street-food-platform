@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { List, Avatar, Button, Input, message, Space, Typography, Divider, Popconfirm, Tag, Tooltip } from 'antd';
+import { List, Avatar, Button, Input, message, Typography, Divider, Popconfirm, Tag } from 'antd';
 import {
   UserOutlined, HeartOutlined, HeartFilled, MessageOutlined,
-  DeleteOutlined, ArrowUpOutlined, LoadingOutlined
+  DeleteOutlined, LoadingOutlined
 } from '@ant-design/icons';
 import { getComments, createComment, deleteComment, toggleCommentLike, getCommentReplies, type Comment } from '../api/comment';
 import { checkContent } from '../api/comment';
@@ -107,8 +107,8 @@ export default function CommentSection({ postId }: Props) {
     try {
       setSubmitting(true);
       const checkResult = await checkContent(content.trim());
-      if (!checkResult.valid) {
-        void message.error(checkResult.message || '内容包含违规词汇，请修改后重试');
+      if (!checkResult.data.valid) {
+        void message.error(checkResult.data.message || '内容包含违规词汇，请修改后重试');
         return;
       }
     } catch (error) {
@@ -120,7 +120,8 @@ export default function CommentSection({ postId }: Props) {
         postId,
         content: content.trim(),
       });
-      setComments(prev => [res.data, ...prev]);
+      const newComment = res.data.data || res.data;
+      setComments(prev => [newComment, ...prev]);
       setContent('');
       void message.success('评论成功');
     } catch (error: any) {
@@ -148,14 +149,15 @@ export default function CommentSection({ postId }: Props) {
 
     try {
       const res = await toggleCommentLike(commentId);
+      const { liked, likeCount } = res.data;
 
       // 更新评论点赞状态
       setComments(prev => prev.map(c => {
         if (c.id === commentId) {
           return {
             ...c,
-            isLiked: res.liked,
-            likeCount: res.likeCount,
+            isLiked: liked,
+            likeCount: likeCount,
           };
         }
         // 同时更新回复中的点赞状态
@@ -166,8 +168,8 @@ export default function CommentSection({ postId }: Props) {
               if (r.id === commentId) {
                 return {
                   ...r,
-                  isLiked: res.liked,
-                  likeCount: res.likeCount,
+                  isLiked: liked,
+                  likeCount: likeCount,
                 };
               }
               return r;
@@ -181,7 +183,7 @@ export default function CommentSection({ postId }: Props) {
     }
   };
 
-  const handleSubmitReply = async (parentId: number, parentUsername: string) => {
+  const handleSubmitReply = async (parentId: number) => {
     if (!isLoggedIn) {
       void message.info('请先登录');
       return;
@@ -195,8 +197,8 @@ export default function CommentSection({ postId }: Props) {
     // 文字审查
     try {
       const checkResult = await checkContent(replyContent.trim());
-      if (!checkResult.valid) {
-        void message.error(checkResult.message || '内容包含违规词汇');
+      if (!checkResult.data.valid) {
+        void message.error(checkResult.data.message || '内容包含违规词汇');
         return;
       }
     } catch (error) {
@@ -354,7 +356,7 @@ export default function CommentSection({ postId }: Props) {
                   <Button
                     type="primary"
                     size="small"
-                    onClick={() => handleSubmitReply(comment.id, comment.user.username)}
+                    onClick={() => handleSubmitReply(comment.id)}
                     loading={replySubmitting}
                     disabled={!replyContent.trim()}
                   >
