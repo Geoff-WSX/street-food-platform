@@ -2,9 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
 import { verifyToken } from '../utils/jwt';
 import { errorResponse } from '../utils/response';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../config/database';
 
 /**
  * JWT 鉴权中间件

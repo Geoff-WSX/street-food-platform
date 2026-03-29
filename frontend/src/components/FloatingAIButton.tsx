@@ -1,4 +1,4 @@
-import { Button, Badge } from 'antd';
+import { Button } from 'antd';
 import { RobotOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 

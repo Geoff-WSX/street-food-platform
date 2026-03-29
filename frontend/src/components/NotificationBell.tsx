@@ -3,7 +3,7 @@ import { Badge, Dropdown, List, Avatar, Button, Empty, Spin, Typography } from '
 import { BellOutlined, CheckCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useNotificationStore } from '../store/notification';
-import { getNotifications, markAsRead, markAllAsRead, deleteNotification } from '../api/notification';
+import { getNotifications, getUnreadCount, markAsRead as markAsReadApi, markAllAsRead, deleteNotification } from '../api/notification';
 import type { Notification as NotificationType } from '../types';
 
 const { Text } = Typography;
@@ -51,7 +51,7 @@ export default function NotificationBell() {
     try {
       // 标记为已读
       if (!notification.isRead) {
-        await markAsRead(notification.id);
+        await markAsReadApi(notification.id);
         markAsRead(notification.id);
       }
 

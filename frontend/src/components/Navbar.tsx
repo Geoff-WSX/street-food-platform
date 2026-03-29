@@ -1,5 +1,5 @@
 import { Layout, Menu, Button, Avatar, Space, Dropdown, Badge } from 'antd';
-import { HomeOutlined, PlusOutlined, UserOutlined, LogoutOutlined, TrophyOutlined, CaretDownOutlined, MessageOutlined, PlayCircleOutlined, CrownOutlined, WarningOutlined, RobotOutlined } from '@ant-design/icons';
+import { HomeOutlined, PlusOutlined, UserOutlined, LogoutOutlined, TrophyOutlined, CaretDownOutlined, MessageOutlined, PlayCircleOutlined, CrownOutlined, WarningOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useMessageStore } from '../store/message';

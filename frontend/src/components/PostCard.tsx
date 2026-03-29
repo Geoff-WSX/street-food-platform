@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Space, Button, Avatar, Typography, message, Tag, Popconfirm } from 'antd';
+import { Card, Space, Button, Avatar, Typography, message, Popconfirm } from 'antd';
 import { HeartOutlined, HeartFilled, StarOutlined, StarFilled, EnvironmentOutlined, UserOutlined, PlusOutlined, CheckOutlined, MessageOutlined, StopOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { toggleLike, toggleFavorite } from '../api/post';
