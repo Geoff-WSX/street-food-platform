@@ -8,8 +8,9 @@ export const getConversations = async (req: AuthRequest, res: Response) => {
   try {
     const conversations = await messageService.getConversations(req.user!.userId);
     return successResponse(res, conversations);
-  } catch (error: any) {
-    return errorResponse(res, error.message, 'GET_CONVERSATIONS_FAILED');
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败';
+    return errorResponse(res, errorMessage, 'GET_CONVERSATIONS_FAILED');
   }
 };
 
@@ -22,8 +23,9 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
     }
     const messages = await messageService.getMessages(req.user!.userId, otherUserId);
     return successResponse(res, messages);
-  } catch (error: any) {
-    return errorResponse(res, error.message, 'GET_MESSAGES_FAILED');
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败';
+    return errorResponse(res, errorMessage, 'GET_MESSAGES_FAILED');
   }
 };
 
@@ -40,7 +42,8 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     }
     const message = await messageService.sendMessage(req.user!.userId, receiverId, content.trim());
     return successResponse(res, message, '发送成功');
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败';
     return errorResponse(res, error.message, 'SEND_MESSAGE_FAILED', 403);
   }
 };
@@ -54,7 +57,8 @@ export const markAsRead = async (req: AuthRequest, res: Response) => {
     }
     await messageService.markAsRead(req.user!.userId, otherUserId);
     return successResponse(res, { message: '标记成功' });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败';
     return errorResponse(res, error.message, 'MARK_AS_READ_FAILED');
   }
 };
@@ -68,7 +72,8 @@ export const checkCanSendMessage = async (req: AuthRequest, res: Response) => {
     }
     const result = await messageService.checkCanSendMessage(req.user!.userId, otherUserId);
     return successResponse(res, result);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败';
     return errorResponse(res, error.message, 'CHECK_FAILED');
   }
 };
@@ -78,7 +83,8 @@ export const getUnreadCount = async (req: AuthRequest, res: Response) => {
   try {
     const count = await messageService.getUnreadCount(req.user!.userId);
     return successResponse(res, { count });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败';
     return errorResponse(res, error.message, 'GET_UNREAD_COUNT_FAILED');
   }
 };
@@ -92,7 +98,8 @@ export const blockUser = async (req: AuthRequest, res: Response) => {
     }
     await messageService.blockUser(req.user!.userId, blockedId);
     return successResponse(res, { message: '屏蔽成功' });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败';
     return errorResponse(res, error.message, 'BLOCK_USER_FAILED');
   }
 };
@@ -106,7 +113,8 @@ export const unblockUser = async (req: AuthRequest, res: Response) => {
     }
     await messageService.unblockUser(req.user!.userId, blockedId);
     return successResponse(res, { message: '取消屏蔽成功' });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败';
     return errorResponse(res, error.message, 'UNBLOCK_USER_FAILED');
   }
 };
@@ -116,7 +124,8 @@ export const getBlockedUsers = async (req: AuthRequest, res: Response) => {
   try {
     const blockedUsers = await messageService.getBlockedUsers(req.user!.userId);
     return successResponse(res, blockedUsers);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败';
     return errorResponse(res, error.message, 'GET_BLOCKED_USERS_FAILED');
   }
 };
@@ -130,7 +139,8 @@ export const deleteMessage = async (req: AuthRequest, res: Response) => {
     }
     await messageService.deleteMessage(messageId, req.user!.userId);
     return successResponse(res, { message: '删除成功' });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败';
     return errorResponse(res, error.message, 'DELETE_MESSAGE_FAILED');
   }
 };
@@ -144,7 +154,8 @@ export const deleteConversation = async (req: AuthRequest, res: Response) => {
     }
     await messageService.deleteConversation(req.user!.userId, otherUserId);
     return successResponse(res, { message: '删除对话成功' });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败';
     return errorResponse(res, error.message, 'DELETE_CONVERSATION_FAILED');
   }
 };

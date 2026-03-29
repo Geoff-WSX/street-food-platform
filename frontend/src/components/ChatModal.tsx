@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Modal, Input, Button, message, Avatar, Typography, Space, Empty, Spin, Tag, Dropdown, Popconfirm } from 'antd';
+import { Modal, Input, Button, message, Avatar, Typography, Space, Empty, Spin, Tag, Dropdown } from 'antd';
 import { SendOutlined, UserOutlined, ArrowLeftOutlined, WarningOutlined, MoreOutlined, StopOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getMessages, sendMessage, checkCanSendMessage, markAsRead, deleteMessage, blockUser, type Message } from '../api/message';
 import { useAuthStore } from '../store/auth';
