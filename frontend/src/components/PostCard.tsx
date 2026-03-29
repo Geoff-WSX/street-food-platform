@@ -53,7 +53,9 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
       try {
         const result = await checkFollowStatus(post.user.id);
         setIsFollowing(result.isFollowing);
-      } catch {}
+      } catch {
+      // 忽略错误
+    }
     }
   };
 
@@ -73,7 +75,9 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
     try {
       const res = await toggleLike(post.id);
       onUpdate?.({ id: post.id, isLiked: res.liked, likeCount: res.likeCount });
-    } catch {}
+    } catch {
+      // 忽略错误
+    }
   };
 
   const handleFavorite = async (e: React.MouseEvent) => {
@@ -86,7 +90,9 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
     try {
       const res = await toggleFavorite(post.id);
       onUpdate?.({ id: post.id, isFavorited: res.favorited, favoriteCount: res.favoriteCount });
-    } catch {}
+    } catch {
+      // 忽略错误
+    }
   };
 
   const handleFollow = async (e: React.MouseEvent) => {
@@ -521,7 +527,9 @@ function UserModal({ user, visible, onClose, onFollowChange, onOpenChat }: {
     try {
       const result = await checkFollowStatus(user.id);
       setIsFollowing(result.isFollowing);
-    } catch {}
+    } catch {
+      // 忽略错误
+    }
   };
 
   const handleFollow = async () => {
