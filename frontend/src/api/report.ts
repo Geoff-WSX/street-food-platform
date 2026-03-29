@@ -12,7 +12,12 @@ export interface Report {
   type: string;
   description?: string;
   images: string[];
-  chatRecords: any[];
+  chatRecords: Array<{
+    senderId: number;
+    senderUsername: string;
+    content: string;
+    createdAt: string;
+  }>;
   status: 'pending' | 'reviewing' | 'resolved' | 'rejected';
   reviewerNote?: string;
   reviewerId?: number;
@@ -84,7 +89,12 @@ export const createReport = (data: {
   type: string;
   description?: string;
   images?: string[];
-  chatRecords?: any[];
+  chatRecords?: Array<{
+    senderId: number;
+    senderUsername: string;
+    content: string;
+    createdAt: string;
+  }>;
 }) => {
   return api.post('/reports', data);
 };

@@ -68,7 +68,7 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
       }
       setHasMore(pageNum < res.data.pagination.totalPages);
       setPage(pageNum);
-    } catch (error) {
+    } catch {
       void message.error('加载评论失败');
     } finally {
       setLoading(false);
@@ -95,7 +95,7 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
       }));
 
       setExpandedReplies(prev => new Set(prev).add(commentId));
-    } catch (error) {
+    } catch {
       void message.error('加载回复失败');
     } finally {
       setLoadingReplies(prev => {

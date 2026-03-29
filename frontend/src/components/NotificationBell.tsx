@@ -20,7 +20,9 @@ export default function NotificationBell() {
       try {
         const { data } = await getUnreadCount();
         setUnreadCount(data.count);
-      } catch (error) {
+      } catch {
+        // 忽略错误
+      }
       }
     };
 
@@ -36,7 +38,9 @@ export default function NotificationBell() {
       try {
         const { data } = await getNotifications({ page: 1, pageSize: 20 });
         setNotifications(data.data || []);
-      } catch (error) {
+      } catch {
+        // 忽略错误
+      }
       } finally {
         setLoading(false);
       }
@@ -82,7 +86,8 @@ export default function NotificationBell() {
         // 跳转到用户主页
         navigate(`/profile?userId=${notification.actorId}`);
       }
-    } catch (error) {
+    } catch {
+      // 忽略错误
     }
   };
 
@@ -94,7 +99,8 @@ export default function NotificationBell() {
       setNotifications(
         notifications.map((n) => ({ ...n, isRead: true }))
       );
-    } catch (error) {
+    } catch {
+      // 忽略错误
     }
   };
 
@@ -110,7 +116,8 @@ export default function NotificationBell() {
       if (deletedNotif && !deletedNotif.isRead) {
         setUnreadCount(Math.max(0, unreadCount - 1));
       }
-    } catch (error) {
+    } catch {
+      // 忽略错误
     }
   };
 
@@ -160,7 +167,7 @@ export default function NotificationBell() {
       open={open}
       onOpenChange={handleDropdownOpenChange}
       trigger={['click']}
-      dropdownRender={(menu) => (
+      dropdownRender={() => (
         <div style={{ width: 380, maxHeight: 500, overflow: 'auto', background: '#fff', borderRadius: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.15)' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
