@@ -26,6 +26,7 @@ function AppContent() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [handledPath, setHandledPath] = useState<string | null>(null);
 
   // 从路径派生是否应该打开弹窗
   const shouldOpenFromPath = useMemo(() => {
@@ -34,12 +35,13 @@ function AppContent() {
 
   // 监听路由变化，控制弹窗显示
   useEffect(() => {
-    if (shouldOpenFromPath) {
+    if (shouldOpenFromPath && location.pathname !== handledPath) {
       setManualOpen(true);
+      setHandledPath(location.pathname);
       // 替换历史记录，避免用户点击后退时再次打开弹窗
       window.history.replaceState({}, '', '/');
     }
-  }, [shouldOpenFromPath]);
+  }, [shouldOpenFromPath, location.pathname, handledPath]);
 
   // 合并路由触发和手动触发的状态
   const isModalOpen = publishModalOpen || manualOpen;
