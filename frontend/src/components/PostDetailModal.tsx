@@ -37,7 +37,8 @@ export default function PostDetailModal({ postId, visible, onClose }: Props) {
     try {
       const data = await getPost(postId);
       setPost(data);
-    } catch (error) {
+    } catch {
+      // 忽略错误
     } finally {
       setLoading(false);
     }
