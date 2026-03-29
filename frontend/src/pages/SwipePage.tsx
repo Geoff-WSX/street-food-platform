@@ -54,7 +54,6 @@ export default function SwipePage({ initialPostId: _initialPostId }: Props) {
       setPosts(data.data);
       setCurrentIndex(0);
     } catch (error) {
-      console.error('Failed to load posts:', error);
       void message.error('加载失败');
     } finally {
       setLoading(false);
@@ -83,7 +82,6 @@ export default function SwipePage({ initialPostId: _initialPostId }: Props) {
         void message.warning('暂时没有更多内容了');
       }
     } catch (error) {
-      console.error('Failed to load next post:', error);
       void message.error('加载失败');
     } finally {
       setLoadingNext(false);

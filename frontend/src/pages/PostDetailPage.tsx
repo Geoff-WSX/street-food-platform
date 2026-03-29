@@ -37,7 +37,6 @@ export default function PostDetailPage() {
     if (!id) return;
     getPost(Number(id))
       .then((data) => {
-        console.log('Raw post data:', data);
         setPost(data);
       })
       .finally(() => setLoading(false));

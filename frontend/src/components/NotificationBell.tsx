@@ -21,7 +21,6 @@ export default function NotificationBell() {
         const { data } = await getUnreadCount();
         setUnreadCount(data.count);
       } catch (error) {
-        console.error('Failed to load unread count:', error);
       }
     };
 
@@ -38,7 +37,6 @@ export default function NotificationBell() {
         const { data } = await getNotifications({ page: 1, pageSize: 20 });
         setNotifications(data.data || []);
       } catch (error) {
-        console.error('Failed to load notifications:', error);
       } finally {
         setLoading(false);
       }
@@ -85,7 +83,6 @@ export default function NotificationBell() {
         navigate(`/profile?userId=${notification.actorId}`);
       }
     } catch (error) {
-      console.error('Failed to handle notification click:', error);
     }
   };
 
@@ -98,7 +95,6 @@ export default function NotificationBell() {
         notifications.map((n) => ({ ...n, isRead: true }))
       );
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
     }
   };
 
@@ -115,7 +111,6 @@ export default function NotificationBell() {
         setUnreadCount(Math.max(0, unreadCount - 1));
       }
     } catch (error) {
-      console.error('Failed to delete notification:', error);
     }
   };
 

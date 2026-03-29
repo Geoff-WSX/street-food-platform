@@ -62,7 +62,6 @@ export default function ReportsPage() {
       const res = await getReportStats();
       setStats(res.data?.data || res.data);
     } catch (error) {
-      console.error('Failed to fetch stats:', error);
     }
   };
 
@@ -84,7 +83,6 @@ export default function ReportsPage() {
         total: paginationData.total,
       });
     } catch (error) {
-      console.error('Failed to fetch reports:', error);
       void message.error('获取举报列表失败');
     } finally {
       setTableLoading(false);
@@ -142,7 +140,7 @@ export default function ReportsPage() {
       reviewForm.resetFields();
       fetchReports(pagination.current, pagination.pageSize);
       if (isAdmin) fetchStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
       void message.error(error.response?.data?.error || '操作失败');
     }
   };
@@ -156,7 +154,7 @@ export default function ReportsPage() {
       handleForm.resetFields();
       fetchReports(pagination.current, pagination.pageSize);
       fetchStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
       void message.error(error.response?.data?.error || '操作失败');
     }
   };

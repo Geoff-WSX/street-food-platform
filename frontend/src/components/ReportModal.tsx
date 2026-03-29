@@ -4,6 +4,7 @@ import { PlusOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd';
 import { getReportTypes, createReport } from '../api/report';
 import type { ReportType } from '../api/report';
+import { getErrorMessage } from '../utils/error';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -33,8 +34,8 @@ export default function ReportModal({ open, onClose, reportedUserId, reportedUse
     try {
       const res = await getReportTypes();
       setReportTypes(res.data?.data || res.data || []);
-    } catch (error) {
-      console.error('Failed to fetch report types:', error);
+    } catch {
+      // 加载失败时使用空列表
     }
   };
 
@@ -76,7 +77,7 @@ export default function ReportModal({ open, onClose, reportedUserId, reportedUse
       form.resetFields();
       setFileList([]);
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       void message.error(error.response?.data?.error || '提交失败');
     } finally {
       setLoading(false);

@@ -41,7 +41,6 @@ export default function PublishPage() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude, accuracy } = position.coords;
-        console.log('获取到的坐标:', latitude, longitude, '精度:', accuracy + '米');
 
         try {
           const response = await fetch(`/api/posts/address/location?lat=${latitude}&lng=${longitude}`);
@@ -61,14 +60,12 @@ export default function PublishPage() {
             throw new Error('未返回地址信息');
           }
         } catch (error) {
-          console.error('获取地址失败:', error);
           void message.error({ content: '获取地址失败，请手动输入', key: 'location', duration: 2 });
         } finally {
           setLocationLoading(false);
         }
       },
       (error) => {
-        console.error('定位失败:', error);
         let errorMsg = '获取位置失败';
         switch (error.code) {
           case error.PERMISSION_DENIED:

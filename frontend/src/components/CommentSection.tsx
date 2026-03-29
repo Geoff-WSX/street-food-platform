@@ -7,6 +7,7 @@ import {
 import { getComments, createComment, deleteComment, toggleCommentLike, getCommentReplies, type Comment } from '../api/comment';
 import { checkContent } from '../api/comment';
 import { useAuthStore } from '../store/auth';
+import { getErrorMessage } from '../utils/error';
 
 const { TextArea } = Input;
 const { Text, Paragraph } = Typography;
@@ -68,7 +69,6 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
       setHasMore(pageNum < res.data.pagination.totalPages);
       setPage(pageNum);
     } catch (error) {
-      console.error('Failed to load comments:', error);
       void message.error('加载评论失败');
     } finally {
       setLoading(false);
@@ -96,7 +96,6 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
 
       setExpandedReplies(prev => new Set(prev).add(commentId));
     } catch (error) {
-      console.error('Failed to load replies:', error);
       void message.error('加载回复失败');
     } finally {
       setLoadingReplies(prev => {
@@ -131,8 +130,8 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
         void message.error(checkResult.data.message || '内容包含违规词汇，请修改后重试');
         return;
       }
-    } catch (error) {
-      console.error('Content check failed:', error);
+    } catch {
+      // 审查失败时继续，不阻止用户发布
     }
 
     try {
@@ -144,8 +143,8 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
       setComments(prev => [newComment, ...prev]);
       setContent('');
       void message.success('评论成功');
-    } catch (error: any) {
-      void message.error(error.response?.data?.message || '评论失败');
+    } catch (error: unknown) {
+      void message.error(getErrorMessage(error));
     } finally {
       setSubmitting(false);
     }
@@ -156,8 +155,8 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
       await deleteComment(commentId);
       setComments(prev => prev.filter(c => c.id !== commentId));
       void message.success('删除成功');
-    } catch (error: any) {
-      void message.error(error.response?.data?.message || '删除失败');
+    } catch (error: unknown) {
+      void message.error(getErrorMessage(error));
     }
   };
 
@@ -198,7 +197,7 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
         }
         return c;
       }));
-    } catch (error: any) {
+    } catch (error: unknown) {
       void message.error(error.response?.data?.message || '操作失败');
     }
   };
@@ -221,8 +220,8 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
         void message.error(checkResult.data.message || '内容包含违规词汇');
         return;
       }
-    } catch (error) {
-      console.error('Content check failed:', error);
+    } catch {
+      // 审查失败时继续，不阻止用户发布
     }
 
     try {
@@ -257,7 +256,7 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
       setReplyContent('');
       setReplyingTo(null);
       void message.success('回复成功');
-    } catch (error: any) {
+    } catch (error: unknown) {
       void message.error(error.response?.data?.message || '回复失败');
     } finally {
       setReplySubmitting(false);

@@ -246,7 +246,6 @@ export default function RankingPage() {
       const data = await getPosts({ page: 1, pageSize: 100 });
       setPosts(data.data);
     } catch (error) {
-      console.error('Failed to fetch posts:', error);
     } finally {
       setLoading(false);
     }

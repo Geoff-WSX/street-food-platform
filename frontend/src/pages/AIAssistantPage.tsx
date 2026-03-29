@@ -572,7 +572,7 @@ export default function AIAssistantPage() {
         // 自动显示推荐
         setShowSuggestions(true);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       void message.error(error.response?.data?.error || error.message || '小边暂时无法回复，请稍后再试');
     } finally {
       setLoading(false);

@@ -167,7 +167,6 @@ export default function HomePage() {
 
       setPosts(validPosts);
     } catch (error) {
-      console.error('Failed to fetch random posts:', error);
     } finally {
       if (showLoading) {
         setInitialLoading(false);
@@ -200,7 +199,6 @@ export default function HomePage() {
 
           setPosts(validPosts);
         } catch (error) {
-          console.error('Failed to fetch posts:', error);
         } finally {
           setLoading(false);
         }

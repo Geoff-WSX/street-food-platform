@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { App as AntdApp, Layout, ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Navbar from './components/Navbar';
 import AuthGuard from './components/AuthGuard';
 import FloatingAIButton from './components/FloatingAIButton';
@@ -25,18 +25,28 @@ function AppContent() {
   const location = useLocation();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const [publishModalOpen, setPublishModalOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+
+  // 从路径派生是否应该打开弹窗
+  const shouldOpenFromPath = useMemo(() => {
+    return location.pathname === '/publish' && isLoggedIn;
+  }, [location.pathname, isLoggedIn]);
 
   // 监听路由变化，控制弹窗显示
   useEffect(() => {
-    if (location.pathname === '/publish' && isLoggedIn) {
-      setPublishModalOpen(true);
+    if (shouldOpenFromPath) {
+      setManualOpen(true);
       // 替换历史记录，避免用户点击后退时再次打开弹窗
       window.history.replaceState({}, '', '/');
     }
-  }, [location.pathname, isLoggedIn]);
+  }, [shouldOpenFromPath]);
+
+  // 合并路由触发和手动触发的状态
+  const isModalOpen = publishModalOpen || manualOpen;
 
   const handleClosePublishModal = () => {
     setPublishModalOpen(false);
+    setManualOpen(false);
   };
 
   // 根据路由确定背景类名
@@ -88,7 +98,7 @@ function AppContent() {
       <FloatingAIButton />
 
       {/* 发布动态弹窗 */}
-      <PublishModal open={publishModalOpen} onClose={handleClosePublishModal} />
+      <PublishModal open={isModalOpen} onClose={handleClosePublishModal} />
     </>
   );
 }

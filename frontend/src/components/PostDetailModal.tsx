@@ -38,7 +38,6 @@ export default function PostDetailModal({ postId, visible, onClose }: Props) {
       const data = await getPost(postId);
       setPost(data);
     } catch (error) {
-      console.error('Failed to load post:', error);
     } finally {
       setLoading(false);
     }

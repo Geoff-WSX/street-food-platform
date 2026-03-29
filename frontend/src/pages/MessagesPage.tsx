@@ -37,8 +37,7 @@ export default function MessagesPage() {
     try {
       const data = await getConversations();
       setConversations(data);
-    } catch (error: any) {
-      console.error('加载对话列表失败:', error);
+    } catch (error: unknown) {
     } finally {
       setLoading(false);
     }

@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
+import { getErrorMessage } from '../utils/error';
 import { Form, Input, Button, message, Divider, Typography } from 'antd';
+import { getErrorMessage } from '../utils/error';
 import { MailOutlined, LockOutlined, UserOutlined, FireOutlined, RocketOutlined } from '@ant-design/icons';
+import { getErrorMessage } from '../utils/error';
 import { useNavigate } from 'react-router-dom';
+import { getErrorMessage } from '../utils/error';
 import { login, register } from '../api/auth';
+import { getErrorMessage } from '../utils/error';
 import { useAuthStore } from '../store/auth';
+import { getErrorMessage } from '../utils/error';
 
 const { Text } = Typography;
 
@@ -41,8 +47,8 @@ export default function LoginPage() {
       const res = await login(values);
       loginStore(res.token, res.user);
       navigate('/');
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.message || '登录失败，请检查邮箱和密码';
+    } catch (error: unknown) {
+      const errorMsg = getErrorMessage(error);
       void message.error(errorMsg);
     } finally {
       setLoading(false);
@@ -55,8 +61,8 @@ export default function LoginPage() {
       const res = await register(values);
       loginStore(res.token, res.user);
       navigate('/');
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.message || '注册失败，请稍后重试';
+    } catch (error: unknown) {
+      const errorMsg = getErrorMessage(error);
       void message.error(errorMsg);
     } finally {
       setLoading(false);

@@ -44,7 +44,6 @@ export default function AdminPage() {
       const res = await getSystemStats();
       setStats(res.data?.data || res.data);
     } catch (error) {
-      console.error('Failed to fetch stats:', error);
     }
   };
 
@@ -66,7 +65,6 @@ export default function AdminPage() {
         total: paginationData.total,
       });
     } catch (error) {
-      console.error('Failed to fetch users:', error);
       void message.error('获取用户列表失败');
     } finally {
       setTableLoading(false);
@@ -87,7 +85,7 @@ export default function AdminPage() {
       await updateUserRole(userId, newRole);
       void message.success('角色已更新');
       fetchUsers(pagination.current, pagination.pageSize);
-    } catch (error: any) {
+    } catch (error: unknown) {
       void message.error(error.response?.data?.error || '更新失败');
     }
   };
@@ -101,7 +99,7 @@ export default function AdminPage() {
       await toggleUserStatus(user.id);
       void message.success(`账号已${user.isActive ? '禁用' : '启用'}`);
       fetchUsers(pagination.current, pagination.pageSize);
-    } catch (error: any) {
+    } catch (error: unknown) {
       void message.error(error.response?.data?.error || '操作失败');
     }
   };
@@ -113,7 +111,7 @@ export default function AdminPage() {
       void message.success('密码已重置');
       setPwdModalOpen(false);
       pwdForm.resetFields();
-    } catch (error: any) {
+    } catch (error: unknown) {
       void message.error(error.response?.data?.error || '操作失败');
     }
   };
@@ -128,7 +126,7 @@ export default function AdminPage() {
       void message.success('用户已删除');
       fetchUsers(pagination.current, pagination.pageSize);
       fetchStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
       void message.error(error.response?.data?.error || '删除失败');
     }
   };

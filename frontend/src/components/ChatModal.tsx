@@ -3,6 +3,7 @@ import { Modal, Input, Button, message, Avatar, Typography, Space, Empty, Spin, 
 import { SendOutlined, UserOutlined, ArrowLeftOutlined, WarningOutlined, MoreOutlined } from '@ant-design/icons';
 import { getMessages, sendMessage, checkCanSendMessage, markAsRead, type Message } from '../api/message';
 import { useAuthStore } from '../store/auth';
+import { getErrorMessage } from '../utils/error';
 import { useMessageStore } from '../store/message';
 import ReportModal from './ReportModal';
 import type { MenuProps } from 'antd';
@@ -47,8 +48,8 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
 
       // 标记消息为已读
       await markAsRead(otherUser.id);
-    } catch (error: any) {
-      void message.error(error.response?.data?.message || '加载消息失败');
+    } catch (error: unknown) {
+      void message.error(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -61,6 +62,7 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
 
   useEffect(() => {
     loadMessages();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, otherUser.id]);
 
   useEffect(() => {
@@ -83,8 +85,8 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
       // 重新检查是否可以继续发送
       const checkResult = await checkCanSendMessage(otherUser.id);
       setCanSend(checkResult);
-    } catch (error: any) {
-      void message.error(error.response?.data?.message || '发送失败');
+    } catch (error: unknown) {
+      void message.error(getErrorMessage(error));
     } finally {
       setSending(false);
     }

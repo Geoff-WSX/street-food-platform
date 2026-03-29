@@ -4,6 +4,7 @@ import { PlusOutlined, EnvironmentOutlined, LoadingOutlined, CloseOutlined } fro
 import { useNavigate } from 'react-router-dom';
 import { createPost } from '../api/post';
 import { checkContent } from '../api/comment';
+import { getErrorMessage } from '../utils/error';
 import type { UploadFile } from 'antd/es/upload';
 
 const { Title, Text } = Typography;
@@ -98,8 +99,7 @@ export default function PublishModal({ open, onClose }: Props) {
         void message.error(checkResult.data.message || '内容包含违规词汇，请修改后重试');
         return;
       }
-    } catch (error: any) {
-      console.error('Content check failed:', error);
+    } catch (error: unknown) {
       // 审查失败时允许继续，但给出警告
       void message.warning('内容审查服务暂时不可用，请文明发言');
     }
