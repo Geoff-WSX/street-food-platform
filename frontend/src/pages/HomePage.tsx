@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Col, Row, Spin, Button, Empty, Typography, Card, Space, TreeSelect, Tag, Divider, FloatButton, Skeleton } from 'antd';
-import { ClockCircleOutlined, EnvironmentOutlined, ReloadOutlined, FireOutlined, BulbOutlined } from '@ant-design/icons';
-import { getPosts, getRandomPosts } from '../api/post';
+import { Col, Row, Spin, Empty, Typography, Card, Space, TreeSelect, Tag, Divider, FloatButton, Skeleton } from 'antd';
+import { EnvironmentOutlined, ReloadOutlined, FireOutlined } from '@ant-design/icons';
+import { getRandomPosts } from '../api/post';
 import PostCard from '../components/PostCard';
 import type { Post } from '../types';
 
@@ -136,13 +136,10 @@ const PostSkeleton = () => (
 
 export default function HomePage() {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
-  const [hasMore, setHasMore] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [isRandomMode, setIsRandomMode] = useState(true);
 
   const loadRandomPosts = async (showLoading = true) => {
     try {
@@ -169,9 +166,6 @@ export default function HomePage() {
       });
 
       setPosts(validPosts);
-      setPage(1);
-      setHasMore(false);
-      setIsRandomMode(true);
     } catch (error) {
       console.error('Failed to fetch random posts:', error);
     } finally {
@@ -180,32 +174,6 @@ export default function HomePage() {
       } else {
         setRefreshing(false);
       }
-    }
-  };
-
-  const loadLatestPosts = async () => {
-    try {
-      setInitialLoading(true);
-      const data = await getPosts({ page: 1, pageSize: 20 });
-
-      const validPosts = (data.data || []).filter((post) => {
-        return post &&
-          post.content &&
-          post.images &&
-          Array.isArray(post.images) &&
-          post.images.length > 0 &&
-          post.user &&
-          post.user.username;
-      });
-
-      setPosts(validPosts);
-      setPage(1);
-      setHasMore(data.pagination.totalPages > 1);
-      setIsRandomMode(false);
-    } catch (error) {
-      console.error('Failed to fetch posts:', error);
-    } finally {
-      setInitialLoading(false);
     }
   };
 
@@ -218,7 +186,7 @@ export default function HomePage() {
       const fetchData = async () => {
         try {
           setLoading(true);
-          const data = await getPosts({ page: 1, pageSize: 20 });
+          const data = await getRandomPosts({ limit: 20 });
 
           const validPosts = (data.data || []).filter((post) => {
             return post &&
@@ -231,9 +199,6 @@ export default function HomePage() {
           });
 
           setPosts(validPosts);
-          setPage(1);
-          setHasMore(data.pagination.totalPages > 1);
-          setIsRandomMode(false);
         } catch (error) {
           console.error('Failed to fetch posts:', error);
         } finally {
@@ -246,45 +211,13 @@ export default function HomePage() {
     }
   }, [selectedLocation]);
 
-  const loadMore = async () => {
-    // 随机模式下不支持加载更多
-    if (isRandomMode || loading || !hasMore) return;
-
-    const nextPage = page + 1;
-    try {
-      setLoading(true);
-      const data = await getPosts({ page: nextPage, pageSize: 20 });
-
-      const validPosts = (data.data || []).filter((post) => {
-        return post &&
-          post.content &&
-          post.images &&
-          Array.isArray(post.images) &&
-          post.images.length > 0 &&
-          post.user &&
-          post.user.username;
-      });
-
-      setPosts((prev) => [...prev, ...validPosts]);
-      setPage(nextPage);
-      setHasMore(nextPage < data.pagination.totalPages);
-    } catch (error) {
-      console.error('Failed to load more posts:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleUpdate = (updated: Partial<Post> & { id: number }) => {
     setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
   };
 
   const handleRefresh = () => {
-    if (isRandomMode) {
-      loadRandomPosts(false);
-    } else {
-      loadLatestPosts();
-    }
+    // 始终使用随机推荐模式
+    loadRandomPosts(false);
   };
 
   const filterByLocation = (post: Post) => {
@@ -332,7 +265,7 @@ export default function HomePage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
           <div style={{ height: 1, flex: 1, maxWidth: 100, background: 'linear-gradient(to right, #667eea, transparent)' }} />
           <Text type="secondary" style={{ fontSize: 15, color: '#8c8c8c', fontWeight: 400 }}>
-            {isRandomMode ? '✨ 随机推荐精彩美食动态' : '📍 探索身边的街边美食，分享你的味蕾体验'}
+            ✨ 随机推荐精彩美食动态，点击刷新发现更多
           </Text>
         </div>
       </div>
@@ -458,33 +391,8 @@ export default function HomePage() {
             ))}
           </Row>
 
-          {/* 加载更多 */}
-          {hasMore && !isRandomMode && (
-            <div style={{ textAlign: 'center', marginTop: 40, marginBottom: 20 }}>
-              <Button
-                onClick={loadMore}
-                loading={loading}
-                size="large"
-                icon={!loading && <ClockCircleOutlined />}
-                style={{
-                  borderRadius: 24,
-                  height: 48,
-                  paddingLeft: 32,
-                  paddingRight: 32,
-                  fontSize: 16,
-                  fontWeight: 500,
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  border: 'none',
-                  boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
-                }}
-              >
-                {loading ? '加载中...' : '加载更多美食'}
-              </Button>
-            </div>
-          )}
-
-          {/* 到底提示 */}
-          {(!hasMore || isRandomMode) && filteredPosts.length > 0 && (
+          {/* 底部提示 */}
+          {filteredPosts.length > 0 && (
             <div style={{
               textAlign: 'center',
               marginTop: 40,
@@ -494,7 +402,7 @@ export default function HomePage() {
               <Space size={12}>
                 <div style={{ width: 40, height: 1, background: 'linear-gradient(to right, transparent, #d9d9d9, transparent)' }} />
                 <Text type="secondary" style={{ fontSize: 14, color: '#8c8c8c' }}>
-                  {isRandomMode ? '💡 点击刷新按钮发现更多美食' : '✨ 已经到底了，去看看其他美食吧'}
+                  💡 点击刷新按钮发现更多美食
                 </Text>
                 <div style={{ width: 40, height: 1, background: 'linear-gradient(to right, transparent, #d9d9d9, transparent)' }} />
               </Space>
@@ -509,22 +417,10 @@ export default function HomePage() {
         style={{ right: 24, bottom: 80 }}
       >
         <FloatButton
-          icon={<BulbOutlined />}
-          type="primary"
-          tooltip={isRandomMode ? '查看最新' : '随机推荐'}
-          onClick={() => isRandomMode ? loadLatestPosts() : loadRandomPosts()}
-          style={{
-            width: 48,
-            height: 48,
-            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-            boxShadow: '0 4px 15px rgba(245, 87, 108, 0.3)'
-          }}
-        />
-        <FloatButton
           icon={<ReloadOutlined spin={refreshing} />}
           type="primary"
           onClick={handleRefresh}
-          tooltip="刷新"
+          tooltip="随机推荐"
           style={{
             width: 56,
             height: 56,
