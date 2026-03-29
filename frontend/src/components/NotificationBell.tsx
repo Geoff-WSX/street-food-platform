@@ -23,7 +23,6 @@ export default function NotificationBell() {
       } catch {
         // 忽略错误
       }
-      }
     };
 
     loadUnreadCount();
@@ -40,7 +39,6 @@ export default function NotificationBell() {
         setNotifications(data.data || []);
       } catch {
         // 忽略错误
-      }
       } finally {
         setLoading(false);
       }
