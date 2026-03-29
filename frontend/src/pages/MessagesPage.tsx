@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, List, Avatar, Typography, Tag, Empty, Spin, Badge, Space, Skeleton } from 'antd';
-import { UserOutlined, MessageOutlined, MailOutlined } from '@ant-design/icons';
-import { getConversations, type Conversation } from '../api/message';
+import { Card, List, Avatar, Typography, Tag, Empty, Spin, Badge, Space, Skeleton, Modal, message } from 'antd';
+import { UserOutlined, MessageOutlined, MailOutlined, DeleteOutlined } from '@ant-design/icons';
+import { getConversations, deleteConversation, type Conversation } from '../api/message';
 import ChatModal from '../components/ChatModal';
 import { useAuthStore } from '../store/auth';
 import { useMessageStore } from '../store/message';
+import { getErrorMessage } from '../utils/error';
 
 const { Text, Title } = Typography;
 
@@ -62,6 +63,28 @@ export default function MessagesPage() {
       decrementUnread(conversation.unreadCount);
     }
     setSelectedChat(conversation.otherUser);
+  };
+
+  // 删除对话
+  const handleDeleteConversation = (conversation: Conversation, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    Modal.confirm({
+      title: '确认删除对话',
+      content: `删除后，与 ${conversation.otherUser.username} 的所有聊天记录将被清空且无法恢复。确定要删除吗？`,
+      okText: '确认删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await deleteConversation(conversation.otherUser.id);
+          void message.success('删除成功');
+          loadConversations();
+        } catch (error: unknown) {
+          void message.error(getErrorMessage(error));
+        }
+      },
+    });
   };
 
   if (!isLoggedIn) {
@@ -169,6 +192,28 @@ export default function MessagesPage() {
                     }
                     title={
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                        <Text strong style={{
+                          fontSize: 16,
+                          color: item.unreadCount > 0 ? '#262626' : '#595959',
+                          fontWeight: item.unreadCount > 0 ? 600 : 500
+                        }}>
+                          {item.otherUser.username}
+                        </Text>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Text type="secondary" style={{ fontSize: 12, color: '#8c8c8c' }}>
+                            {item.lastMessage
+                              ? new Date(item.lastMessage.createdAt).toLocaleDateString('zh-CN')
+                              : new Date(item.updatedAt).toLocaleDateString('zh-CN')}
+                          </Text>
+                          <Button
+                            type="text"
+                            icon={<DeleteOutlined />}
+                            size="small"
+                            danger
+                            onClick={(e) => handleDeleteConversation(item, e)}
+                            style={{ padding: '4px 8px' }}
+                          />
+                        </div>
                         <Text strong style={{
                           fontSize: 16,
                           color: item.unreadCount > 0 ? '#262626' : '#595959',

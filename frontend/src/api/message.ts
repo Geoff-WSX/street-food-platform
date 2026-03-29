@@ -50,3 +50,32 @@ export const sendMessage = (userId: number, content: string) =>
 // 标记消息为已读
 export const markAsRead = (userId: number) =>
   api.put(`/messages/${userId}/read`).then((r) => r.data);
+
+// 删除消息
+export const deleteMessage = (messageId: number) =>
+  api.delete(`/messages/${messageId}`).then((r) => r.data);
+
+// 删除对话
+export const deleteConversation = (userId: number) =>
+  api.delete(`/messages/conversations/${userId}`).then((r) => r.data);
+
+// 屏蔽用户
+export const blockUser = (userId: number) =>
+  api.post(`/messages/block/${userId}`).then((r) => r.data);
+
+// 取消屏蔽用户
+export const unblockUser = (userId: number) =>
+  api.delete(`/messages/block/${userId}`).then((r) => r.data);
+
+// 获取已屏蔽用户列表
+export const getBlockedUsers = () =>
+  api.get<ApiResponse<Array<{
+    id: number;
+    blockedUser: {
+      id: number;
+      username: string;
+      avatar?: string;
+      bio?: string;
+    };
+    createdAt: string;
+  }>>>('/messages/blocked/list').then((r) => r.data.data);

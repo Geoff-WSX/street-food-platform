@@ -251,3 +251,147 @@ export const getUnreadCount = async (userId: number) => {
 
   return unreadCount;
 };
+
+/**
+ * 屏蔽用户
+ */
+export const blockUser = async (blockerId: number, blockedId: number) => {
+  // 不能屏蔽自己
+  if (blockerId === blockedId) {
+    throw new Error('不能屏蔽自己');
+  }
+
+  // 检查用户是否存在
+  const blockedUser = await prisma.user.findUnique({
+    where: { id: blockedId },
+  });
+
+  if (!blockedUser) {
+    throw new Error('用户不存在');
+  }
+
+  // 检查是否已经屏蔽
+  const existing = await prisma.block.findFirst({
+    where: {
+      blockerId,
+      blockedId,
+    },
+  });
+
+  if (existing) {
+    throw new Error('已经屏蔽该用户');
+  }
+
+  // 创建屏蔽记录
+  await prisma.block.create({
+    data: {
+      blockerId,
+      blockedId,
+    },
+  });
+
+  return { success: true };
+};
+
+/**
+ * 取消屏蔽用户
+ */
+export const unblockUser = async (blockerId: number, blockedId: number) => {
+  const block = await prisma.block.findFirst({
+    where: {
+      blockerId,
+      blockedId,
+    },
+  });
+
+  if (!block) {
+    throw new Error('未屏蔽该用户');
+  }
+
+  await prisma.block.delete({
+    where: { id: block.id },
+  });
+
+  return { success: true };
+};
+
+/**
+ * 获取已屏蔽用户列表
+ */
+export const getBlockedUsers = async (userId: number) => {
+  const blocks = await prisma.block.findMany({
+    where: {
+      blockerId: userId,
+    },
+    include: {
+      blocked: {
+        select: {
+          id: true,
+          username: true,
+          avatar: true,
+          bio: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  return blocks.map((block) => ({
+    id: block.id,
+    blockedUser: block.blocked,
+    createdAt: block.createdAt,
+  }));
+};
+
+/**
+ * 删除消息
+ */
+export const deleteMessage = async (messageId: number, userId: number) => {
+  const message = await prisma.message.findUnique({
+    where: { id: messageId },
+  });
+
+  if (!message) {
+    throw new Error('消息不存在');
+  }
+
+  // 只能删除自己发送的消息
+  if (message.senderId !== userId) {
+    throw new Error('只能删除自己发送的消息');
+  }
+
+  await prisma.message.delete({
+    where: { id: messageId },
+  });
+
+  return { success: true };
+};
+
+/**
+ * 删除整个对话
+ */
+export const deleteConversation = async (userId: number, otherUserId: number) => {
+  const [uid1, uid2] = userId < otherUserId ? [userId, otherUserId] : [otherUserId, userId];
+
+  const conversation = await prisma.conversation.findUnique({
+    where: {
+      userId1_userId2: {
+        userId1: uid1,
+        userId2: uid2,
+      },
+    },
+  });
+
+  if (!conversation) {
+    throw new Error('对话不存在');
+  }
+
+  // 删除对话及其所有消息
+  await prisma.conversation.delete({
+    where: { id: conversation.id },
+  });
+
+  return { success: true };
+};

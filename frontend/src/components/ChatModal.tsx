@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Modal, Input, Button, message, Avatar, Typography, Space, Empty, Spin, Tag, Dropdown } from 'antd';
-import { SendOutlined, UserOutlined, ArrowLeftOutlined, WarningOutlined, MoreOutlined } from '@ant-design/icons';
-import { getMessages, sendMessage, checkCanSendMessage, markAsRead, type Message } from '../api/message';
+import { Modal, Input, Button, message, Avatar, Typography, Space, Empty, Spin, Tag, Dropdown, Popconfirm } from 'antd';
+import { SendOutlined, UserOutlined, ArrowLeftOutlined, WarningOutlined, MoreOutlined, StopOutlined, DeleteOutlined } from '@ant-design/icons';
+import { getMessages, sendMessage, checkCanSendMessage, markAsRead, deleteMessage, blockUser, type Message } from '../api/message';
 import { useAuthStore } from '../store/auth';
 import { getErrorMessage } from '../utils/error';
 import { useMessageStore } from '../store/message';
@@ -26,6 +26,7 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
   const [sending, setSending] = useState(false);
   const [canSend, setCanSend] = useState<{ canSend: boolean; reason?: string; isInitial?: boolean } | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 加载消息
@@ -39,6 +40,11 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
       ]);
       setMessages(msgs);
       setCanSend(checkResult);
+
+      // 检查是否被屏蔽
+      if (!checkResult.canSend && checkResult.reason === '你已被对方拉黑') {
+        setIsBlocked(true);
+      }
 
       // 计算并减少未读消息数
       const unreadMessages = msgs.filter((msg) => msg.senderId !== currentUser?.id && !msg.readAt);
@@ -94,8 +100,51 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
 
   const isMe = (msg: Message) => msg.senderId === currentUser?.id;
 
+  // 删除消息
+  const handleDeleteMessage = async (messageId: number) => {
+    try {
+      await deleteMessage(messageId);
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      void message.success('删除成功');
+    } catch (error: unknown) {
+      void message.error(getErrorMessage(error));
+    }
+  };
+
+  // 屏蔽用户
+  const handleBlockUser = async () => {
+    try {
+      await blockUser(otherUser.id);
+      setIsBlocked(true);
+      setCanSend({ canSend: false, reason: '已屏蔽该用户' });
+      void message.success('屏蔽成功');
+      onClose();
+    } catch (error: unknown) {
+      void message.error(getErrorMessage(error));
+    }
+  };
+
   // 更多操作菜单
   const moreMenuItems: MenuProps['items'] = [
+    {
+      key: 'block',
+      icon: <StopOutlined />,
+      label: '屏蔽用户',
+      onClick: () => {
+        Modal.confirm({
+          title: '确认屏蔽',
+          content: `屏蔽后，该用户将无法向你发送消息。确定要屏蔽 ${otherUser.username} 吗？`,
+          okText: '确认屏蔽',
+          okType: 'danger',
+          cancelText: '取消',
+          onOk: handleBlockUser,
+        });
+      },
+      danger: true,
+    },
+    {
+      type: 'divider',
+    },
     {
       key: 'report',
       icon: <WarningOutlined />,
@@ -104,6 +153,21 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
       danger: true,
     },
   ];
+
+  // 消息长按菜单
+  const getMessageMenuItems = (msg: Message): MenuProps['items'] => {
+    if (!isMe(msg)) return null;
+
+    return [
+      {
+        key: 'delete',
+        icon: <DeleteOutlined />,
+        label: '删除消息',
+        onClick: () => handleDeleteMessage(msg.id),
+        danger: true,
+      },
+    ];
+  };
 
   return (
     <Modal
@@ -134,6 +198,11 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
           {canSend && !canSend.canSend && (
             <Tag color="warning" style={{ marginLeft: 8, fontSize: 12 }}>
               {canSend.reason}
+            </Tag>
+          )}
+          {isBlocked && (
+            <Tag color="red" style={{ marginLeft: 8, fontSize: 12 }}>
+              已屏蔽
             </Tag>
           )}
         </div>
@@ -169,39 +238,61 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
           />
         ) : (
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: isMe(msg) ? 'flex-end' : 'flex-start',
-                }}
-              >
-                <div style={{
-                  maxWidth: '70%',
-                  padding: '10px 14px',
-                  borderRadius: 12,
-                  backgroundColor: isMe(msg) ? '#1890ff' : '#fff',
-                  color: isMe(msg) ? '#fff' : '#333',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                }}>
-                  <div style={{ fontSize: 14, wordBreak: 'break-word' }}>
-                    {msg.content}
+            {messages.map((msg) => {
+              const menuItems = getMessageMenuItems(msg);
+              return (
+                <Dropdown
+                  key={msg.id}
+                  menu={{ items: menuItems || undefined }}
+                  trigger={isMe(msg) ? ['contextMenu'] : []}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: isMe(msg) ? 'flex-end' : 'flex-start',
+                      cursor: isMe(msg) ? 'pointer' : 'default',
+                    }}
+                  >
+                    <div style={{
+                      maxWidth: '70%',
+                      padding: '10px 14px',
+                      borderRadius: 12,
+                      backgroundColor: isMe(msg) ? '#1890ff' : '#fff',
+                      color: isMe(msg) ? '#fff' : '#333',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                      position: 'relative',
+                    }}>
+                      <div style={{ fontSize: 14, wordBreak: 'break-word' }}>
+                        {msg.content}
+                      </div>
+                      <div style={{
+                        fontSize: 11,
+                        opacity: 0.7,
+                        marginTop: 4,
+                        textAlign: 'right'
+                      }}>
+                        {new Date(msg.createdAt).toLocaleTimeString('zh-CN', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                      {isMe(msg) && (
+                        <div style={{
+                          position: 'absolute',
+                          top: -5,
+                          right: -5,
+                          fontSize: 10,
+                          color: '#999',
+                          opacity: 0.5,
+                        }}>
+                          •••
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div style={{
-                    fontSize: 11,
-                    opacity: 0.7,
-                    marginTop: 4,
-                    textAlign: 'right'
-                  }}>
-                    {new Date(msg.createdAt).toLocaleTimeString('zh-CN', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </div>
-                </div>
-              </div>
-            ))}
+                </Dropdown>
+              );
+            })}
             <div ref={messagesEndRef} />
           </Space>
         )}
@@ -226,17 +317,19 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
               }
             }}
             placeholder={
-              canSend?.isInitial
+              isBlocked
+                ? '已屏蔽该用户'
+                : canSend?.isInitial
                 ? `发送第一条消息给${otherUser.username}...`
                 : canSend?.canSend
                 ? '输入消息...'
                 : canSend?.reason || '输入消息...'
             }
             autoSize={{ minRows: 1, maxRows: 4 }}
-            disabled={!canSend?.canSend}
+            disabled={isBlocked || !canSend?.canSend}
             style={{ borderRadius: 20 }}
           />
-          {canSend && !canSend.canSend && (
+          {canSend && !canSend.canSend && !isBlocked && (
             <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
               {canSend.reason}
             </Text>
@@ -247,7 +340,7 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
           icon={<SendOutlined />}
           onClick={handleSend}
           loading={sending}
-          disabled={!inputValue.trim() || !canSend?.canSend}
+          disabled={!inputValue.trim() || !canSend?.canSend || isBlocked}
           style={{
             borderRadius: '50%',
             width: 40,

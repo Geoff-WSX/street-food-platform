@@ -82,3 +82,69 @@ export const getUnreadCount = async (req: AuthRequest, res: Response) => {
     return errorResponse(res, error.message, 'GET_UNREAD_COUNT_FAILED');
   }
 };
+
+// 屏蔽用户
+export const blockUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const blockedId = parseInt(req.params.userId);
+    if (isNaN(blockedId)) {
+      return errorResponse(res, '无效的用户ID', 'INVALID_PARAM');
+    }
+    await messageService.blockUser(req.user!.userId, blockedId);
+    return successResponse(res, { message: '屏蔽成功' });
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'BLOCK_USER_FAILED');
+  }
+};
+
+// 取消屏蔽用户
+export const unblockUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const blockedId = parseInt(req.params.userId);
+    if (isNaN(blockedId)) {
+      return errorResponse(res, '无效的用户ID', 'INVALID_PARAM');
+    }
+    await messageService.unblockUser(req.user!.userId, blockedId);
+    return successResponse(res, { message: '取消屏蔽成功' });
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'UNBLOCK_USER_FAILED');
+  }
+};
+
+// 获取已屏蔽用户列表
+export const getBlockedUsers = async (req: AuthRequest, res: Response) => {
+  try {
+    const blockedUsers = await messageService.getBlockedUsers(req.user!.userId);
+    return successResponse(res, blockedUsers);
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'GET_BLOCKED_USERS_FAILED');
+  }
+};
+
+// 删除消息
+export const deleteMessage = async (req: AuthRequest, res: Response) => {
+  try {
+    const messageId = parseInt(req.params.messageId);
+    if (isNaN(messageId)) {
+      return errorResponse(res, '无效的消息ID', 'INVALID_PARAM');
+    }
+    await messageService.deleteMessage(messageId, req.user!.userId);
+    return successResponse(res, { message: '删除成功' });
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'DELETE_MESSAGE_FAILED');
+  }
+};
+
+// 删除对话
+export const deleteConversation = async (req: AuthRequest, res: Response) => {
+  try {
+    const otherUserId = parseInt(req.params.userId);
+    if (isNaN(otherUserId)) {
+      return errorResponse(res, '无效的用户ID', 'INVALID_PARAM');
+    }
+    await messageService.deleteConversation(req.user!.userId, otherUserId);
+    return successResponse(res, { message: '删除对话成功' });
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'DELETE_CONVERSATION_FAILED');
+  }
+};

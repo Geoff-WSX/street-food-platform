@@ -24,4 +24,20 @@ router.post('/:userId', authenticate, messageController.sendMessage);
 // PUT /api/messages/:userId/read - 标记消息为已读
 router.put('/:userId/read', authenticate, messageController.markAsRead);
 
+// DELETE /api/messages/conversations/:userId - 删除对话
+router.delete('/conversations/:userId', authenticate, messageController.deleteConversation);
+
+// DELETE /api/messages/:messageId - 删除消息
+router.delete('/:messageId', authenticate, messageController.deleteMessage);
+
+// 屏蔽相关路由
+// POST /api/messages/block/:userId - 屏蔽用户
+router.post('/block/:userId', authenticate, messageController.blockUser);
+
+// DELETE /api/messages/block/:userId - 取消屏蔽用户
+router.delete('/block/:userId', authenticate, messageController.unblockUser);
+
+// GET /api/messages/blocked - 获取已屏蔽用户列表
+router.get('/blocked/list', authenticate, messageController.getBlockedUsers);
+
 export default router;
