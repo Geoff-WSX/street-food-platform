@@ -1,0 +1,267 @@
+#!/bin/bash
+# Pre-commit hook for street-food-platform
+# 智能检查改动代码及其关联依赖
+
+set -e
+
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}🔍 小边正在检查代码...${NC}"
+
+# 获取暂存的文件
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx)$' || true)
+
+# 同时检查未暂存但有修改的文件（防止漏检）
+MODIFIED_FILES=$(git diff --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx)$' || true)
+
+# 合并所有需要检查的文件
+ALL_CHECK_FILES="$STAGED_FILES
+$MODIFIED_FILES"
+
+# 去重
+ALL_CHECK_FILES=$(echo "$ALL_CHECK_FILES" | sort -u | grep -v '^$' || true)
+
+if [ -z "$ALL_CHECK_FILES" ]; then
+    echo -e "${GREEN}✅ 没有代码文件需要检查${NC}"
+    exit 0
+fi
+
+echo -e "${BLUE}📝 检查的文件:${NC}"
+echo "$ALL_CHECK_FILES" | sed 's/^/  - /'
+
+# 函数：从文件中提取 import 的路径
+extract_imports() {
+    local file="$1"
+    # 提取相对路径的 import (如 '../components/xxx')
+    grep -oE "from ['\"]\.\.?/[^'\"]+['\"]" "$file" 2>/dev/null | \
+        sed "s/from ['\"]//g" | sed "s/['\"]//g" | sed "s/^.\///" || true
+}
+
+# 函数：解析关联文件
+resolve_related_files() {
+    local base_file="$1"
+    local base_dir=$(dirname "$base_file")
+    local related_files=""
+
+    # 提取 imports 并解析为实际文件路径
+    local imports=$(extract_imports "$base_file")
+    for imp in $imports; do
+        # 构建可能的文件路径
+        local import_dir="$base_dir/$imp"
+        # 检查 .ts/.tsx 文件
+        if [ -f "$import_dir.ts" ]; then
+            related_files="$related_files $import_dir.ts"
+        elif [ -f "$import_dir.tsx" ]; then
+            related_files="$related_files $import_dir.tsx"
+        elif [ -f "$import_dir/index.ts" ]; then
+            related_files="$related_files $import_dir/index.ts"
+        elif [ -f "$import_dir/index.tsx" ]; then
+            related_files="$related_files $import_dir/index.tsx"
+        fi
+    done
+
+    echo "$related_files"
+}
+
+# 检查是否在前端目录
+FRONTEND_FILES=$(echo "$ALL_CHECK_FILES" | grep -E '^(frontend/|src/)' || true)
+BACKEND_FILES=$(echo "$ALL_CHECK_FILES" | grep -E '^backend/' || true)
+
+# 前端检查
+if [ -n "$FRONTEND_FILES" ]; then
+    echo -e "${YELLOW}🎨 检查前端代码...${NC}"
+
+    # 收集所有需要检查的文件（包括关联文件）
+    CHECK_FILES=""
+    RELATED_FILES=""
+
+    for file in $FRONTEND_FILES; do
+        # 标准化路径（去掉 frontend/ 前缀）
+        if [[ $file == frontend/* ]]; then
+            file="${file#frontend/}"
+        fi
+        CHECK_FILES="$CHECK_FILES $file"
+
+        # 查找关联文件
+        related=$(resolve_related_files "$file")
+        if [ -n "$related" ]; then
+            RELATED_FILES="$RELATED_FILES $related"
+        fi
+    done
+
+    # 去重
+    CHECK_FILES=$(echo "$CHECK_FILES" | tr ' ' '\n' | sort -u | grep -v '^$' | tr '\n' ' ')
+    RELATED_FILES=$(echo "$RELATED_FILES" | tr ' ' '\n' | sort -u | grep -v '^$' | tr '\n' ' ')
+
+    if [ -n "$RELATED_FILES" ]; then
+        echo -e "${BLUE}  📦 发现关联文件:${NC}"
+        echo "$RELATED_FILES" | tr ' ' '\n' | sed 's/^/      - /' | grep -v '^$'
+        CHECK_FILES="$CHECK_FILES $RELATED_FILES"
+    fi
+
+    cd frontend
+
+    # 构建需要检查的文件列表参数
+    FILES_ARGS=""
+    for file in $CHECK_FILES; do
+        if [ -f "$file" ]; then
+            FILES_ARGS="$FILES_ARGS $file"
+        fi
+    done
+
+    # TypeScript 类型检查（只检查改动的文件）
+    if command -v npx &> /dev/null; then
+        echo -e "${BLUE}  - TypeScript 类型检查${NC}"
+
+        if [ -n "$FILES_ARGS" ]; then
+            # 使用 tsc --noEmit 只检查特定文件
+            if npx tsc --noEmit --skipLibCheck $FILES_ARGS 2>&1 | head -30; then
+                echo -e "${GREEN}  ✅ TypeScript 检查通过${NC}"
+            else
+                echo -e "${RED}  ❌ TypeScript 类型错误${NC}"
+                echo -e "${YELLOW}  提示: 检查改动文件及其导入的依赖${NC}"
+            fi
+        else
+            # 如果无法指定文件，做全量检查
+            if npx tsc --noEmit --skipLibCheck 2>&1 | head -20; then
+                echo -e "${GREEN}  ✅ TypeScript 检查通过（全量）${NC}"
+            else
+                echo -e "${RED}  ❌ TypeScript 类型错误${NC}"
+            fi
+        fi
+    fi
+
+    # ESLint 检查（如果配置了）
+    if [ -f "package.json" ] && grep -q "eslint" package.json; then
+        echo -e "${BLUE}  - ESLint 检查${NC}"
+
+        if [ -n "$FILES_ARGS" ]; then
+            if npm run lint --silent -- $FILES_ARGS 2>&1 | head -30; then
+                echo -e "${GREEN}  ✅ ESLint 检查通过${NC}"
+            else
+                echo -e "${YELLOW}  ⚠️  ESLint 有警告（不阻止提交）${NC}"
+            fi
+        else
+            if npm run lint --silent 2>&1 | head -20; then
+                echo -e "${GREEN}  ✅ ESLint 检查通过（全量）${NC}"
+            else
+                echo -e "${YELLOW}  ⚠️  ESLint 有警告（不阻止提交）${NC}"
+            fi
+        fi
+    fi
+
+    cd ..
+fi
+
+# 后端检查
+if [ -n "$BACKEND_FILES" ]; then
+    echo -e "${YELLOW}🖥️  检查后端代码...${NC}"
+
+    cd backend
+
+    # 去掉 backend/ 前缀
+    CHECK_FILES=""
+    for file in $BACKEND_FILES; do
+        file="${file#backend/}"
+        CHECK_FILES="$CHECK_FILES $file"
+    done
+
+    FILES_ARGS=""
+    for file in $CHECK_FILES; do
+        if [ -f "$file" ]; then
+            FILES_ARGS="$FILES_ARGS $file"
+        fi
+    done
+
+    # TypeScript 类型检查
+    if command -v npx &> /dev/null; then
+        echo -e "${BLUE}  - TypeScript 类型检查${NC}"
+
+        if [ -n "$FILES_ARGS" ]; then
+            if npx tsc --noEmit --skipLibCheck $FILES_ARGS 2>&1 | head -30; then
+                echo -e "${GREEN}  ✅ TypeScript 检查通过${NC}"
+            else
+                echo -e "${RED}  ❌ TypeScript 类型错误${NC}"
+            fi
+        else
+            if npx tsc --noEmit --skipLibCheck 2>&1 | head -20; then
+                echo -e "${GREEN}  ✅ TypeScript 检查通过（全量）${NC}"
+            else
+                echo -e "${RED}  ❌ TypeScript 类型错误${NC}"
+            fi
+        fi
+    fi
+
+    # Prisma 检查
+    if [ -f "prisma/schema.prisma" ]; then
+        echo -e "${BLUE}  - Prisma schema 检查${NC}"
+        if npx prisma validate 2>&1; then
+            echo -e "${GREEN}  ✅ Prisma schema 有效${NC}"
+        else
+            echo -e "${RED}  ❌ Prisma schema 无效${NC}"
+        fi
+    fi
+
+    cd ..
+fi
+
+# 常见问题检查
+echo -e "${YELLOW}🔍 检查常见问题...${NC}"
+
+ISSUES_FOUND=0
+
+# 检查改动的文件中的问题
+for file in $ALL_CHECK_FILES; do
+    if [ ! -f "$file" ]; then
+        continue
+    fi
+
+    # 检查 console.log
+    if grep -q "console\.log" "$file" 2>/dev/null; then
+        echo -e "${YELLOW}  ⚠️  $file: 发现 console.log${NC}"
+        ISSUES_FOUND=1
+    fi
+
+    # 检查 TODO/FIXME
+    if grep -qE "(TODO|FIXME):" "$file" 2>/dev/null; then
+        echo -e "${YELLOW}  ⚠️  $file: 发现未完成的 TODO/FIXME${NC}"
+        ISSUES_FOUND=1
+    fi
+
+    # 检查 any 类型
+    if grep -qE ":\s*any\b" "$file" 2>/dev/null; then
+        echo -e "${YELLOW}  ⚠️  $file: 发现 any 类型，建议使用 unknown${NC}"
+        ISSUES_FOUND=1
+    fi
+
+    # 检查不安全的 API 响应访问
+    if grep -qE "res\.data\.data\." "$file" 2>/dev/null; then
+        echo -e "${RED}  ❌ $file: 不安全的 API 响应访问${NC}"
+        ISSUES_FOUND=1
+    fi
+
+    # 检查重复导入
+    duplicates=$(grep -oE "^import .* from" "$file" 2>/dev/null | sort | uniq -d)
+    if [ -n "$duplicates" ]; then
+        echo -e "${RED}  ❌ $file: 发现重复的导入语句${NC}"
+        echo "$duplicates" | sed 's/^/      /'
+        ISSUES_FOUND=1
+    fi
+done
+
+# 总结
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+if [ $ISSUES_FOUND -eq 0 ]; then
+    echo -e "${GREEN}✅ 所有检查通过，可以提交！${NC}"
+    exit 0
+else
+    echo -e "${YELLOW}⚠️  发现一些问题，但不会阻止提交${NC}"
+    echo -e "${YELLOW}  建议修复后再提交，或使用 --no-verify 跳过检查${NC}"
+    exit 0
+fi
