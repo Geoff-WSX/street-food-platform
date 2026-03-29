@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { getRandomFoods, getAnimationStyle, foodBackgroundStyles } from '../utils/foodAnimations';
+import React, { useEffect, useState, useMemo } from 'react';
+import { getRandomFoods, getAnimationStyle } from '../utils/foodAnimations';
 
 interface FoodBackgroundProps {
   count?: number;
@@ -14,20 +14,19 @@ const FoodBackground: React.FC<FoodBackgroundProps> = ({
   maxSize = 60,
   enabled = true,
 }) => {
-  const [foods, setFoods] = useState<Array<{ id: number; emoji: string; x: number; y: number; size: number; delay: number }>>([]);
+  // 使用 useMemo 缓存随机数据，避免每次渲染重新计算
+  const foods = useMemo(() => {
+    if (!enabled) return [];
 
-  useEffect(() => {
-    if (!enabled) return;
-
-    const newFoods = Array.from({ length: count }, (_, i) => ({
+    const randomFoods = getRandomFoods(count);
+    return Array.from({ length: count }, (_, i) => ({
       id: i,
-      emoji: getRandomFoods(count)[i % count],
+      emoji: randomFoods[i % randomFoods.length],
       x: Math.random() * 100,
       y: Math.random() * 100,
       size: minSize + Math.random() * (maxSize - minSize),
       delay: Math.random() * 3,
     }));
-    setFoods(newFoods);
   }, [count, minSize, maxSize, enabled]);
 
   if (!enabled) return null;
@@ -44,7 +43,7 @@ const FoodBackground: React.FC<FoodBackgroundProps> = ({
             fontSize: `${food.size}px`,
             opacity: 0.12,
             userSelect: 'none',
-            ...getAnimationStyle('float', 3 + Math.random() * 2, food.delay),
+            ...getAnimationStyle('float', 3 + food.delay, food.delay),
           }}
         >
           {food.emoji}

@@ -1,5 +1,3 @@
-import { keyframes } from '@emotion/react';
-
 // 美食图标数据
 export const foodEmojis = [
   '🍜', '🍲', '🍛', '🍣', '🍱', '🥟', '🦪', '🥡',
@@ -28,6 +26,39 @@ export const getRandomFoods = (count: number) => {
   const shuffled = [...foodEmojis].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 };
+
+// CSS 动画关键帧（返回字符串形式）
+export const getAnimationKeyframes = (name: string): string => {
+  const animations: Record<string, string> = {
+    float: `
+      0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.7; }
+      25% { transform: translateY(-10px) rotate(2deg); opacity: 1; }
+      50% { transform: translateY(-20px) rotate(0deg); opacity: 0.8; }
+      75% { transform: translateY(-10px) rotate(-2deg); opacity: 1; }
+    `,
+    bounceIn: `
+      0% { opacity: 0; transform: scale(0.3) translateY(-100px); }
+      50% { opacity: 1; transform: scale(1.05) translateY(10px); }
+      70% { transform: scale(0.9) translateY(-5px); }
+      100% { transform: scale(1) translateY(0); }
+    `,
+    pulse: `
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+    `,
+    rotateFloat: `
+      0% { transform: translateY(0px) rotate(0deg) scale(1); }
+      50% { transform: translateY(-30px) rotate(180deg) scale(1.1); }
+      100% { transform: translateY(0px) rotate(360deg) scale(1); }
+    `,
+  };
+  return animations[name] || '';
+};
+
+// 获取动画样式对象
+export const getAnimationStyle = (name: string, duration = 2, delay = 0) => ({
+  animation: `${name} ${duration}s ease-in-out ${delay}s infinite`,
+});
 
 // CSS 动画关键帧
 export const animations = {
