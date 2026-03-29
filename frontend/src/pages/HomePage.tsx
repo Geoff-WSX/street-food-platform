@@ -3,6 +3,8 @@ import { Col, Row, Spin, Empty, Typography, Card, Space, TreeSelect, Tag, Divide
 import { EnvironmentOutlined, ReloadOutlined, FireOutlined } from '@ant-design/icons';
 import { getRandomPosts } from '../api/post';
 import PostCard from '../components/PostCard';
+import FoodBackground from '../components/FoodBackground';
+import { getAnimationStyle, getRandomFoods } from '../utils/foodAnimations';
 import type { Post } from '../types';
 
 const { Title, Text } = Typography;
@@ -252,16 +254,33 @@ export default function HomePage() {
   }
 
   return (
-    <div style={{ padding: '24px 0 80px', background: 'linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%)', minHeight: '80vh' }}>
+    <div style={{ padding: '24px 0 80px', background: 'linear-gradient(180deg, #fff5f0 0%, #f8f9fa 50%, #ffffff 100%)', minHeight: '80vh', position: 'relative', overflow: 'hidden' }}>
+      {/* 美食背景 */}
+      <FoodBackground count={20} minSize={24} maxSize={48} />
+
       {/* 页面标题 */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 24, position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+          {getRandomFoods(5).map((food, i) => (
+            <span
+              key={i}
+              style={{
+                fontSize: 36,
+                display: 'inline-block',
+                ...getAnimationStyle('bounceIn', 0.6, i * 0.1),
+              }}
+            >
+              {food}
+            </span>
+          ))}
+        </div>
         <Title level={2} style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
-          <span style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+          <span style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
             🔥 发现美食
           </span>
         </Title>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
-          <div style={{ height: 1, flex: 1, maxWidth: 100, background: 'linear-gradient(to right, #667eea, transparent)' }} />
+          <div style={{ height: 1, flex: 1, maxWidth: 100, background: 'linear-gradient(to right, #ff6b6b, transparent)' }} />
           <Text type="secondary" style={{ fontSize: 15, color: '#8c8c8c', fontWeight: 400 }}>
             ✨ 随机推荐精彩美食动态，点击刷新发现更多
           </Text>

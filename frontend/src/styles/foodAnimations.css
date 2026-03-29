@@ -1,0 +1,238 @@
+/* 美食动画全局样式 */
+
+/* 美食图标浮动动画 */
+@keyframes foodFloat {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+    opacity: 0.7;
+  }
+  25% {
+    transform: translateY(-10px) rotate(2deg);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-20px) rotate(0deg);
+    opacity: 0.8;
+  }
+  75% {
+    transform: translateY(-10px) rotate(-2deg);
+    opacity: 1;
+  }
+}
+
+/* 美食图标旋转漂浮 */
+@keyframes foodRotateFloat {
+  0% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translateY(-30px) rotate(180deg) scale(1.1);
+  }
+  100% {
+    transform: translateY(0px) rotate(360deg) scale(1);
+  }
+}
+
+/* 美食图标跳动 */
+@keyframes foodBounce {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-15px) rotate(-10deg);
+  }
+  50% {
+    transform: translateY(-25px) rotate(0deg);
+  }
+  75% {
+    transform: translateY(-15px) rotate(10deg);
+  }
+}
+
+/* 脉跳效果 */
+@keyframes foodPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.8;
+  }
+}
+
+/* 弹跳进入 */
+@keyframes foodBounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translateY(-100px);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05) translateY(10px);
+  }
+  70% {
+    transform: scale(0.9) translateY(-5px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 渐入上升 */
+@keyframes foodFadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 缩放旋转 */
+@keyframes foodScaleRotate {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* 闪烁 */
+@keyframes foodSparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 火焰闪烁 */
+@keyframes foodFlame {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    opacity: 0.8;
+    transform: scale(1.1) rotate(5deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(0.9) rotate(-5deg);
+  }
+  75% {
+    opacity: 0.9;
+    transform: scale(1.05) rotate(3deg);
+  }
+}
+
+/* 应用动画的类 */
+.food-float {
+  animation: foodFloat 3s ease-in-out infinite;
+}
+
+.food-rotate-float {
+  animation: foodRotateFloat 6s ease-in-out infinite;
+}
+
+.food-bounce {
+  animation: foodBounce 2s ease-in-out infinite;
+}
+
+.food-pulse {
+  animation: foodPulse 1.5s ease-in-out infinite;
+}
+
+.food-bounce-in {
+  animation: foodBounceIn 0.6s ease-out;
+}
+
+.food-fade-in-up {
+  animation: foodFadeInUp 0.5s ease-out;
+}
+
+.food-scale-rotate {
+  animation: foodScaleRotate 3s ease-in-out infinite;
+}
+
+.food-sparkle {
+  animation: foodSparkle 1.5s ease-in-out infinite;
+}
+
+.food-flame {
+  animation: foodFlame 0.8s ease-in-out infinite;
+}
+
+/* 美食装饰元素 */
+.food-decoration {
+  position: relative;
+  overflow: hidden;
+}
+
+.food-decoration .food-icon {
+  transition: all 0.3s ease;
+}
+
+.food-decoration:hover .food-icon {
+  opacity: 0.3;
+  transform: scale(1.2);
+}
+
+/* 卡片悬浮美食效果 */
+.food-card:hover {
+  box-shadow: 0 8px 24px rgba(255, 107, 107, 0.2);
+}
+
+.food-card:hover::before {
+  content: '🍜';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 24px;
+  animation: foodBounce 0.5s ease-out;
+}
+
+/* 加载动画 */
+.food-loading {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.food-loading span {
+  display: inline-block;
+  animation: foodBounceIn 0.8s ease-out;
+}
+
+.food-loading span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.food-loading span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.food-loading span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.food-loading span:nth-child(4) {
+  animation-delay: 0.45s;
+}
+
+.food-loading span:nth-child(5) {
+  animation-delay: 0.6s;
+}

@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { login, register } from '../api/auth';
 import { useAuthStore } from '../store/auth';
 import { getErrorMessage } from '../utils/error';
+import FoodBackground from '../components/FoodBackground';
+import { getAnimationStyle, getRandomFoods } from '../utils/foodAnimations';
 
 const { Text } = Typography;
 
@@ -89,12 +91,32 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+        background: 'linear-gradient(135deg, #ff9a56 0%, #ff6b6b 50%, #ee5a24 100%)',
         position: 'relative',
         overflow: 'hidden',
         padding: screenSize.isSmallMobile ? '16px' : screenSize.isMobile ? '24px' : '40px',
       }}
     >
+      {/* 美食背景 */}
+      <FoodBackground count={25} minSize={20} maxSize={50} />
+
+      {/* 额外的大型美食图标 */}
+      {getRandomFoods(8).map((food, index) => (
+        <div
+          key={index}
+          style={{
+            position: 'absolute',
+            fontSize: `${60 + Math.random() * 40}px`,
+            opacity: 0.08,
+            left: `${Math.random() * 80}%`,
+            top: `${Math.random() * 80}%`,
+            pointerEvents: 'none',
+            ...getAnimationStyle('rotateFloat', 8 + Math.random() * 4, Math.random() * 3),
+          }}
+        >
+          {food}
+        </div>
+      ))}
       {/* 浮动美食元素 */}
       {floatingFoods.map((food, index) => (
         <div

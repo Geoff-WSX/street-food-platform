@@ -8,6 +8,8 @@ import { followUser, unfollowUser, checkFollowStatus } from '../api/follow';
 import { useAuthStore } from '../store/auth';
 import PostDetailModal from '../components/PostDetailModal';
 import ChatModal from '../components/ChatModal';
+import FoodBackground from '../components/FoodBackground';
+import { getAnimationStyle, getRandomFoods } from '../utils/foodAnimations';
 import type { Post } from '../types';
 
 const { Text, Paragraph } = Typography;
@@ -322,13 +324,34 @@ export default function SwipePage({ initialPostId: _initialPostId }: Props) {
           width: '100vw',
           overflow: 'hidden',
           position: 'relative',
-          backgroundColor: '#000',
+          backgroundColor: '#1a1a1a',
           touchAction: 'none',
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
+        {/* 美食背景 */}
+        <FoodBackground count={15} minSize={20} maxSize={40} />
+
+        {/* 边缘美食装饰 */}
+        {getRandomFoods(6).map((food, i) => (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              fontSize: 28,
+              opacity: 0.3,
+              left: i % 2 === 0 ? '20px' : 'auto',
+              right: i % 2 === 1 ? '20px' : 'auto',
+              top: `${15 + i * 15}%`,
+              pointerEvents: 'none',
+              ...getAnimationStyle('pulse', 2 + i * 0.3, i * 0.2),
+            }}
+          >
+            {food}
+          </div>
+        ))}
         {/* 背景图片（模糊效果） */}
         <div
           style={{

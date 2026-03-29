@@ -3,6 +3,8 @@ import { Row, Col, Spin, Card, Typography, Space, TreeSelect, Tag, Empty, Skelet
 import { TrophyOutlined, StarFilled, FireOutlined, CrownOutlined } from '@ant-design/icons';
 import { getPosts } from '../api/post';
 import PostCard from '../components/PostCard';
+import FoodBackground from '../components/FoodBackground';
+import { getAnimationStyle, getRandomFoods } from '../utils/foodAnimations';
 import type { Post } from '../types';
 
 const { Title, Text } = Typography;
