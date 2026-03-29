@@ -17,7 +17,7 @@ function loadFromStorage(): { token: string | null; user: User | null } {
   try {
     const token = localStorage.getItem(TOKEN_KEY);
     const userStr = localStorage.getItem(USER_KEY);
-    const user = userStr ? (JSON.parse(userStr) as User) : null;
+    const user = userStr ? { ...(JSON.parse(userStr) as User), role: (JSON.parse(userStr) as User).role || 'user' } : null;
     return { token, user };
   } catch {
     return { token: null, user: null };

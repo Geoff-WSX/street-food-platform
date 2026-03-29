@@ -142,3 +142,30 @@ export const changePassword = async (
 
   return { message: '密码修改成功' };
 };
+
+/**
+ * 更新用户设置
+ */
+export const updateSettings = async (
+  userId: number,
+  data: { allowMessage?: boolean }
+) => {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...(data.allowMessage !== undefined && { allowMessage: data.allowMessage }),
+    },
+    select: {
+      id: true,
+      username: true,
+      email: true,
+      avatar: true,
+      bio: true,
+      allowMessage: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  return user;
+};

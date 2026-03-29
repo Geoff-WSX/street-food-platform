@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Spin, Image, Typography, Space, Button, Avatar, Tag, Divider, Popconfirm, message } from 'antd';
+import { Spin, Image, Typography, Space, Button, Avatar, Tag, Divider, Popconfirm, message, Card, Skeleton } from 'antd';
 import {
   HeartOutlined, HeartFilled, StarOutlined, StarFilled,
-  EnvironmentOutlined, UserOutlined, ArrowLeftOutlined, DeleteOutlined,
+  EnvironmentOutlined, UserOutlined, ArrowLeftOutlined, DeleteOutlined, ClockCircleOutlined, EyeOutlined
 } from '@ant-design/icons';
 import { getPost, toggleLike, toggleFavorite, deletePost } from '../api/post';
 import { useAuthStore } from '../store/auth';
 import type { Post } from '../types';
+import CommentSection from '../components/CommentSection';
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 export default function PostDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,10 +19,23 @@ export default function PostDetailPage() {
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // 处理 images 格式：确保是数组
+  const processedImages = useMemo(() => {
+    if (!post?.images) return [];
+    if (Array.isArray(post.images)) return post.images;
+    if (typeof post.images === 'string') {
+      return post.images.split(',').filter(Boolean);
+    }
+    return [];
+  }, [post?.images]);
+
   useEffect(() => {
     if (!id) return;
     getPost(Number(id))
-      .then(setPost)
+      .then((data) => {
+        console.log('Raw post data:', data);
+        setPost(data);
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -43,78 +57,271 @@ export default function PostDetailPage() {
     navigate('/');
   };
 
-  if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
+  if (loading) {
+    return (
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 0 80px', background: 'linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%)', minHeight: '80vh' }}>
+        <div style={{ background: '#fff', borderRadius: 20, padding: 32, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+          <Skeleton.Image active style={{ width: '100%', height: 400, borderRadius: 16 }} />
+          <Skeleton active paragraph={{ rows: 3 }} style={{ marginTop: 24 }} />
+          <Skeleton active avatar paragraph={{ rows: 2 }} style={{ marginTop: 16 }} />
+        </div>
+      </div>
+    );
+  }
+
   if (!post) return <div style={{ textAlign: 'center', marginTop: 80 }}>动态不存在</div>;
 
   const isOwner = user?.id === post.user.id;
+  const liked = post.isLiked ?? false;
+  const favorited = post.isFavorited ?? false;
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 0' }}>
-      <Button icon={<ArrowLeftOutlined />} type="text" onClick={() => navigate(-1)} style={{ marginBottom: 16 }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 0 80px', background: 'linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%)', minHeight: '80vh' }}>
+      {/* 返回按钮 */}
+      <Button
+        icon={<ArrowLeftOutlined />}
+        onClick={() => navigate(-1)}
+        style={{
+          marginBottom: 20,
+          borderRadius: 20,
+          height: 40,
+          paddingLeft: 20,
+          paddingRight: 20,
+          fontWeight: 500,
+          border: '1px solid #e8e8e8'
+        }}
+      >
         返回
       </Button>
 
-      {post.images.length > 0 && (
-        <Image.PreviewGroup>
-          <Space wrap style={{ marginBottom: 24 }}>
-            {post.images.map((img, i) => (
-              <Image key={i} src={img} width={post.images.length === 1 ? '100%' : 200} style={{ borderRadius: 8 }} />
-            ))}
-          </Space>
-        </Image.PreviewGroup>
-      )}
-
-      <Space align="center" style={{ marginBottom: 16 }}>
-        <Avatar
-          src={post.user.avatar}
-          icon={<UserOutlined />}
-          style={{ cursor: 'pointer' }}
-          onClick={() => navigate(`/profile?userId=${post.user.id}`)}
-        />
-        <div>
-          <Text
-            strong
-            style={{ cursor: 'pointer' }}
-            onClick={() => navigate(`/profile?userId=${post.user.id}`)}
-          >
-            {post.user.username}
-          </Text>
-          <br />
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {new Date(post.createdAt).toLocaleString('zh-CN')}
-          </Text>
-        </div>
-        {isOwner && (
-          <Popconfirm title="确定删除这条动态？" onConfirm={handleDelete} okText="删除" cancelText="取消">
-            <Button danger icon={<DeleteOutlined />} size="small" type="text" />
-          </Popconfirm>
+      {/* 主内容卡片 */}
+      <Card
+        style={{
+          borderRadius: 20,
+          boxShadow: '0 8px 30px rgba(0,0,0,0.1)',
+          border: '1px solid #f0f0f0',
+          overflow: 'hidden',
+          animation: 'fadeInUp 0.5s ease'
+        }}
+      >
+        {/* 图片展示 */}
+        {processedImages.length > 0 && (
+          <div style={{ marginBottom: 32 }}>
+            <Image.PreviewGroup>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: processedImages.length === 1 ? '1fr' : processedImages.length === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                gap: 16
+              }}>
+                {processedImages.map((img, i) => (
+                  <div key={i} style={{
+                    position: 'relative',
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                  }}>
+                    <Image
+                      src={img}
+                      alt={post.content}
+                      style={{
+                        width: '100%',
+                        height: processedImages.length === 1 ? 500 : 300,
+                        objectFit: 'cover',
+                        display: 'block'
+                      }}
+                      preview={{
+                        mask: <div style={{ color: '#fff' }}>🔍 查看大图</div>
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </Image.PreviewGroup>
+          </div>
         )}
-      </Space>
 
-      <Title level={5} style={{ marginBottom: 8 }}>{post.content}</Title>
+        {/* 内容区域 */}
+        <div style={{ padding: '0 8px' }}>
+          {/* 标题/内容 */}
+          <Paragraph style={{
+            fontSize: 18,
+            lineHeight: '1.8',
+            color: '#262626',
+            marginBottom: 20,
+            fontWeight: 400
+          }}>
+            {post.content}
+          </Paragraph>
 
-      {post.address && (
-        <Tag icon={<EnvironmentOutlined />} color="orange" style={{ marginBottom: 16 }}>
-          {post.address}
-        </Tag>
-      )}
+          {/* 标签信息 */}
+          <Space wrap style={{ marginBottom: 24 }}>
+            {post.address && (
+              <Tag
+                icon={<EnvironmentOutlined />}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 16,
+                  fontSize: 14,
+                  background: 'linear-gradient(135deg, rgba(255, 165, 0, 0.1) 0%, rgba(255, 165, 0, 0.05) 100%)',
+                  color: '#D48806',
+                  border: '1px solid rgba(255, 165, 0, 0.2)'
+                }}
+              >
+                📍 {post.address}
+              </Tag>
+            )}
+            <Tag
+              icon={<ClockCircleOutlined />}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 16,
+                fontSize: 14,
+                background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(102, 126, 234, 0.05) 100%)',
+                color: '#667eea',
+                border: '1px solid rgba(102, 126, 234, 0.2)'
+              }}
+            >
+              {new Date(post.createdAt).toLocaleString('zh-CN')}
+            </Tag>
+          </Space>
 
-      <Divider />
+          <Divider style={{ margin: '24px 0' }} />
 
-      <Space size="large">
-        <Button
-          icon={post.isLiked ? <HeartFilled style={{ color: '#ff4d4f' }} /> : <HeartOutlined />}
-          onClick={handleLike}
-        >
-          {post.likeCount} 点赞
-        </Button>
-        <Button
-          icon={post.isFavorited ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />}
-          onClick={handleFavorite}
-        >
-          {post.favoriteCount} 收藏
-        </Button>
-      </Space>
+          {/* 作者信息 */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '16px 20px',
+            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)',
+            borderRadius: 16,
+            marginBottom: 24
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Avatar
+                src={post.user.avatar}
+                icon={<UserOutlined />}
+                size={56}
+                style={{
+                  cursor: 'pointer',
+                  border: '3px solid #fff',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                }}
+                onClick={() => navigate(`/profile?userId=${post.user.id}`)}
+              />
+              <div>
+                <Text
+                  strong
+                  style={{
+                    fontSize: 16,
+                    cursor: 'pointer',
+                    color: '#262626'
+                  }}
+                  onClick={() => navigate(`/profile?userId=${post.user.id}`)}
+                >
+                  {post.user.username}
+                </Text>
+                <br />
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  美食探索者
+                </Text>
+              </div>
+            </div>
+            {isOwner && (
+              <Popconfirm
+                title="确定删除这条动态？"
+                onConfirm={handleDelete}
+                okText="删除"
+                cancelText="取消"
+                okButtonProps={{ danger: true }}
+              >
+                <Button
+                  danger
+                  icon={<DeleteOutlined />}
+                  style={{
+                    borderRadius: 20,
+                    height: 36,
+                    paddingLeft: 16,
+                    paddingRight: 16
+                  }}
+                >
+                  删除
+                </Button>
+              </Popconfirm>
+            )}
+          </div>
+
+          {/* 操作按钮 */}
+          <div style={{
+            display: 'flex',
+            gap: 16,
+            padding: '20px',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+            borderRadius: 16,
+            border: '1px solid #f0f0f0'
+          }}>
+            <Button
+              size="large"
+              icon={liked ? <HeartFilled style={{ color: '#ff4d4f' }} /> : <HeartOutlined />}
+              onClick={handleLike}
+              style={{
+                flex: 1,
+                height: 48,
+                borderRadius: 24,
+                fontWeight: 500,
+                background: liked ? 'linear-gradient(135deg, #ff6b6b 0%, #ff4757 100%)' : 'transparent',
+                borderColor: liked ? 'transparent' : '#d9d9d9',
+                color: liked ? '#fff' : undefined,
+                boxShadow: liked ? '0 4px 15px rgba(255, 77, 79, 0.3)' : 'none'
+              }}
+            >
+              {post.likeCount > 0 ? `${post.likeCount} 点赞` : '点赞'}
+            </Button>
+            <Button
+              size="large"
+              icon={favorited ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />}
+              onClick={handleFavorite}
+              style={{
+                flex: 1,
+                height: 48,
+                borderRadius: 24,
+                fontWeight: 500,
+                background: favorited ? 'linear-gradient(135deg, #feca57 0%, #ff9f43 100%)' : 'transparent',
+                borderColor: favorited ? 'transparent' : '#d9d9d9',
+                color: favorited ? '#fff' : undefined,
+                boxShadow: favorited ? '0 4px 15px rgba(255, 159, 67, 0.3)' : 'none'
+              }}
+            >
+              {post.favoriteCount > 0 ? `${post.favoriteCount} 收藏` : '收藏'}
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* 评论区 */}
+      <Card
+        style={{
+          borderRadius: 20,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+          border: '1px solid #f0f0f0',
+          marginTop: 24
+        }}
+      >
+        <CommentSection postId={Number(id)} />
+      </Card>
+
+      <style>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }

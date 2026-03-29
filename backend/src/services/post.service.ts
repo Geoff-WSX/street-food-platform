@@ -2,13 +2,79 @@ import prisma from '../config/database';
 import { CreatePostRequest, UpdatePostRequest } from '../types';
 
 /**
+ * 敏感词库 - 文字审查
+ */
+const SENSITIVE_WORDS = [
+  // 脏话/侮辱性词汇
+  '傻逼', '傻B', '傻b', 'SB', 'sb', '煞笔', '杀币',
+  '妈逼', '妈B', '妈b', '妈的', '妈蛋', '妈了个巴子',
+  '狗日', '狗杂种', '狗娘养', '狗屎',
+  '操你', '草你', '肏你', '日你',
+  '废物', '垃圾', '贱人', '婊子', '婊',
+  '死全家', '死妈', '死爹',
+  '脑残', '智障', '弱智', '白痴',
+  '滚蛋', '滚粗', '爬',
+  '他妈', '他娘', '他喵', '特么',
+  // 暴力威胁
+  '杀你', '砍死', '弄死', '废了你',
+  // 色情词汇
+  '做爱', '性交', '淫乱', '色情',
+  // 违法内容
+  '毒品', '吸毒', '大麻', '海洛因', '冰毒',
+  // 诈骗相关
+  '博彩', '赌博', '赌场', '时时彩', '刷单',
+  // 其他
+  '自杀', '自残',
+];
+
+/**
+ * 检查文本是否包含敏感词
+ */
+const checkContent = (text: string): { valid: boolean; violations: string[] } => {
+  const violations: string[] = [];
+  const lowerText = text.toLowerCase();
+
+  for (const word of SENSITIVE_WORDS) {
+    if (lowerText.includes(word.toLowerCase())) {
+      violations.push(word);
+    }
+  }
+
+  return {
+    valid: violations.length === 0,
+    violations,
+  };
+};
+
+/**
+ * 安全解析 images 字段
+ */
+const parseImages = (imagesStr: string | null): string[] => {
+  if (!imagesStr || imagesStr === '' || imagesStr === '[]') {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(imagesStr);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+/**
  * 创建动态
  */
 export const createPost = async (userId: number, data: CreatePostRequest) => {
-  const { content, images, address, latitude, longitude } = data;
+  const { content, images, address, latitude, longitude, isPrivate } = data;
 
   if (!content || content.trim().length === 0) {
     throw new Error('动态内容不能为空');
+  }
+
+  // 文字审查
+  const moderation = checkContent(content);
+  if (!moderation.valid) {
+    throw new Error(`内容包含违规词汇：${moderation.violations.join('、')}`);
   }
 
   if (!images || images.length === 0) {
@@ -23,6 +89,7 @@ export const createPost = async (userId: number, data: CreatePostRequest) => {
       address,
       latitude,
       longitude,
+      isPrivate: isPrivate || false,
     },
     include: {
       user: {
@@ -33,18 +100,21 @@ export const createPost = async (userId: number, data: CreatePostRequest) => {
 
   return {
     ...post,
-    images: JSON.parse(post.images),
+    images: parseImages(post.images),
+    likeCount: typeof post.likeCount === 'number' ? post.likeCount : 0,
+    favoriteCount: typeof post.favoriteCount === 'number' ? post.favoriteCount : 0,
   };
 };
 
 /**
  * 获取动态列表（分页）
  */
-export const getPosts = async (page: number = 1, pageSize: number = 10) => {
+export const getPosts = async (page: number = 1, pageSize: number = 10, userId?: number) => {
   const skip = (page - 1) * pageSize;
 
   const [posts, total] = await Promise.all([
     prisma.post.findMany({
+      where: { isPrivate: false },
       skip,
       take: pageSize,
       orderBy: { createdAt: 'desc' },
@@ -54,11 +124,41 @@ export const getPosts = async (page: number = 1, pageSize: number = 10) => {
         },
       },
     }),
-    prisma.post.count(),
+    prisma.post.count({ where: { isPrivate: false } }),
   ]);
 
+  let postData = posts.map((p: any) => ({
+    ...p,
+    images: parseImages(p.images),
+    likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
+    favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
+    isLiked: false,
+    isFavorited: false
+  }));
+
+  if (userId) {
+    const postIds = posts.map(p => p.id);
+    const [likes, favorites] = await Promise.all([
+      prisma.like.findMany({
+        where: { userId, postId: { in: postIds } },
+      }),
+      prisma.favorite.findMany({
+        where: { userId, postId: { in: postIds } },
+      }),
+    ]);
+
+    const likedPostIds = new Set(likes.map(l => l.postId));
+    const favoritedPostIds = new Set(favorites.map(f => f.postId));
+
+    postData = postData.map(p => ({
+      ...p,
+      isLiked: likedPostIds.has(p.id),
+      isFavorited: favoritedPostIds.has(p.id),
+    }));
+  }
+
   return {
-    data: posts.map((p: any) => ({ ...p, images: JSON.parse(p.images) })),
+    data: postData,
     pagination: {
       page,
       pageSize,
@@ -99,7 +199,9 @@ export const getPostById = async (postId: number, userId?: number) => {
 
   return {
     ...post,
-    images: JSON.parse(post.images),
+    images: parseImages(post.images),
+    likeCount: typeof post.likeCount === 'number' ? post.likeCount : 0,
+    favoriteCount: typeof post.favoriteCount === 'number' ? post.favoriteCount : 0,
     isLiked,
     isFavorited,
   };
@@ -111,13 +213,18 @@ export const getPostById = async (postId: number, userId?: number) => {
 export const getUserPosts = async (
   userId: number,
   page: number = 1,
-  pageSize: number = 10
+  pageSize: number = 10,
+  currentUserId?: number,
+  isOwner: boolean = false
 ) => {
   const skip = (page - 1) * pageSize;
 
+  // 如果不是主人，只显示非私密动态
+  const where = isOwner ? { userId } : { userId, isPrivate: false };
+
   const [posts, total] = await Promise.all([
     prisma.post.findMany({
-      where: { userId },
+      where,
       skip,
       take: pageSize,
       orderBy: { createdAt: 'desc' },
@@ -127,11 +234,41 @@ export const getUserPosts = async (
         },
       },
     }),
-    prisma.post.count({ where: { userId } }),
+    prisma.post.count({ where }),
   ]);
 
+  let postData = posts.map((p: any) => ({
+    ...p,
+    images: parseImages(p.images),
+    likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
+    favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
+    isLiked: false,
+    isFavorited: false
+  }));
+
+  if (currentUserId) {
+    const postIds = posts.map(p => p.id);
+    const [likes, favorites] = await Promise.all([
+      prisma.like.findMany({
+        where: { userId: currentUserId, postId: { in: postIds } },
+      }),
+      prisma.favorite.findMany({
+        where: { userId: currentUserId, postId: { in: postIds } },
+      }),
+    ]);
+
+    const likedPostIds = new Set(likes.map(l => l.postId));
+    const favoritedPostIds = new Set(favorites.map(f => f.postId));
+
+    postData = postData.map(p => ({
+      ...p,
+      isLiked: likedPostIds.has(p.id),
+      isFavorited: favoritedPostIds.has(p.id),
+    }));
+  }
+
   return {
-    data: posts.map((p: any) => ({ ...p, images: JSON.parse(p.images) })),
+    data: postData,
     pagination: {
       page,
       pageSize,
@@ -175,7 +312,12 @@ export const updatePost = async (
     },
   });
 
-  return { ...updated, images: JSON.parse(updated.images) };
+  return {
+    ...updated,
+    images: parseImages(updated.images),
+    likeCount: typeof updated.likeCount === 'number' ? updated.likeCount : 0,
+    favoriteCount: typeof updated.favoriteCount === 'number' ? updated.favoriteCount : 0,
+  };
 };
 
 /**
@@ -289,10 +431,24 @@ export const getUserFavorites = async (
     prisma.favorite.count({ where: { userId } }),
   ]);
 
+  const posts = favorites.map((f: any) => ({
+    ...f.post,
+    images: parseImages(f.post.images),
+    likeCount: typeof f.post.likeCount === 'number' ? f.post.likeCount : 0,
+    favoriteCount: typeof f.post.favoriteCount === 'number' ? f.post.favoriteCount : 0,
+    isFavorited: true,
+  }));
+
+  const postIds = posts.map(p => p.id);
+  const likes = await prisma.like.findMany({
+    where: { userId, postId: { in: postIds } },
+  });
+  const likedPostIds = new Set(likes.map(l => l.postId));
+
   return {
-    data: favorites.map((f: any) => ({
-      ...f.post,
-      images: JSON.parse(f.post.images),
+    data: posts.map(p => ({
+      ...p,
+      isLiked: likedPostIds.has(p.id),
     })),
     pagination: {
       page,
@@ -301,4 +457,85 @@ export const getUserFavorites = async (
       totalPages: Math.ceil(total / pageSize),
     },
   };
+};
+
+/**
+ * 获取随机推荐的动态
+ */
+export const getRandomPosts = async (
+  limit: number = 20,
+  excludeIds: number[] = [],
+  userId?: number
+) => {
+  // 获取所有非私密的动态ID（排除已显示的）
+  const where: any = {
+    isPrivate: false,
+    ...(excludeIds.length > 0 && { id: { notIn: excludeIds } }),
+  };
+
+  const allPosts = await prisma.post.findMany({
+    where,
+    select: { id: true },
+  });
+
+  const availableIds = allPosts.map(p => p.id);
+
+  // 随机选择指定数量的ID
+  const selectedIds: number[] = [];
+  const count = Math.min(limit, availableIds.length);
+
+  while (selectedIds.length < count && availableIds.length > 0) {
+    const randomIndex = Math.floor(Math.random() * availableIds.length);
+    const selectedId = availableIds[randomIndex];
+    selectedIds.push(selectedId);
+    // 从可用列表中移除已选择的
+    availableIds.splice(randomIndex, 1);
+  }
+
+  if (selectedIds.length === 0) {
+    return { data: [] };
+  }
+
+  // 获取选中的动态详情
+  const posts = await prisma.post.findMany({
+    where: { id: { in: selectedIds } },
+    include: {
+      user: {
+        select: { id: true, username: true, avatar: true },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  let postData = posts.map((p: any) => ({
+    ...p,
+    images: parseImages(p.images),
+    likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
+    favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
+    isLiked: false,
+    isFavorited: false
+  }));
+
+  if (userId) {
+    const postIds = posts.map(p => p.id);
+    const [likes, favorites] = await Promise.all([
+      prisma.like.findMany({
+        where: { userId, postId: { in: postIds } },
+      }),
+      prisma.favorite.findMany({
+        where: { userId, postId: { in: postIds } },
+      }),
+    ]);
+
+    const likedPostIds = new Set(likes.map(l => l.postId));
+    const favoritedPostIds = new Set(favorites.map(f => f.postId));
+
+    postData = postData.map(p => ({
+      ...p,
+      isLiked: likedPostIds.has(p.id),
+      isFavorited: favoritedPostIds.has(p.id),
+    }));
+  }
+
+  return { data: postData };
 };

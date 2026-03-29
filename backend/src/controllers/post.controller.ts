@@ -18,6 +18,7 @@ export const createPost = async (req: AuthRequest, res: Response) => {
       images,
       latitude: req.body.latitude ? parseFloat(req.body.latitude) : undefined,
       longitude: req.body.longitude ? parseFloat(req.body.longitude) : undefined,
+      isPrivate: req.body.isPrivate === 'true' || req.body.isPrivate === true,
     });
 
     return successResponse(res, post, '发布成功', 201);
@@ -26,11 +27,11 @@ export const createPost = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getPosts = async (req: Request, res: Response) => {
+export const getPosts = async (req: AuthRequest, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = Math.min(parseInt(req.query.pageSize as string) || 10, 50);
-    const result = await postService.getPosts(page, pageSize);
+    const result = await postService.getPosts(page, pageSize, req.user?.userId);
     return successResponse(res, result);
   } catch (error: any) {
     return errorResponse(res, error.message, 'FETCH_FAILED', 500);
@@ -58,7 +59,12 @@ export const getUserPosts = async (req: AuthRequest, res: Response) => {
     }
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = Math.min(parseInt(req.query.pageSize as string) || 10, 50);
-    const result = await postService.getUserPosts(userId, page, pageSize);
+
+    // 如果不是查看自己的动态，需要过滤私密动态
+    const currentUserId = req.user?.userId;
+    const isOwner = currentUserId === userId;
+
+    const result = await postService.getUserPosts(userId, page, pageSize, currentUserId, isOwner);
     return successResponse(res, result);
   } catch (error: any) {
     return errorResponse(res, error.message, 'FETCH_FAILED', 500);
@@ -133,6 +139,17 @@ export const getUserFavorites = async (req: AuthRequest, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = Math.min(parseInt(req.query.pageSize as string) || 10, 50);
     const result = await postService.getUserFavorites(req.user!.userId, page, pageSize);
+    return successResponse(res, result);
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'FETCH_FAILED', 500);
+  }
+};
+
+export const getRandomPosts = async (req: AuthRequest, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+    const excludeIds = req.query.excludeIds ? (req.query.excludeIds as string).split(',').map(Number) : [];
+    const result = await postService.getRandomPosts(limit, excludeIds, req.user?.userId);
     return successResponse(res, result);
   } catch (error: any) {
     return errorResponse(res, error.message, 'FETCH_FAILED', 500);

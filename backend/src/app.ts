@@ -6,6 +6,13 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import postRoutes from './routes/post.routes';
+import followRoutes from './routes/follow.routes';
+import blockRoutes from './routes/block.routes';
+import messageRoutes from './routes/message.routes';
+import adminRoutes from './routes/admin.routes';
+import reportRoutes from './routes/report.routes';
+import aiRoutes from './routes/ai.routes';
+import commentRoutes from './routes/comment.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 dotenv.config();
@@ -28,6 +35,13 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/posts', postRoutes);
+app.use('/api/follows', followRoutes);
+app.use('/api/blocks', blockRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api', commentRoutes);
 
 // 健康检查
 app.get('/health', (req, res) => {

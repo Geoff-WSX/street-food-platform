@@ -56,3 +56,14 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
     return errorResponse(res, error.message, 'CHANGE_PASSWORD_FAILED');
   }
 };
+
+// 更新用户设置
+export const updateSettings = async (req: AuthRequest, res: Response) => {
+  try {
+    const { allowMessage } = req.body;
+    const user = await userService.updateSettings(req.user!.userId, { allowMessage });
+    return successResponse(res, user, '设置更新成功');
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'UPDATE_SETTINGS_FAILED');
+  }
+};

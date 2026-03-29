@@ -6,6 +6,7 @@ export interface AuthRequest extends Request {
     userId: number;
     username: string;
     email: string;
+    role?: string;
   };
 }
 
@@ -61,6 +62,7 @@ export interface CreatePostRequest {
   address?: string;
   latitude?: number;
   longitude?: number;
+  isPrivate?: boolean;
 }
 
 // 更新动态请求

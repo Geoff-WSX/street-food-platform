@@ -26,3 +26,9 @@ export const toggleLike = (id: number) =>
 
 export const toggleFavorite = (id: number) =>
   api.post<ApiResponse<{ favorited: boolean; favoriteCount: number }>>(`/posts/${id}/favorite`).then((r) => r.data.data);
+
+export const getAddressByLocation = (lat: number, lng: number) =>
+  api.get<ApiResponse<{ address: string }>>('/posts/address/location', { params: { lat, lng } }).then((r) => r.data.data);
+
+export const getRandomPosts = (params?: { limit?: number; excludeIds?: string }) =>
+  api.get<ApiResponse<{ data: Post[] }>>('/posts/random', { params }).then((r) => r.data.data);

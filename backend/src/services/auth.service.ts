@@ -60,6 +60,7 @@ export const register = async (data: RegisterRequest) => {
     userId: user.id,
     username: user.username,
     email: user.email,
+    role: user.role,
   });
 
   return {
@@ -70,6 +71,7 @@ export const register = async (data: RegisterRequest) => {
       email: user.email,
       avatar: user.avatar,
       bio: user.bio,
+      role: user.role,
       createdAt: user.createdAt,
     },
   };
@@ -107,6 +109,7 @@ export const login = async (data: LoginRequest) => {
     userId: user.id,
     username: user.username,
     email: user.email,
+    role: user.role,
   });
 
   return {
@@ -117,6 +120,7 @@ export const login = async (data: LoginRequest) => {
       email: user.email,
       avatar: user.avatar,
       bio: user.bio,
+      role: user.role,
       createdAt: user.createdAt,
     },
   };

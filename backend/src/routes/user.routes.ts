@@ -20,4 +20,7 @@ router.put('/me/avatar', authenticate, uploadAvatar, userController.updateAvatar
 // PUT /api/users/me/password - 修改密码
 router.put('/me/password', authenticate, userController.changePassword);
 
+// PUT /api/users/me/settings - 更新用户设置
+router.put('/me/settings', authenticate, userController.updateSettings);
+
 export default router;

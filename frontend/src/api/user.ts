@@ -16,4 +16,8 @@ export const updateAvatar = (formData: FormData) =>
   }).then((r) => r.data.data);
 
 export const changePassword = (data: { currentPassword: string; newPassword: string }) =>
-  api.put('/users/me/password', data).then((r) => r.data);
+  api.put('/users/me/password', { oldPassword: data.currentPassword, newPassword: data.newPassword }).then((r) => r.data);
+
+// 更新私信开关
+export const updateMessageSettings = (allowMessage: boolean) =>
+  api.put<ApiResponse<User>>('/users/me/settings', { allowMessage }).then((r) => r.data.data);
