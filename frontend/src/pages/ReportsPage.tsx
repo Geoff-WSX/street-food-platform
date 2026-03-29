@@ -61,7 +61,7 @@ export default function ReportsPage() {
     try {
       const res = await getReportStats();
       setStats(res.data?.data || res.data);
-    } catch (error) {
+    } catch (error: unknown) {
     }
   };
 
@@ -82,7 +82,7 @@ export default function ReportsPage() {
         pageSize,
         total: paginationData.total,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       void message.error('获取举报列表失败');
     } finally {
       setTableLoading(false);
@@ -108,7 +108,7 @@ export default function ReportsPage() {
       const res = await getReportDetail(report.id);
       setSelectedReport(res.data?.data || res.data);
       setDetailDrawerOpen(true);
-    } catch (error) {
+    } catch (error: unknown) {
       void message.error('获取详情失败');
     }
   };

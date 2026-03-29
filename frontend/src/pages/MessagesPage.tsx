@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, List, Avatar, Typography, Tag, Empty, Spin, Badge, Space, Skeleton, Modal, message } from 'antd';
+import { Card, List, Avatar, Typography, Tag, Empty, Spin, Badge, Space, Skeleton, Modal, message, Button } from 'antd';
 import { UserOutlined, MessageOutlined, MailOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getConversations, deleteConversation, type Conversation } from '../api/message';
 import ChatModal from '../components/ChatModal';
@@ -210,7 +210,7 @@ export default function MessagesPage() {
                             icon={<DeleteOutlined />}
                             size="small"
                             danger
-                            onClick={(e) => handleDeleteConversation(item, e)}
+                            onClick={(e: React.MouseEvent) => handleDeleteConversation(item, e)}
                             style={{ padding: '4px 8px' }}
                           />
                         </div>

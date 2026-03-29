@@ -11,6 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node prisma/seed.ts",
     "prisma:studio": "prisma studio",
+    "seed:test": "ts-node prisma/seed-test-data.ts",
     "test-posts": "ts-node scripts/manageTestPosts.ts"
   },
   "keywords": [

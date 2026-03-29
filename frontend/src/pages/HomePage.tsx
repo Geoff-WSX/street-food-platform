@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Col, Row, Spin, Empty, Typography, Card, Space, TreeSelect, Tag, Divider, FloatButton, Skeleton } from 'antd';
+import { Col, Row, Spin, Empty, Typography, Card, Space, TreeSelect, Tag, Divider, FloatButton, Skeleton, Button } from 'antd';
 import { EnvironmentOutlined, ReloadOutlined, FireOutlined } from '@ant-design/icons';
 import { getRandomPosts } from '../api/post';
 import PostCard from '../components/PostCard';
