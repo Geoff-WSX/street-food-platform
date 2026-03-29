@@ -1,0 +1,17 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📚 项目文档
+    url: https://github.com/Geoff-WSX/street-food-platform/blob/main/README.md
+    about: 请先查看项目文档，可能已有你问题的答案
+
+  - name: 💬 讨论区
+    url: https://github.com/Geoff-WSX/street-food-platform/discussions
+    about: 在讨论区提问、分享想法或与其他用户交流
+
+  - name: 🐛 报告 Bug
+    url: https://github.com/Geoff-WSX/street-food-platform/issues/new?template=bug_report.md
+    about: 发现了问题？请提交 Bug 报告
+
+  - name: ✨ 功能建议
+    url: https://github.com/Geoff-WSX/street-food-platform/issues/new?template=feature_request.md
+    about: 有好想法？请提交功能建议

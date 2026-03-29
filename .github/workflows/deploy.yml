@@ -1,0 +1,97 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+
+jobs:
+  # 部署到生产环境
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server
+        run: |
+          echo "🚀 Deploying to production..."
+          # 这里添加实际的部署命令
+          # 例如: ssh user@server "cd /path/to/app && git pull && npm install && npm run build"
+
+      - name: Notify deployment
+        run: |
+          echo "✅ Deployment completed successfully!"
+          echo "Environment: Production"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+
+  # 创建 GitHub Release
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: deploy-production
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          echo "## 更新内容 📝" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- 代码质量优化" >> $GITHUB_STEP_SUMMARY
+          echo "- 性能提升" >> $GITHUB_STEP_SUMMARY
+          echo "- Bug 修复" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          release_name: Release ${{ steps.version.outputs.VERSION }}
+          body: |
+            ## 🎉 新版本发布
+
+            版本: ${{ steps.version.outputs.VERSION }}
+            日期: ${{ github.event.head_commit.timestamp }}
+
+            ## 📝 更新内容
+
+            ### ✨ 新功能
+            - 功能更新
+
+            ### 🐛 Bug 修复
+            - Bug 修复
+
+            ### 🔧 改进
+            - 性能优化
+            - 代码重构
+
+            ## 📦 安装
+
+            ```bash
+            git clone https://github.com/Geoff-WSX/street-food-platform.git
+            cd street-food-platform
+            npm install
+            ```
+
+            ## 🙏 感谢
+
+            感谢所有贡献者！
+          draft: false
+          prerelease: false

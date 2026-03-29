@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # 前端 CI
+  frontend:
+    name: Frontend CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: TypeScript check
+        working-directory: ./frontend
+        run: npx tsc --noEmit --skipLibCheck
+
+      - name: ESLint check
+        working-directory: ./frontend
+        run: npm run lint --silent
+        continue-on-error: true
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+  # 后端 CI
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: street_food_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: TypeScript check
+        working-directory: ./backend
+        run: npx tsc --noEmit --skipLibCheck
+
+      - name: Generate Prisma Client
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/street_food_test
+        run: npx prisma generate
+
+      - name: Prisma schema validate
+        working-directory: ./backend
+        run: npx prisma validate
+
+      - name: Run database migrations
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/street_food_test
+        run: npx prisma migrate deploy
+
+  # 代码质量检查
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for console.log
+        run: |
+          if grep -r "console\.log" frontend/src backend/src --exclude-dir=node_modules; then
+            echo "::warning::Found console.log in code"
+          fi
+
+      - name: Check for TODO/FIXME
+        run: |
+          if grep -rE "(TODO|FIXME):" frontend/src backend/src --exclude-dir=node_modules; then
+            echo "::warning::Found unresolved TODO/FIXME"
+          fi
+
+      - name: Check file sizes
+        run: |
+          echo "Checking large files..."
+          find . -type f -size +1M -not -path "*/node_modules/*" -not -path "*/.git/*" -exec ls -lh {} \;
