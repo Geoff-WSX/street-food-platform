@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Spin, Image, Typography, Space, Button, Avatar, Tag, Divider, Popconfirm, message, Card, Skeleton } from 'antd';
 import {
   HeartOutlined, HeartFilled, StarOutlined, StarFilled,
@@ -15,9 +15,13 @@ const { Title, Text, Paragraph } = Typography;
 export default function PostDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLoggedIn, user } = useAuthStore();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // 从路由 state 获取需要高亮的评论ID
+  const highlightCommentId = location.state?.highlightCommentId;
 
   // 处理 images 格式：确保是数组
   const processedImages = useMemo(() => {
@@ -307,7 +311,7 @@ export default function PostDetailPage() {
           marginTop: 24
         }}
       >
-        <CommentSection postId={Number(id)} />
+        <CommentSection postId={Number(id)} highlightCommentId={highlightCommentId} />
       </Card>
 
       <style>{`

@@ -3,6 +3,7 @@ import { HomeOutlined, PlusOutlined, UserOutlined, LogoutOutlined, TrophyOutline
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useMessageStore } from '../store/message';
+import NotificationBell from './NotificationBell';
 import { useEffect, useState } from 'react';
 import { getUnreadCount } from '../api/message';
 import type { MenuProps } from 'antd';
@@ -247,6 +248,9 @@ export default function Navbar({ onPublishClick }: Props) {
             />
           </Badge>
         )}
+
+        {/* 通知铃铛 */}
+        {isLoggedIn && <NotificationBell />}
 
         {isLoggedIn ? (
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">

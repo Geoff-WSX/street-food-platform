@@ -36,6 +36,8 @@ model User {
   handledReports Report[] @relation("Admin")
   comments Comment[]
   commentLikes CommentLike[]
+  receivedNotifications Notification[] @relation("NotificationReceiver")
+  sentNotifications Notification[] @relation("NotificationActor")
 
   @@map("users")
 }
@@ -225,4 +227,24 @@ model CommentLike {
   @@unique([userId, commentId])
   @@index([commentId])
   @@map("comment_likes")
+}
+
+// 通知表
+model Notification {
+  id         Int      @id @default(autoincrement())
+  userId     Int      // 接收通知的用户ID
+  type       String   @db.VarChar(50)  // COMMENT, REPLY, LIKE, COMMENT_LIKE, FAVORITE, FOLLOW
+  actorId    Int      // 触发通知的用户ID
+  entityId   Int      // 关联实体ID（评论ID、动态ID、用户ID等）
+  entityType String   @db.VarChar(50)  // POST, COMMENT, USER
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user   User @relation("NotificationReceiver", fields: [userId], references: [id], onDelete: Cascade)
+  actor  User @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@index([userId, type])
+  @@map("notifications")
 }

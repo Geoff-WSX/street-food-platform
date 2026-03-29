@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { createNotification, NotificationType, EntityType } from './notification.service';
 
 /**
  * 敏感词库 - 文字审查
@@ -299,6 +300,34 @@ export const createComment = async (userId: number, data: {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, username: true, avatar: true },
+  });
+
+  // 创建通知（异步执行，不影响评论创建）
+  setImmediate(async () => {
+    try {
+      // 如果是回复评论，通知被回复的用户
+      if (replyToUserId && replyToUserId !== userId) {
+        await createNotification({
+          userId: replyToUserId,
+          type: NotificationType.REPLY,
+          actorId: userId,
+          entityId: comment.id,
+          entityType: EntityType.COMMENT,
+        });
+      } else if (post.userId !== userId) {
+        // 如果是直接评论动态，通知动态作者（不给自己发通知）
+        await createNotification({
+          userId: post.userId,
+          type: NotificationType.COMMENT,
+          actorId: userId,
+          entityId: comment.id,
+          entityType: EntityType.COMMENT,
+        });
+      }
+    } catch (error) {
+      console.error('创建通知失败:', error);
+      // 不影响评论创建，只记录错误
+    }
   });
 
   return {

@@ -44,3 +44,36 @@ export interface ApiResponse<T> {
   data: T;
   message: string;
 }
+
+export interface Notification {
+  id: number;
+  userId: number;
+  type: 'COMMENT' | 'REPLY' | 'LIKE' | 'COMMENT_LIKE' | 'FAVORITE' | 'FOLLOW';
+  actorId: number;
+  entityId: number;
+  entityType: 'POST' | 'COMMENT' | 'USER';
+  isRead: boolean;
+  createdAt: string;
+  actor: {
+    id: number;
+    username: string;
+    avatar?: string;
+  };
+  post?: {
+    id: number;
+    content: string;
+    images: string;
+    user: {
+      id: number;
+      username: string;
+    };
+  };
+  comment?: {
+    id: number;
+    content: string;
+    post: {
+      id: number;
+      content: string;
+    };
+  };
+}

@@ -13,9 +13,10 @@ const { Text, Paragraph } = Typography;
 
 interface Props {
   postId: number;
+  highlightCommentId?: number;
 }
 
-export default function CommentSection({ postId }: Props) {
+export default function CommentSection({ postId, highlightCommentId }: Props) {
   const { isLoggedIn, user } = useAuthStore();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +33,25 @@ export default function CommentSection({ postId }: Props) {
   useEffect(() => {
     loadComments();
   }, [postId]);
+
+  // 处理评论高亮和滚动
+  useEffect(() => {
+    if (highlightCommentId) {
+      // 延迟执行，确保评论已加载
+      setTimeout(() => {
+        const element = document.getElementById(`comment-${highlightCommentId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // 添加高亮效果
+          element.style.background = '#fff7e6';
+          element.style.transition = 'background 0.5s ease';
+          setTimeout(() => {
+            element.style.background = 'transparent';
+          }, 2500);
+        }
+      }, 800);
+    }
+  }, [highlightCommentId, comments]);
 
   const loadComments = async (pageNum: number = 1) => {
     try {
@@ -253,6 +273,7 @@ export default function CommentSection({ postId }: Props) {
     return (
       <div
         key={comment.id}
+        id={`comment-${comment.id}`}
         style={{
           padding: isReply ? '12px 0' : '16px 0',
           borderBottom: isReply ? 'none' : '1px solid #f0f0f0'
