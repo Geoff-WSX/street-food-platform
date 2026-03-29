@@ -252,6 +252,56 @@ for file in $ALL_CHECK_FILES; do
         echo "$duplicates" | sed 's/^/      /'
         ISSUES_FOUND=1
     fi
+
+    # 检测功能完整性问题
+    # 检测聊天/消息组件是否有删除功能
+    if echo "$file" | grep -qE "(Chat|Message|Comment)" && grep -qE "export (default )?function|export const.*=.*\(\)" "$file" 2>/dev/null; then
+        # 检测是否有 sendMessage 但没有 deleteMessage
+        if grep -qE "(sendMessage|sendComment|createComment)" "$file" 2>/dev/null && ! grep -qE "(deleteMessage|deleteComment|removeComment)" "$file" 2>/dev/null; then
+            echo -e "${YELLOW}  💡 $file: 检测到消息/评论发送功能，但缺少删除功能${NC}"
+            echo -e "${YELLOW}      建议添加: 删除消息、删除对话功能${NC}"
+        fi
+
+        # 检测是否有举报功能但缺少屏蔽功能
+        if grep -qE "(report|举报)" "$file" 2>/dev/null && ! grep -qE "(block|屏蔽|拉黑)" "$file" 2>/dev/null; then
+            echo -e "${YELLOW}  💡 $file: 检测到举报功能，建议同时添加屏蔽功能${NC}"
+        fi
+    fi
+
+    # 检测 Modal 组件是否缺少关闭按钮
+    if grep -qE "from ['\"]antd['\"].*Modal" "$file" 2>/dev/null && grep -qE "<Modal" "$file" 2>/dev/null; then
+        # 检测是否有 onCancel 或 closable={false}
+        if ! grep -qE "onCancel|closable" "$file" 2>/dev/null; then
+            echo -e "${YELLOW}  💡 $file: Modal 组件建议添加 onCancel 关闭处理${NC}"
+        fi
+    fi
+
+    # 检测危险操作是否有二次确认
+    if grep -qE "(delete|remove|block|屏蔽|删除)" "$file" 2>/dev/null; then
+        # 检测是否有 Modal.confirm 或 Popconfirm
+        if ! grep -qE "(Modal\.confirm|Popconfirm|confirm\()" "$file" 2>/dev/null; then
+            echo -e "${YELLOW}  ⚠️  $file: 检测到危险操作，建议添加二次确认${NC}"
+            echo -e "${YELLOW}      推荐使用: Modal.confirm 或 Popconfirm${NC}"
+        fi
+    fi
+
+    # 检测表单是否有取消按钮
+    if grep -qE "(Form|Input)" "$file" 2>/dev/null && grep -qE "onFinish|submit" "$file" 2>/dev/null; then
+        # 检测是否有取消/关闭按钮
+        if ! grep -qE "(cancel|Cancel|关闭|取消)" "$file" 2>/dev/null; then
+            echo -e "${YELLOW}  💡 $file: 表单建议添加取消按钮${NC}"
+        fi
+    fi
+
+    # 检测用户交互功能是否缺少反向操作
+    if echo "$file" | grep -qE "(Follow|Like|Favorite)" && grep -qE "(follow|like|favorite)" "$file" 2>/dev/null; then
+        # 检测是否有取消操作
+        has_follow=$(grep -cE "follow|关注" "$file" 2>/dev/null || echo 0)
+        has_unfollow=$(grep -cE "unfollow|cancelFollow|取消关注" "$file" 2>/dev/null || echo 0)
+        if [ "$has_follow" -gt 0 ] && [ "$has_unfollow" -eq 0 ]; then
+            echo -e "${YELLOW}  💡 $file: 检测到关注功能，建议添加取消关注功能${NC}"
+        fi
+    fi
 done
 
 # 总结
