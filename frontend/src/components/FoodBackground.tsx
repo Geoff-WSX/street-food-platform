@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React from 'react';
 import { getRandomFoods, getAnimationStyle } from '../utils/foodAnimations';
 
 interface FoodBackgroundProps {
@@ -8,28 +8,26 @@ interface FoodBackgroundProps {
   enabled?: boolean;
 }
 
+// 预定义的固定美食背景数据（避免每次渲染重新计算）
+const FIXED_FOODS = Array.from({ length: 20 }, (_, i) => ({
+  id: i,
+  emoji: ['🍜', '🍲', '🍛', '🍣', '🍱', '🥟', '🍕', '🍔', '🍟', '🌮', '🍿', '🧀', '🥚', '🍳', '🥘', '🍖', '🥩', '🥠', '🍡'][i % 20],
+  x: (i * 5) % 100,
+  y: (i * 7) % 100,
+  size: 20 + (i % 3) * 12,
+  delay: (i % 5) * 0.6,
+}));
+
 const FoodBackground: React.FC<FoodBackgroundProps> = ({
   count = 15,
   minSize = 20,
   maxSize = 60,
   enabled = true,
 }) => {
-  // 使用 useMemo 缓存随机数据，避免每次渲染重新计算
-  const foods = useMemo(() => {
-    if (!enabled) return [];
-
-    const randomFoods = getRandomFoods(count);
-    return Array.from({ length: count }, (_, i) => ({
-      id: i,
-      emoji: randomFoods[i % randomFoods.length],
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: minSize + Math.random() * (maxSize - minSize),
-      delay: Math.random() * 3,
-    }));
-  }, [count, minSize, maxSize, enabled]);
-
   if (!enabled) return null;
+
+  // 只使用前 count 个元素
+  const foods = FIXED_FOODS.slice(0, Math.min(count, FIXED_FOODS.length));
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}>
