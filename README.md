@@ -116,6 +116,18 @@ PORT=3001
 NODE_ENV=development
 ```
 
+### 安装 Git Hooks
+
+```bash
+# 配置 Git 使用项目的 hooks 目录
+git config core.hooksPath .githooks
+
+# 验证配置
+git config --get core.hooksPath  # 应该输出 .githooks
+```
+
+> ⚠️ **重要**: 提交代码前，小边会自动检查代码质量。如需跳过检查，使用 `git commit --no-verify`。
+
 ### 初始化数据库
 
 ```bash
