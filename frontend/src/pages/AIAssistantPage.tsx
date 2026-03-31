@@ -1,18 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Card, Input, Button, Space, Typography, Avatar, Spin, Divider, Tag, message, Badge, List, Modal, Switch, Tooltip, Alert
+  Card, Input, Button, Space, Typography, Avatar, Spin, Tag, message, Badge, List, Modal, Switch, Tooltip
 } from 'antd';
 import {
   SendOutlined, RobotOutlined, UserOutlined, BulbOutlined,
   EnvironmentOutlined, FireOutlined, StarOutlined, CloseOutlined,
-  EyeOutlined, PlusOutlined, CarOutlined, CompassOutlined, MessageOutlined,
-  DeleteOutlined, HistoryOutlined, BarChartOutlined, ArrowLeftOutlined,
-  SafetyOutlined, ThunderboltOutlined, CodeOutlined, DatabaseOutlined
+  PlusOutlined, CarOutlined, CompassOutlined, MessageOutlined,
+  DeleteOutlined, HistoryOutlined, ArrowLeftOutlined,
+  SafetyOutlined
 } from '@ant-design/icons';
 import { chatWithAI, type ChatMessage } from '../api/ai';
 import { getPosts } from '../api/post';
 import type { Post } from '../types';
-import PostCard from '../components/PostCard';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 
@@ -42,13 +41,13 @@ const STORAGE_KEYS = {
 // 美食模式欢迎消息
 const foodieWelcomeMessage: ChatMessage = {
   role: 'assistant',
-  content: '你好呀！我是小边 🍜 你的街边美食助手！\n\n我可以帮你：\n🔍 推荐城市的美食聚集地\n🍜 查找特定类型的街边小吃\n💡 给出旅游美食攻略\n\n说说你想了解什么吧～',
+  content: '你好呀！我是小边 🍜 你的街边美食助手！\n\n我可以帮你：\n🔍 搜索附近的美食\n🍜 查找特定类型的街边小吃\n📍 根据地点推荐美食聚集地\n🔥 查看热门美食榜单\n\n试试这样问我：\n• "杭州有什么好吃的？"\n• "推荐辣味美食"\n• "上海哪里有小吃？"\n\n说说你想了解什么吧～',
 };
 
 // 管理模式欢迎消息
 const adminWelcomeMessage: ChatMessage = {
   role: 'assistant',
-  content: '小边管理系统已启动 🛠️\n\n我可以帮你：\n🔍 排查项目中的 Bug 和问题\n📋 审核举报内容\n🛠️ 执行代码修复\n✅ 验证修复结果\n\n当前技能：\n- Bug 排查技能 (bug-detection)\n- Bug 审核技能 (bug-review)\n- Bug 解决技能 (bug-solution)\n- Bug 验证技能 (bug-verification)\n- 审核员技能 (review-guide)\n- 证据分析技能 (evidence-analysis)\n- 违规判断技能 (violation-judgment)\n\n请告诉我需要做什么～',
+  content: '小边管理系统已启动 🛠️\n\n我可以帮你：\n🔍 排查项目中的 Bug 和问题\n📊 查看平台数据统计\n🛠️ 执行代码修复\n✅ 验证修复结果\n📋 审核举报内容\n\n当前技能：\n• Bug 排查/审核/解决/验证\n• 举报审核与处理\n• 平台数据统计\n• 系统状态监控\n• 代码分析与修改\n\n试试这样问我：\n• "查看平台数据"\n• "排查前端报错"\n• "有哪些待处理的举报？"\n\n请告诉我需要做什么～',
 };
 
 // 生成会话标题
@@ -146,7 +145,6 @@ export default function AIAssistantPage() {
 
   // 切换小边身份模式
   const handleModeSwitch = useCallback((newMode: XiaobianMode) => {
-    const oldMode = xiaobianMode;
     setXiaobianMode(newMode);
 
     // 清空当前会话并切换欢迎消息
@@ -181,11 +179,11 @@ export default function AIAssistantPage() {
       ];
     } else {
       return [
-        '查看所有举报',
+        '查看平台数据统计',
+        '查看系统状态',
         '排查前端问题',
         '检查 API 错误',
-        '优化数据库查询',
-        '查看用户统计',
+        '查看待处理举报',
       ];
     }
   }, []);
@@ -206,10 +204,10 @@ export default function AIAssistantPage() {
     // 管理模式下不生成后续问题
     if (currentMode === 'admin') {
       return [
-        '继续排查',
-        '查看详细日志',
-        '执行修复',
-        '验证结果',
+        '查看详细数据',
+        '继续排查问题',
+        '执行修复操作',
+        '验证修复结果',
       ];
     }
 
@@ -353,6 +351,7 @@ export default function AIAssistantPage() {
       // 创建新会话（不应该发生，但作为备用）
       const newSession: ChatSession = {
         id: currentSessionId,
+        mode: xiaobianMode,
         title: generateSessionTitle(messages),
         messages,
         suggestedPosts,
@@ -433,8 +432,8 @@ export default function AIAssistantPage() {
 
     // 切换到目标会话
     setCurrentSessionId(sessionId);
-    loadSession(sessionId);
-  }, [currentSessionId, messages, saveCurrentSession, loadSession]);
+    loadSession(sessionId, sessions);
+  }, [currentSessionId, messages, saveCurrentSession, sessions]);
 
   // 删除会话
   const handleDeleteSession = useCallback((sessionId: string, e: React.MouseEvent) => {
@@ -533,15 +532,17 @@ export default function AIAssistantPage() {
 6. 证据分析技能 (evidence-analysis) - 分析证据材料
 7. 违规判断技能 (violation-judgment) - 判断是否违规
 
-当用户需要排查问题时，使用 bug-detection 技能全面扫描前端、后端、代码质量。
-当用户需要审核举报时，使用 review-guide 和 evidence-analysis 技能。
-当用户需要修复问题时，使用 bug-solution 技能按照方案执行修复。
-当用户需要验证结果时，使用 bug-verification 技能进行功能验证。
+新增能力：
+- 平台数据统计 (get_dashboard_stats) - 查看用户、动态、评论等统计数据
+- 系统状态监控 (get_system_info) - 查看CPU、内存、数据库连接等系统信息
+- 动态搜索 (search_posts) - 按关键词和地点搜索美食动态
+- 评论查询 (get_comments) - 查看评论详情
 
 你有权限访问和分析项目代码、查看数据库、执行命令。请根据用户需求使用合适的技能。`
         : `你是小边，一个热情的街边美食助手！你热爱美食，喜欢探索城市的街头小吃。
-你可以推荐美食聚集地、查找特定类型的小吃、给出旅游美食攻略。
-回答时要用轻松友好的语气，多使用表情符号，让对话更有趣。`;
+你可以推荐美食聚集地、查找特定类型的小吃、给出旅游美食攻略、搜索热门美食。
+回答时要用轻松友好的语气，多使用表情符号，让对话更有趣。
+当你需要搜索美食时，可以使用 search_posts 工具来查找相关内容。`;
 
       const res = await chatWithAI({
         message: userMessage,
@@ -565,15 +566,16 @@ export default function AIAssistantPage() {
 
       if (suggestedIds.length > 0) {
         const allPosts = await getPosts({ page: 1, pageSize: 100 });
-        // 处理响应格式：可能是 { data: Post[], pagination: {...} } 或 { data: { data: Post[] } }
-        const postsData = allPosts.data?.data || allPosts.data || [];
+        // getPosts returns PaginatedPosts which has data property
+        const postsData = allPosts.data || [];
         const suggested = postsData.filter((p: Post) => suggestedIds.includes(p.id));
         setSuggestedPosts(suggested);
         // 自动显示推荐
         setShowSuggestions(true);
       }
     } catch (error: unknown) {
-      void message.error(error.response?.data?.error || error.message || '小边暂时无法回复，请稍后再试');
+      const errorMessage = error instanceof Error ? error.message : '小边暂时无法回复，请稍后再试';
+      void message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -604,11 +606,6 @@ export default function AIAssistantPage() {
     }
 
     setLoading(true);
-
-    const visiblePostList = suggestedPosts
-      .filter(p => !excludedPostIds.has(p.id))
-      .map((p, i) => `${i + 1}. [ID:${p.id}] "${p.content.substring(0, 30)}" 📍${p.address || '未知位置'}`)
-      .join('\n');
 
     const excludedList = suggestedPosts
       .filter(p => excludedPostIds.has(p.id))
@@ -930,10 +927,11 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
                 {suggestedPosts.map((post) => {
                   const isExcluded = excludedPostIds.has(post.id);
                   // 处理 images 字段：可能是字符串或数组
-                  const processedImages = post.images
-                    ? Array.isArray(post.images)
-                      ? post.images
-                      : post.images.split(',').filter(Boolean)
+                  const images = post.images as string | string[] | undefined;
+                  const processedImages = images
+                    ? Array.isArray(images)
+                      ? images
+                      : images.split(',').filter(Boolean)
                     : [];
                   const firstImage = processedImages.length > 0 ? processedImages[0] : null;
 

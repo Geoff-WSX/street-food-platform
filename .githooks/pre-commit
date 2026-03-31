@@ -2,7 +2,8 @@
 # Pre-commit hook for street-food-platform
 # 智能检查改动代码及其关联依赖
 
-set -e
+# 不在遇到错误时退出，我们需要收集所有错误
+set +e
 
 # 颜色定义
 RED='\033[0;31m'
@@ -106,52 +107,38 @@ if [ -n "$FRONTEND_FILES" ]; then
 
     cd frontend
 
-    # 构建需要检查的文件列表参数
-    FILES_ARGS=""
-    for file in $CHECK_FILES; do
-        if [ -f "$file" ]; then
-            FILES_ARGS="$FILES_ARGS $file"
-        fi
-    done
-
-    # TypeScript 类型检查（只检查改动的文件）
+    # TypeScript 编译检查（使用 tsc -b 进行完整构建检查）
     if command -v npx &> /dev/null; then
-        echo -e "${BLUE}  - TypeScript 类型检查${NC}"
+        echo -e "${BLUE}  - TypeScript 编译检查${NC}"
 
-        if [ -n "$FILES_ARGS" ]; then
-            # 使用 tsc --noEmit 只检查特定文件
-            if npx tsc --noEmit --skipLibCheck $FILES_ARGS 2>&1 | head -30; then
-                echo -e "${GREEN}  ✅ TypeScript 检查通过${NC}"
-            else
-                echo -e "${RED}  ❌ TypeScript 类型错误${NC}"
-                echo -e "${YELLOW}  提示: 检查改动文件及其导入的依赖${NC}"
-            fi
+        # 运行完整的构建检查以确保没有编译错误
+        TS_ERRORS=$(npx tsc -b --noEmit 2>&1)
+        TS_EXIT_CODE=$?
+
+        if [ $TS_EXIT_CODE -eq 0 ]; then
+            echo -e "${GREEN}  ✅ TypeScript 编译检查通过${NC}"
         else
-            # 如果无法指定文件，做全量检查
-            if npx tsc --noEmit --skipLibCheck 2>&1 | head -20; then
-                echo -e "${GREEN}  ✅ TypeScript 检查通过（全量）${NC}"
-            else
-                echo -e "${RED}  ❌ TypeScript 类型错误${NC}"
-            fi
+            echo -e "${RED}  ❌ TypeScript 编译错误${NC}"
+            echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo "$TS_ERRORS" | head -50
+            echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${RED}  ⛔ 检测到编译错误，阻止提交！${NC}"
+            echo -e "${YELLOW}  请先修复 TypeScript 编译错误后再提交${NC}"
+            echo -e "${YELLOW}  或使用 git commit --no-verify 跳过检查（不推荐）${NC}"
+            cd ..
+            exit 1
         fi
     fi
 
-    # ESLint 检查（如果配置了）
+    # ESLint 检查（如果配置了）- 警告不阻止提交
     if [ -f "package.json" ] && grep -q "eslint" package.json; then
         echo -e "${BLUE}  - ESLint 检查${NC}"
 
-        if [ -n "$FILES_ARGS" ]; then
-            if npm run lint --silent -- $FILES_ARGS 2>&1 | head -30; then
-                echo -e "${GREEN}  ✅ ESLint 检查通过${NC}"
-            else
-                echo -e "${YELLOW}  ⚠️  ESLint 有警告（不阻止提交）${NC}"
-            fi
+        # ESLint 警告不阻止提交
+        if npm run lint --silent 2>&1 | head -20; then
+            echo -e "${GREEN}  ✅ ESLint 检查通过${NC}"
         else
-            if npm run lint --silent 2>&1 | head -20; then
-                echo -e "${GREEN}  ✅ ESLint 检查通过（全量）${NC}"
-            else
-                echo -e "${YELLOW}  ⚠️  ESLint 有警告（不阻止提交）${NC}"
-            fi
+            echo -e "${YELLOW}  ⚠️  ESLint 有警告（不阻止提交）${NC}"
         fi
     fi
 
@@ -164,36 +151,25 @@ if [ -n "$BACKEND_FILES" ]; then
 
     cd backend
 
-    # 去掉 backend/ 前缀
-    CHECK_FILES=""
-    for file in $BACKEND_FILES; do
-        file="${file#backend/}"
-        CHECK_FILES="$CHECK_FILES $file"
-    done
-
-    FILES_ARGS=""
-    for file in $CHECK_FILES; do
-        if [ -f "$file" ]; then
-            FILES_ARGS="$FILES_ARGS $file"
-        fi
-    done
-
-    # TypeScript 类型检查
+    # TypeScript 编译检查
     if command -v npx &> /dev/null; then
-        echo -e "${BLUE}  - TypeScript 类型检查${NC}"
+        echo -e "${BLUE}  - TypeScript 编译检查${NC}"
 
-        if [ -n "$FILES_ARGS" ]; then
-            if npx tsc --noEmit --skipLibCheck $FILES_ARGS 2>&1 | head -30; then
-                echo -e "${GREEN}  ✅ TypeScript 检查通过${NC}"
-            else
-                echo -e "${RED}  ❌ TypeScript 类型错误${NC}"
-            fi
+        TS_ERRORS=$(npx tsc --noEmit 2>&1)
+        TS_EXIT_CODE=$?
+
+        if [ $TS_EXIT_CODE -eq 0 ]; then
+            echo -e "${GREEN}  ✅ TypeScript 编译检查通过${NC}"
         else
-            if npx tsc --noEmit --skipLibCheck 2>&1 | head -20; then
-                echo -e "${GREEN}  ✅ TypeScript 检查通过（全量）${NC}"
-            else
-                echo -e "${RED}  ❌ TypeScript 类型错误${NC}"
-            fi
+            echo -e "${RED}  ❌ TypeScript 编译错误${NC}"
+            echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo "$TS_ERRORS" | head -50
+            echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${RED}  ⛔ 检测到编译错误，阻止提交！${NC}"
+            echo -e "${YELLOW}  请先修复 TypeScript 编译错误后再提交${NC}"
+            echo -e "${YELLOW}  或使用 git commit --no-verify 跳过检查（不推荐）${NC}"
+            cd ..
+            exit 1
         fi
     fi
 
@@ -204,6 +180,9 @@ if [ -n "$BACKEND_FILES" ]; then
             echo -e "${GREEN}  ✅ Prisma schema 有效${NC}"
         else
             echo -e "${RED}  ❌ Prisma schema 无效${NC}"
+            echo -e "${RED}  ⛔ Prisma schema 错误，阻止提交！${NC}"
+            cd ..
+            exit 1
         fi
     fi
 

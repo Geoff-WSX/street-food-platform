@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Card, Row, Col, Table, Button, Space, Typography, Tag, Select,
   Modal, Form, Input, message, Statistic, Drawer, Divider, Avatar,
-  Image, List, Tabs, Badge, Spin, Radio, Descriptions, Alert
+  Image, List, Badge, Spin, Radio, Descriptions, Alert
 } from 'antd';
 import {
   WarningOutlined, CheckOutlined, CloseOutlined, EyeOutlined,
@@ -75,7 +75,7 @@ export default function ReportsPage() {
         type: typeFilter || undefined,
       });
       const reportsData = res.data?.data?.data || res.data?.data || res.data || [];
-      const paginationData = res.data?.data?.pagination || res.data?.pagination || { total: 0 };
+      const paginationData = (res.data?.data as { pagination?: { total: number } })?.pagination || (res.data as { pagination?: { total: number } })?.pagination || { total: 0 };
       setReports(Array.isArray(reportsData) ? reportsData : []);
       setPagination({
         current: page,
@@ -141,7 +141,8 @@ export default function ReportsPage() {
       fetchReports(pagination.current, pagination.pageSize);
       if (isAdmin) fetchStats();
     } catch (error: unknown) {
-      void message.error(error.response?.data?.error || '操作失败');
+      const errorMessage = error instanceof Error ? error.message : '操作失败';
+      void message.error(errorMessage);
     }
   };
 
@@ -155,7 +156,8 @@ export default function ReportsPage() {
       fetchReports(pagination.current, pagination.pageSize);
       fetchStats();
     } catch (error: unknown) {
-      void message.error(error.response?.data?.error || '操作失败');
+      const errorMessage = error instanceof Error ? error.message : '操作失败';
+      void message.error(errorMessage);
     }
   };
 

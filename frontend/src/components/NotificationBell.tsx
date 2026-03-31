@@ -273,7 +273,7 @@ export default function NotificationBell() {
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = '#e8e8e8';
-            e.currentTarget.style.color = undefined;
+            e.currentTarget.style.color = '';
           }}
         />
       </Badge>

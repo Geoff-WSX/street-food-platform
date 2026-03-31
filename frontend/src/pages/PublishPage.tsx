@@ -8,7 +8,7 @@ import type { UploadFile } from 'antd/es/upload';
 // 声明 AMap 类型
 declare global {
   interface Window {
-    AMap: any;
+    AMap?: unknown;
   }
 }
 
@@ -40,7 +40,7 @@ export default function PublishPage() {
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const { latitude, longitude, accuracy } = position.coords;
+        const { latitude, longitude } = position.coords;
 
         try {
           const response = await fetch(`/api/posts/address/location?lat=${latitude}&lng=${longitude}`);
@@ -48,14 +48,25 @@ export default function PublishPage() {
 
           if (data.success && data.data && data.data.address) {
             const address = data.data.address;
-            form.setFieldsValue({ address: address });
+            const details = data.data.details || {};
+            const nearestPoi = details.nearestPoi;
+
+            // 构建更详细的地址
+            let displayAddress = address;
+            if (nearestPoi && !address.includes(nearestPoi)) {
+              displayAddress = `${address}${nearestPoi}`;
+            }
+
+            form.setFieldsValue({ address: displayAddress });
 
             // 根据精度给出不同的提示
-            if (accuracy > 500) {
-              void message.warning({ content: '定位成功，但GPS信号较弱，请手动修正地址', key: 'location', duration: 3 });
-            } else {
-              void message.success({ content: '定位成功！地址已自动填充', key: 'location', duration: 2 });
-            }
+            const accuracyTips: Record<string, string> = {
+              high: '定位成功！地址已精确填充',
+              medium: '定位成功，地址已填充，请确认是否准确',
+              low: '定位成功，但地址可能不精确，请手动确认',
+              none: '定位成功，但地址获取失败，请手动输入'
+            };
+            void message.info({ content: accuracyTips[details.accuracy] || accuracyTips.medium, key: 'location', duration: 3 });
           } else {
             throw new Error('未返回地址信息');
           }
@@ -72,19 +83,19 @@ export default function PublishPage() {
             errorMsg = '定位权限被拒绝，请在浏览器设置中允许定位';
             break;
           case error.POSITION_UNAVAILABLE:
-            errorMsg = '无法获取位置信息';
+            errorMsg = '无法获取位置信息，请检查网络和GPS是否开启';
             break;
           case error.TIMEOUT:
-            errorMsg = '定位超时，请重试';
+            errorMsg = '定位超时，请确保在空旷处重试';
             break;
         }
         void message.error({ content: errorMsg, key: 'location', duration: 3 });
         setLocationLoading(false);
       },
       {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0
+        enableHighAccuracy: true, // 高精度模式
+        timeout: 30000,           // 30秒超时
+        maximumAge: 60000         // 允许1分钟内的缓存
       }
     );
   };

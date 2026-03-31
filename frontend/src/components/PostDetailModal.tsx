@@ -52,8 +52,8 @@ export default function PostDetailModal({ postId, visible, onClose }: Props) {
       onCancel={onClose}
       footer={null}
       width={500}
-      style={{ top: 20 }}
-      bodyStyle={{ padding: 0, backgroundColor: '#1a1a1a' }}
+      style={{ top: 80 }}
+      bodyStyle={{ padding: 0, backgroundColor: '#1a1a1a', maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}
       closeIcon={<div style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>×</div>}
     >
       {loading ? (
@@ -61,9 +61,9 @@ export default function PostDetailModal({ postId, visible, onClose }: Props) {
           <Spin />
         </div>
       ) : post ? (
-        <div style={{ color: '#fff' }}>
+        <div style={{ color: '#fff', paddingBottom: 20 }}>
           {/* 用户信息 */}
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #333' }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, padding: '20px 20px 16px', borderBottom: '1px solid #333', position: 'sticky', top: 0, background: '#1a1a1a', zIndex: 1 }}>
             <Avatar
               src={post.user.avatar}
               icon={<UserOutlined />}
@@ -83,6 +83,14 @@ export default function PostDetailModal({ postId, visible, onClose }: Props) {
                 </div>
               )}
             </div>
+            <Button
+              type="primary"
+              size="small"
+              onClick={onClose}
+              style={{ borderRadius: 16 }}
+            >
+              关闭
+            </Button>
           </div>
 
           {/* 内容 */}
@@ -91,24 +99,27 @@ export default function PostDetailModal({ postId, visible, onClose }: Props) {
               color: '#fff',
               fontSize: 15,
               lineHeight: '1.8',
-              marginBottom: 20,
-              minHeight: 60,
+              padding: '0 20px',
+              marginBottom: 16,
             }}
           >
             {post.content}
           </Paragraph>
 
           {/* 图片 */}
-          <div style={{ marginBottom: 20 }}>
-            {processedImages.map((img, index) => (
+          <div style={{ padding: '0 20px', marginBottom: 16 }}>
+            {processedImages.map((img: string, index: number) => (
               <img
                 key={index}
                 src={img}
                 alt={`post-${index}`}
                 style={{
                   width: '100%',
-                  borderRadius: 8,
+                  maxHeight: 400,
+                  objectFit: 'cover',
+                  borderRadius: 12,
                   marginBottom: index < processedImages.length - 1 ? 12 : 0,
+                  display: 'block'
                 }}
               />
             ))}
@@ -117,9 +128,9 @@ export default function PostDetailModal({ postId, visible, onClose }: Props) {
           {/* 统计信息 */}
           <div style={{
             display: 'flex',
-            gap: 24,
-            marginBottom: 20,
-            paddingBottom: 16,
+            justifyContent: 'space-around',
+            padding: '16px 20px',
+            borderTop: '1px solid #333',
             borderBottom: '1px solid #333'
           }}>
             <div style={{ textAlign: 'center' }}>
@@ -135,6 +146,12 @@ export default function PostDetailModal({ postId, visible, onClose }: Props) {
               <Text style={{ color: '#999', fontSize: 12, display: 'block', marginTop: 4 }}>收藏</Text>
             </div>
             <div style={{ textAlign: 'center' }}>
+              <Text style={{ color: '#52c41a', fontSize: 20, fontWeight: 'bold' }}>
+                {typeof post.commentCount === 'number' ? post.commentCount : 0}
+              </Text>
+              <Text style={{ color: '#999', fontSize: 12, display: 'block', marginTop: 4 }}>评论</Text>
+            </div>
+            <div style={{ textAlign: 'center' }}>
               <Text style={{ color: '#1890ff', fontSize: 20, fontWeight: 'bold' }}>
                 {processedImages.length}
               </Text>
@@ -146,28 +163,13 @@ export default function PostDetailModal({ postId, visible, onClose }: Props) {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            marginBottom: 20,
+            justifyContent: 'center',
+            padding: '16px 20px',
             color: '#999',
             fontSize: 13
           }}>
             <ClockCircleOutlined style={{ marginRight: 6 }} />
             发布于 {new Date(post.createdAt).toLocaleString('zh-CN')}
-          </div>
-
-          {/* 操作按钮 */}
-          <div style={{ textAlign: 'center' }}>
-            <Button
-              type="primary"
-              onClick={onClose}
-              style={{
-                borderRadius: 20,
-                width: 120,
-                height: 40,
-                fontSize: 15
-              }}
-            >
-              关闭
-            </Button>
           </div>
         </div>
       ) : (

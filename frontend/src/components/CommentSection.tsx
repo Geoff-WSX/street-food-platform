@@ -15,9 +15,10 @@ const { Text, Paragraph } = Typography;
 interface Props {
   postId: number;
   highlightCommentId?: number;
+  onCommentCountChange?: (count: number) => void;
 }
 
-export default function CommentSection({ postId, highlightCommentId }: Props) {
+export default function CommentSection({ postId, highlightCommentId, onCommentCountChange }: Props) {
   const { isLoggedIn, user } = useAuthStore();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,7 +141,11 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
         content: content.trim(),
       });
       const newComment = res.data.data || res.data;
-      setComments(prev => [newComment, ...prev]);
+      setComments(prev => {
+        const newComments = [newComment, ...prev];
+        onCommentCountChange?.(newComments.length);
+        return newComments;
+      });
       setContent('');
       void message.success('评论成功');
     } catch (error: unknown) {
@@ -153,7 +158,11 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
   const handleDeleteComment = async (commentId: number) => {
     try {
       await deleteComment(commentId);
-      setComments(prev => prev.filter(c => c.id !== commentId));
+      setComments(prev => {
+        const newComments = prev.filter(c => c.id !== commentId);
+        onCommentCountChange?.(newComments.length);
+        return newComments;
+      });
       void message.success('删除成功');
     } catch (error: unknown) {
       void message.error(getErrorMessage(error));
@@ -198,7 +207,8 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
         return c;
       }));
     } catch (error: unknown) {
-      void message.error(error.response?.data?.message || '操作失败');
+      const errorMessage = error instanceof Error ? error.message : '操作失败';
+      void message.error(errorMessage);
     }
   };
 
@@ -257,7 +267,8 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
       setReplyingTo(null);
       void message.success('回复成功');
     } catch (error: unknown) {
-      void message.error(error.response?.data?.message || '回复失败');
+      const errorMessage = error instanceof Error ? error.message : '回复失败';
+      void message.error(errorMessage);
     } finally {
       setReplySubmitting(false);
     }
@@ -357,20 +368,26 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
 
             {/* 回复输入框 */}
             {replyingTo?.id === comment.id && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <div style={{ marginTop: 12, background: '#f5f5f5', padding: 12, borderRadius: 12 }}>
+                <div style={{ position: 'relative' }}>
                   <TextArea
                     value={replyContent}
                     onChange={(e) => setReplyContent(e.target.value)}
                     placeholder={`回复 @${comment.user.username}...`}
                     autoSize={{ minRows: 2, maxRows: 4 }}
                     maxLength={500}
-                    showCount
-                    style={{ borderRadius: 8 }}
+                    style={{ borderRadius: 8, paddingBottom: 32 }}
                   />
+                  <div style={{ position: 'absolute', bottom: 8, left: 12, fontSize: 12, color: '#999' }}>
+                    {replyContent.length}/500
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-                  <Button size="small" onClick={() => { setReplyingTo(null); setReplyContent(''); }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+                  <Button
+                    size="small"
+                    onClick={() => { setReplyingTo(null); setReplyContent(''); }}
+                    style={{ borderRadius: 6 }}
+                  >
                     取消
                   </Button>
                   <Button
@@ -379,6 +396,7 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
                     onClick={() => handleSubmitReply(comment.id)}
                     loading={replySubmitting}
                     disabled={!replyContent.trim()}
+                    style={{ borderRadius: 6 }}
                   >
                     发送
                   </Button>
@@ -413,22 +431,39 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
   return (
     <div style={{ marginTop: 32 }}>
       <Divider style={{ fontSize: 16, fontWeight: 600 }}>
-        💬 评论区 {comments.length > 0 && `(${comments.length})`}
+        💬 评论区
       </Divider>
 
       {/* 评论输入框 */}
-      <div style={{ marginBottom: 24, padding: 16, background: '#fafafa', borderRadius: 12 }}>
-        <TextArea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="写下你的评论...（文明发言，友善交流）"
-          autoSize={{ minRows: 3, maxRows: 6 }}
-          maxLength={500}
-          showCount
-          style={{ borderRadius: 8 }}
-          disabled={!isLoggedIn}
-        />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+      <div style={{ marginBottom: 24, padding: 20, background: 'linear-gradient(135deg, #f5f7fa 0%, #f0f2f5 100%)', borderRadius: 16, border: '1px solid #e8e8e8' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <Avatar src={user?.avatar} icon={<UserOutlined />} size={40} style={{ border: '2px solid #fff' }} />
+          <div style={{ fontSize: 14, color: '#666' }}>
+            {isLoggedIn ? (
+              <span>{user?.username} <Text type="secondary">，分享你的想法...</Text></span>
+            ) : (
+              <Text type="secondary">登录后即可发表评论</Text>
+            )}
+          </div>
+        </div>
+        <div style={{ position: 'relative' }}>
+          <TextArea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder={isLoggedIn ? '写下你的评论...（文明发言，友善交流）' : '请先登录后再发表评论'}
+            autoSize={{ minRows: 3, maxRows: 6 }}
+            maxLength={500}
+            style={{ borderRadius: 12, padding: '12px 16px 32px 16px', background: '#fff', resize: 'none' }}
+            disabled={!isLoggedIn}
+          />
+          <div style={{ position: 'absolute', bottom: 8, right: 12, fontSize: 12, color: content.length > 450 ? '#ff4d4f' : '#999' }}>
+            {content.length}/500
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+          <div style={{ fontSize: 12, color: '#999' }}>
+            {content.length > 0 && <Text type="secondary">{content.length} 字</Text>}
+          </div>
           <Button
             type="primary"
             onClick={handleSubmitComment}
@@ -436,10 +471,11 @@ export default function CommentSection({ postId, highlightCommentId }: Props) {
             disabled={!content.trim() || !isLoggedIn}
             style={{
               borderRadius: 20,
-              paddingLeft: 24,
-              paddingRight: 24,
-              height: 36,
-              fontWeight: 500
+              paddingLeft: 28,
+              paddingRight: 28,
+              height: 40,
+              fontWeight: 500,
+              boxShadow: '0 4px 12px rgba(24, 144, 255, 0.3)'
             }}
           >
             {isLoggedIn ? '发表评论' : '请先登录'}

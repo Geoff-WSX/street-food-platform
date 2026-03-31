@@ -13,9 +13,10 @@ export interface Post {
   id: number;
   content: string;
   address?: string;
-  images: string[];
+  images: string | string[];
   likeCount: number;
   favoriteCount: number;
+  commentCount: number;
   createdAt: string;
   updatedAt: string;
   user: User;

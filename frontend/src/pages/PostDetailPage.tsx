@@ -1,16 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Spin, Image, Typography, Space, Button, Avatar, Tag, Divider, Popconfirm, message, Card, Skeleton } from 'antd';
+import { Image, Typography, Space, Button, Avatar, Tag, Divider, Popconfirm, message, Card, Skeleton } from 'antd';
 import {
   HeartOutlined, HeartFilled, StarOutlined, StarFilled,
-  EnvironmentOutlined, UserOutlined, ArrowLeftOutlined, DeleteOutlined, ClockCircleOutlined, EyeOutlined
+  EnvironmentOutlined, UserOutlined, ArrowLeftOutlined, DeleteOutlined, ClockCircleOutlined
 } from '@ant-design/icons';
 import { getPost, toggleLike, toggleFavorite, deletePost } from '../api/post';
 import { useAuthStore } from '../store/auth';
 import type { Post } from '../types';
 import CommentSection from '../components/CommentSection';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 
 export default function PostDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -116,7 +116,7 @@ export default function PostDetailPage() {
                 gridTemplateColumns: processedImages.length === 1 ? '1fr' : processedImages.length === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
                 gap: 16
               }}>
-                {processedImages.map((img, i) => (
+                {processedImages.map((img: string, i: number) => (
                   <div key={i} style={{
                     position: 'relative',
                     borderRadius: 16,
@@ -303,6 +303,7 @@ export default function PostDetailPage() {
 
       {/* 评论区 */}
       <Card
+        title={`评论区 (${post.commentCount ?? 0})`}
         style={{
           borderRadius: 20,
           boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
@@ -310,7 +311,13 @@ export default function PostDetailPage() {
           marginTop: 24
         }}
       >
-        <CommentSection postId={Number(id)} highlightCommentId={highlightCommentId} />
+        <CommentSection
+          postId={Number(id)}
+          highlightCommentId={highlightCommentId}
+          onCommentCountChange={(count) => {
+            setPost(prev => prev ? { ...prev, commentCount: count } : null);
+          }}
+        />
       </Card>
 
       <style>{`
@@ -323,6 +330,20 @@ export default function PostDetailPage() {
             opacity: 1;
             transform: translateY(0);
           }
+        }
+        /* 图片预览弹窗优化 */
+        .ant-image-preview-wrap {
+          z-index: 1000;
+        }
+        .ant-image-preview-mask {
+          z-index: 1000;
+        }
+        .ant-image-preview-operations {
+          top: 16px;
+        }
+        .ant-image-preview-img {
+          max-height: 80vh !important;
+          object-fit: contain;
         }
       `}</style>
     </div>

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AuthRequest } from '../types';
 import * as postService from '../services/post.service';
 import { successResponse, errorResponse } from '../utils/response';
+import { processPostImagesUpload, processAvatarUpload } from '../middleware/upload';
 
 export const createPost = async (req: AuthRequest, res: Response) => {
   try {
@@ -9,13 +10,12 @@ export const createPost = async (req: AuthRequest, res: Response) => {
       return errorResponse(res, '至少需要上传一张图片', 'NO_FILE');
     }
 
-    const images = (req.files as Express.Multer.File[]).map(
-      (f) => `/uploads/posts/${f.filename}`
-    );
+    // 处理图片压缩
+    const processedImages = await processPostImagesUpload(req.files as Express.Multer.File[]);
 
     const post = await postService.createPost(req.user!.userId, {
       ...req.body,
-      images,
+      images: processedImages.original,
       latitude: req.body.latitude ? parseFloat(req.body.latitude) : undefined,
       longitude: req.body.longitude ? parseFloat(req.body.longitude) : undefined,
       isPrivate: req.body.isPrivate === 'true' || req.body.isPrivate === true,
@@ -78,13 +78,18 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
       return errorResponse(res, '无效的动态ID', 'INVALID_PARAM');
     }
 
-    const images = req.files
-      ? (req.files as Express.Multer.File[]).map((f) => `/uploads/posts/${f.filename}`)
-      : undefined;
+    // 处理图片压缩（如果有新图片上传）
+    let processedData: { images?: string[] } = {};
+    if (req.files && (req.files as Express.Multer.File[]).length > 0) {
+      const processedImages = await processPostImagesUpload(req.files as Express.Multer.File[]);
+      processedData = {
+        images: processedImages.original,
+      };
+    }
 
     const post = await postService.updatePost(postId, req.user!.userId, {
       ...req.body,
-      ...(images && { images }),
+      ...processedData,
       latitude: req.body.latitude ? parseFloat(req.body.latitude) : undefined,
       longitude: req.body.longitude ? parseFloat(req.body.longitude) : undefined,
     });

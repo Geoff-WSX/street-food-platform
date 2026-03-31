@@ -1,5 +1,4 @@
 import React from 'react';
-import { Spin } from 'antd';
 import { getAnimationStyle } from '../utils/foodAnimations';
 
 interface FoodLoadingProps {

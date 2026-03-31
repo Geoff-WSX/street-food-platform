@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Modal, Form, Input, Select, Upload, Button, message, Space, Tag } from 'antd';
 import { PlusOutlined, LoadingOutlined } from '@ant-design/icons';
-import type { UploadFile, UploadProps } from 'antd';
+import type { UploadFile } from 'antd';
 import { getReportTypes, createReport } from '../api/report';
 import type { ReportType } from '../api/report';
-import { getErrorMessage } from '../utils/error';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -22,7 +21,6 @@ export default function ReportModal({ open, onClose, reportedUserId, reportedUse
   const [reportTypes, setReportTypes] = useState<ReportType[]>([]);
   const [loading, setLoading] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
-  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -78,7 +76,8 @@ export default function ReportModal({ open, onClose, reportedUserId, reportedUse
       setFileList([]);
       onClose();
     } catch (error: unknown) {
-      void message.error(error.response?.data?.error || '提交失败');
+      const errorMessage = error instanceof Error ? error.message : '提交失败';
+      void message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -92,7 +91,7 @@ export default function ReportModal({ open, onClose, reportedUserId, reportedUse
 
   const uploadButton = (
     <button style={{ border: 0, background: 'none' }} type="button">
-      {uploading ? <LoadingOutlined /> : <PlusOutlined />}
+      {loading ? <LoadingOutlined /> : <PlusOutlined />}
       <div style={{ marginTop: 8 }}>上传图片</div>
     </button>
   );

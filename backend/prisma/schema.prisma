@@ -38,6 +38,7 @@ model User {
   commentLikes CommentLike[]
   receivedNotifications Notification[] @relation("NotificationReceiver")
   sentNotifications Notification[] @relation("NotificationActor")
+  adminLogs AdminLog[]
 
   @@map("users")
 }
@@ -53,6 +54,7 @@ model Post {
   isPrivate  Boolean  @default(false)
   likeCount Int      @default(0)
   favoriteCount Int   @default(0)
+  commentCount Int   @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -64,6 +66,7 @@ model Post {
   @@index([userId])
   @@index([likeCount])
   @@index([favoriteCount])
+  @@index([commentCount])
   @@index([createdAt])
   @@map("posts")
 }
@@ -247,4 +250,29 @@ model Notification {
   @@index([userId, createdAt])
   @@index([userId, type])
   @@map("notifications")
+}
+
+// 管理员操作日志表
+model AdminLog {
+  id          Int      @id @default(autoincrement())
+  adminId     Int      // 管理员ID
+  action      String   @db.VarChar(50)  // 操作类型：UPDATE_ROLE, TOGGLE_STATUS, RESET_PASSWORD, DELETE_USER, MANAGE_REPORT 等
+  targetType  String   @db.VarChar(50)  // 目标类型：USER, POST, REPORT, COMMENT, SYSTEM
+  targetId    Int?     // 目标ID
+  targetName  String?  @db.VarChar(255) // 目标名称（便于展示）
+  description String   @db.Text        // 操作描述
+  oldValue    String?  @db.Text         // 变更前的值（JSON）
+  newValue    String?  @db.Text         // 变更后的值（JSON）
+  ipAddress   String?  @db.VarChar(50)  // 操作者IP
+  userAgent   String?  @db.VarChar(500) // 浏览器信息
+  createdAt   DateTime @default(now())
+
+  admin User @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([action])
+  @@index([targetType])
+  @@index([createdAt])
+  @@index([targetId])
+  @@map("admin_logs")
 }

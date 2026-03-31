@@ -9,7 +9,6 @@ import { useAuthStore } from '../store/auth';
 import PostDetailModal from '../components/PostDetailModal';
 import ChatModal from '../components/ChatModal';
 import FoodBackground from '../components/FoodBackground';
-import { getAnimationStyle, getRandomFoods } from '../utils/foodAnimations';
 import type { Post } from '../types';
 
 const { Text, Paragraph } = Typography;
@@ -29,11 +28,24 @@ export default function SwipePage({ initialPostId: _initialPostId }: Props) {
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingNext, setLoadingNext] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [chatUser, setChatUser] = useState<Post['user'] | null>(null);
   const [showChat, setShowChat] = useState(false);
+
+  // 切换到上一张图片
+  const prevImage = () => {
+    if (!currentPost) return;
+    setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : currentPost.images.length - 1));
+  };
+
+  // 切换到下一张图片
+  const nextImage = () => {
+    if (!currentPost) return;
+    setCurrentImageIndex((prev) => (prev < currentPost.images.length - 1 ? prev + 1 : 0));
+  };
 
   // 手势相关状态
   const [swipeState, setSwipeState] = useState<SwipeState>('none');
@@ -145,6 +157,11 @@ export default function SwipePage({ initialPostId: _initialPostId }: Props) {
       }).catch(() => {});
     }
   }, [currentPost, isLoggedIn]);
+
+  // 重置图片索引
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [currentIndex]);
 
   const handleFollow = async () => {
     if (!isLoggedIn) {
@@ -324,7 +341,7 @@ export default function SwipePage({ initialPostId: _initialPostId }: Props) {
           width: '100vw',
           overflow: 'hidden',
           position: 'relative',
-          backgroundColor: '#1a1a1a',
+          backgroundColor: '#0a0a0a',
           touchAction: 'none',
         }}
         onTouchStart={handleTouchStart}
@@ -332,26 +349,8 @@ export default function SwipePage({ initialPostId: _initialPostId }: Props) {
         onTouchEnd={handleTouchEnd}
       >
         {/* 美食背景 */}
-        <FoodBackground count={15} minSize={20} maxSize={40} />
+        <FoodBackground count={10} minSize={16} maxSize={32} />
 
-        {/* 边缘美食装饰 */}
-        {getRandomFoods(6).map((food, i) => (
-          <div
-            key={i}
-            style={{
-              position: 'absolute',
-              fontSize: 28,
-              opacity: 0.3,
-              left: i % 2 === 0 ? '20px' : 'auto',
-              right: i % 2 === 1 ? '20px' : 'auto',
-              top: `${15 + i * 15}%`,
-              pointerEvents: 'none',
-              ...getAnimationStyle('pulse', 2 + i * 0.3, i * 0.2),
-            }}
-          >
-            {food}
-          </div>
-        ))}
         {/* 背景图片（模糊效果） */}
         <div
           style={{
@@ -363,8 +362,8 @@ export default function SwipePage({ initialPostId: _initialPostId }: Props) {
             backgroundImage: `url(${currentPost.images[0]})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            filter: 'blur(20px)',
-            opacity: 0.3,
+            filter: 'blur(30px)',
+            opacity: 0.4,
             zIndex: 0,
           }}
         />
@@ -375,35 +374,38 @@ export default function SwipePage({ initialPostId: _initialPostId }: Props) {
           top: 0,
           left: 0,
           right: 0,
-          padding: '12px 20px',
+          padding: '16px 24px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           zIndex: 100,
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, transparent 100%)',
         }}>
           <Button
             type="text"
-            icon={<CloseOutlined style={{ color: '#fff', fontSize: 18 }} />}
+            icon={<CloseOutlined style={{ color: '#fff', fontSize: 20 }} />}
             onClick={() => navigate('/')}
-            style={{ border: 'none', color: '#fff' }}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.1)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255,255,255,0.2)'
+            }}
           />
-          <div style={{
-            padding: '6px 16px',
-            borderRadius: 20,
-            background: 'rgba(255,255,255,0.15)',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255,255,255,0.2)',
-          }}>
-            <Text style={{ color: '#fff', fontSize: 14, fontWeight: 500 }}>
-              随机推荐
-            </Text>
-          </div>
           <Button
             type="text"
-            icon={<ShareAltOutlined style={{ color: '#fff', fontSize: 18 }} />}
+            icon={<ShareAltOutlined style={{ color: '#fff', fontSize: 20 }} />}
             onClick={() => setShowDetailModal(true)}
-            style={{ border: 'none', color: '#fff' }}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.1)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255,255,255,0.2)'
+            }}
           />
         </div>
 
@@ -412,302 +414,299 @@ export default function SwipePage({ initialPostId: _initialPostId }: Props) {
           height: '100%',
           width: '100%',
           display: 'flex',
-          flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
           position: 'relative',
           zIndex: 1,
+          padding: '100px 20px 200px',
         }}>
-          {/* 图片 */}
+          {/* 图片卡片 */}
           <div
             style={{
-              flex: 1,
+              position: 'relative',
+              maxWidth: 600,
               width: '100%',
-              maxWidth: 700,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '80px 90px 180px',
             }}
           >
             <img
-              src={currentPost.images[0]}
+              src={currentPost.images[currentImageIndex]}
               alt="post"
               style={{
-                maxWidth: '100%',
-                maxHeight: '65vh',
-                objectFit: 'contain',
-                borderRadius: 16,
-                boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                width: '100%',
+                maxHeight: '55vh',
+                objectFit: 'cover',
+                borderRadius: 24,
+                boxShadow: '0 30px 80px rgba(0,0,0,0.6)',
                 cursor: 'pointer',
-                transition: 'transform 0.3s ease',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
               }}
               onClick={() => setShowDetailModal(true)}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            />
-          </div>
-
-          {/* 底部信息卡片 */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              padding: '20px 24px 32px',
-              background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 50%, transparent 100%)',
-              backdropFilter: 'blur(10px)',
-            }}
-          >
-            {/* 用户信息 */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-              <Avatar
-                src={currentPost.user.avatar}
-                icon={<UserOutlined />}
-                size={48}
-                style={{
-                  marginRight: 12,
-                  border: '3px solid rgba(255,255,255,0.3)',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                  cursor: 'pointer'
-                }}
-                onClick={() => navigate(`/profile?userId=${currentPost.user.id}`)}
-              />
-              <div style={{ flex: 1 }}>
-                <Text
-                  strong
-                  style={{
-                    color: '#fff',
-                    fontSize: 16,
-                    cursor: 'pointer',
-                    textShadow: '0 2px 4px rgba(0,0,0,0.3)'
-                  }}
-                  onClick={() => navigate(`/profile?userId=${currentPost.user.id}`)}
-                >
-                  {currentPost.user.username}
-                </Text>
-                {currentPost.address && (
-                  <div style={{ display: 'flex', alignItems: 'center', marginTop: 4 }}>
-                    <EnvironmentOutlined style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginRight: 6 }} />
-                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>
-                      {currentPost.address.length > 25
-                        ? currentPost.address.substring(0, 25) + '...'
-                        : currentPost.address}
-                    </Text>
-                  </div>
-                )}
-              </div>
-              {isLoggedIn && currentPost.user.id !== currentUser?.id && (
-                <Button
-                  type={isFollowing ? 'default' : 'primary'}
-                  size="middle"
-                  icon={isFollowing ? <CheckOutlined /> : <PlusOutlined />}
-                  onClick={handleFollow}
-                  loading={followLoading}
-                  style={{
-                    borderRadius: 24,
-                    height: 38,
-                    paddingLeft: 16,
-                    paddingRight: 16,
-                    fontWeight: 500,
-                    background: isFollowing
-                      ? 'rgba(255,255,255,0.15)'
-                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    border: isFollowing ? '1px solid rgba(255,255,255,0.3)' : 'none',
-                    color: '#fff',
-                  }}
-                >
-                  {isFollowing ? '已关注' : '关注'}
-                </Button>
-              )}
-            </div>
-
-            {/* 内容 */}
-            <Paragraph
-              ellipsis={{ rows: 2, expandable: false }}
-              style={{
-                color: '#fff',
-                fontSize: 15,
-                lineHeight: '1.7',
-                marginBottom: 20,
-                minHeight: 48,
-                textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.02)';
+                e.currentTarget.style.boxShadow = '0 40px 100px rgba(0,0,0,0.7)';
               }}
-            >
-              {currentPost.content}
-            </Paragraph>
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = '0 30px 80px rgba(0,0,0,0.6)';
+              }}
+            />
+            {/* 左侧切换按钮 */}
+            {currentPost.images.length > 1 && (
+              <div
+                onClick={prevImage}
+                style={{
+                  position: 'absolute',
+                  left: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  background: 'rgba(0,0,0,0.5)',
+                  backdropFilter: 'blur(10px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 18 }}>‹</Text>
+              </div>
+            )}
+            {/* 右侧切换按钮 */}
+            {currentPost.images.length > 1 && (
+              <div
+                onClick={nextImage}
+                style={{
+                  position: 'absolute',
+                  right: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  background: 'rgba(0,0,0,0.5)',
+                  backdropFilter: 'blur(10px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 18 }}>›</Text>
+              </div>
+            )}
+            {/* 图片数量标签 */}
+            {currentPost.images.length > 1 && (
+              <div style={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                padding: '6px 12px',
+                borderRadius: 12,
+                background: 'rgba(0,0,0,0.6)',
+                backdropFilter: 'blur(10px)',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 500,
+              }}>
+                📷 {currentImageIndex + 1}/{currentPost.images.length}
+              </div>
+            )}
+          </div>
+        </div>
 
-            {/* 右侧操作按钮 */}
+        {/* 右侧操作按钮 */}
+        <div style={{
+          position: 'absolute',
+          right: 20,
+          bottom: 280,
+          zIndex: 100,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 20,
+          alignItems: 'center',
+        }}>
+          {/* 点赞 */}
+          <div onClick={handleLike} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
             <div style={{
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              background: liked ? 'linear-gradient(135deg, #ff6b6b, #ee5a5a)' : 'rgba(255,255,255,0.15)',
               display: 'flex',
               alignItems: 'center',
-              gap: 20,
-              marginBottom: 16,
+              justifyContent: 'center',
+              backdropFilter: 'blur(10px)',
+              border: '2px solid rgba(255,255,255,0.2)',
+              transition: 'all 0.3s ease',
             }}>
-              <Tooltip title={liked ? '取消点赞' : '点赞'}>
-                <div
-                  onClick={handleLike}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                >
-                  <div style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: '50%',
-                    background: liked
-                      ? 'linear-gradient(135deg, #ff6b6b, #ff4757)'
-                      : 'rgba(255,255,255,0.15)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    marginBottom: 4,
-                  }}>
-                    {liked ? (
-                      <HeartFilled style={{ color: '#fff', fontSize: 22 }} />
-                    ) : (
-                      <HeartOutlined style={{ color: '#fff', fontSize: 22 }} />
-                    )}
-                  </div>
-                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: 500 }}>
-                    {currentPost.likeCount > 0 ? currentPost.likeCount.toLocaleString() : '点赞'}
-                  </Text>
-                </div>
-              </Tooltip>
-
-              <Tooltip title={favorited ? '取消收藏' : '收藏'}>
-                <div
-                  onClick={handleFavorite}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                >
-                  <div style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: '50%',
-                    background: favorited
-                      ? 'linear-gradient(135deg, #feca57, #ff9f43)'
-                      : 'rgba(255,255,255,0.15)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    marginBottom: 4,
-                  }}>
-                    {favorited ? (
-                      <StarFilled style={{ color: '#fff', fontSize: 20 }} />
-                    ) : (
-                      <StarOutlined style={{ color: '#fff', fontSize: 20 }} />
-                    )}
-                  </div>
-                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: 500 }}>
-                    {currentPost.favoriteCount > 0 ? currentPost.favoriteCount.toLocaleString() : '收藏'}
-                  </Text>
-                </div>
-              </Tooltip>
-
-              {isLoggedIn && currentPost.user.id !== currentUser?.id && (
-                <Tooltip title="发送私信">
-                  <div
-                    onClick={handleMessage}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      cursor: 'pointer',
-                      transition: 'transform 0.2s',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                  >
-                    <div style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: '50%',
-                      background: 'rgba(255,255,255,0.15)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      marginBottom: 4,
-                    }}>
-                      <MessageOutlined style={{ color: '#fff', fontSize: 20 }} />
-                    </div>
-                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: 500 }}>
-                      私信
-                    </Text>
-                  </div>
-                </Tooltip>
-              )}
-
-              <Tooltip title="查看详情">
-                <div
-                  onClick={() => setShowDetailModal(true)}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                >
-                  <div style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.15)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    marginBottom: 4,
-                  }}>
-                    <EyeOutlined style={{ color: '#fff', fontSize: 20 }} />
-                  </div>
-                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: 500 }}>
-                    详情
-                  </Text>
-                </div>
-              </Tooltip>
+              {liked ? <HeartFilled style={{ color: '#fff', fontSize: 24 }} /> : <HeartOutlined style={{ color: '#fff', fontSize: 24 }} />}
             </div>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: 600, marginTop: 6 }}>
+              {currentPost.likeCount > 0 ? currentPost.likeCount : '点赞'}
+            </Text>
+          </div>
 
-            {/* 滑动提示 */}
+          {/* 收藏 */}
+          <div onClick={handleFavorite} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
             <div style={{
-              textAlign: 'center',
-              animation: 'slideHint 2s ease-in-out infinite',
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              background: favorited ? 'linear-gradient(135deg, #feca57, #ff9f43)' : 'rgba(255,255,255,0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(10px)',
+              border: '2px solid rgba(255,255,255,0.2)',
+              transition: 'all 0.3s ease',
             }}>
-              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
-                {hasMoreUp ? '👆 上滑查看之前的内容 | 下滑发现更多' : '👇 下滑发现更多精彩'}
-              </Text>
+              {favorited ? <StarFilled style={{ color: '#fff', fontSize: 22 }} /> : <StarOutlined style={{ color: '#fff', fontSize: 22 }} />}
             </div>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: 600, marginTop: 6 }}>
+              {currentPost.favoriteCount > 0 ? currentPost.favoriteCount : '收藏'}
+            </Text>
+          </div>
+
+          {/* 评论 */}
+          <div onClick={() => setShowDetailModal(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
+            <div style={{
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(10px)',
+              border: '2px solid rgba(255,255,255,0.2)',
+            }}>
+              <MessageOutlined style={{ color: '#fff', fontSize: 22 }} />
+            </div>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: 600, marginTop: 6 }}>
+              {(currentPost.commentCount ?? 0) > 0 ? currentPost.commentCount : '评论'}
+            </Text>
+          </div>
+
+          {/* 私信 */}
+          {isLoggedIn && currentPost.user.id !== currentUser?.id && (
+            <div onClick={handleMessage} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
+              <div style={{
+                width: 52,
+                height: 52,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)',
+              }}>
+                <EyeOutlined style={{ color: '#fff', fontSize: 22 }} />
+              </div>
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: 600, marginTop: 6 }}>私信</Text>
+            </div>
+          )}
+        </div>
+
+        {/* 底部信息卡片 */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: '24px 24px 36px',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 60%, transparent 100%)',
+          }}
+        >
+          {/* 用户信息 */}
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+            <Avatar
+              src={currentPost.user.avatar}
+              icon={<UserOutlined />}
+              size={50}
+              style={{
+                marginRight: 14,
+                border: '3px solid rgba(255,255,255,0.3)',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.4)',
+                cursor: 'pointer'
+              }}
+              onClick={() => navigate(`/profile?userId=${currentPost.user.id}`)}
+            />
+            <div style={{ flex: 1 }}>
+              <Text
+                strong
+                style={{
+                  color: '#fff',
+                  fontSize: 17,
+                  cursor: 'pointer',
+                  display: 'block',
+                  marginBottom: 4,
+                }}
+                onClick={() => navigate(`/profile?userId=${currentPost.user.id}`)}
+              >
+                {currentPost.user.username}
+              </Text>
+              {currentPost.address && (
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <EnvironmentOutlined style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginRight: 5 }} />
+                  <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+                    {currentPost.address.length > 30 ? currentPost.address.substring(0, 30) + '...' : currentPost.address}
+                  </Text>
+                </div>
+              )}
+            </div>
+            {isLoggedIn && currentPost.user.id !== currentUser?.id && (
+              <Button
+                type={isFollowing ? 'default' : 'primary'}
+                size="middle"
+                icon={isFollowing ? <CheckOutlined /> : <PlusOutlined />}
+                onClick={handleFollow}
+                loading={followLoading}
+                style={{
+                  borderRadius: 20,
+                  height: 36,
+                  paddingLeft: 18,
+                  paddingRight: 18,
+                  fontWeight: 600,
+                  background: isFollowing ? 'rgba(255,255,255,0.15)' : 'linear-gradient(135deg, #ff6b6b, #ee5a5a)',
+                  border: isFollowing ? '1px solid rgba(255,255,255,0.3)' : 'none',
+                  color: '#fff',
+                }}
+              >
+                {isFollowing ? '已关注' : '关注'}
+              </Button>
+            )}
+          </div>
+
+          {/* 内容 */}
+          <Paragraph
+            ellipsis={{ rows: 2, expandable: false }}
+            style={{
+              color: '#fff',
+              fontSize: 15,
+              lineHeight: '1.7',
+              marginBottom: 16,
+            }}
+          >
+            {currentPost.content}
+          </Paragraph>
+
+          {/* 滑动提示 */}
+          <div style={{ textAlign: 'center' }}>
+            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+              {hasMoreUp ? '⬆️ 上滑看之前 | ⬇️ 下滑发现更多' : '⬇️ 下滑发现更多精彩'}
+            </Text>
           </div>
         </div>
 
         {/* 右侧导航按钮 */}
         <div style={{
           position: 'fixed',
-          right: 24,
+          right: 20,
           top: '50%',
           transform: 'translateY(-50%)',
           zIndex: 9999,
@@ -715,81 +714,49 @@ export default function SwipePage({ initialPostId: _initialPostId }: Props) {
           flexDirection: 'column',
           gap: 16,
         }}>
-          {/* 向上按钮 - 看之前的 */}
-          <Tooltip title="上一个 (↑) - 查看之前的内容" placement="left">
+          {/* 向上按钮 */}
+          <Tooltip title="上一个 (↑)" placement="left">
             <div
               onClick={goUp}
               style={{
-                width: 56,
-                height: 56,
+                width: 50,
+                height: 50,
                 borderRadius: '50%',
-                background: hasMoreUp ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)',
-                border: hasMoreUp ? '2px solid rgba(255,255,255,0.5)' : '2px solid rgba(255,255,255,0.15)',
+                background: hasMoreUp ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)',
+                border: hasMoreUp ? '2px solid rgba(255,255,255,0.4)' : '2px solid rgba(255,255,255,0.15)',
                 backdropFilter: 'blur(10px)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                opacity: hasMoreUp ? 1 : 0.4,
+                opacity: hasMoreUp ? 1 : 0.3,
                 cursor: hasMoreUp ? 'pointer' : 'not-allowed',
                 transition: 'all 0.3s ease',
-                pointerEvents: 'auto',
-              }}
-              onMouseEnter={(e) => {
-                if (hasMoreUp) {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.35)';
-                  e.currentTarget.style.transform = 'scale(1.1)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                if (hasMoreUp) {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.25)';
-                }
               }}
             >
-              <CaretUpFilled style={{ fontSize: 26, color: hasMoreUp ? '#fff' : 'rgba(255,255,255,0.3)' }} />
+              <CaretUpFilled style={{ fontSize: 22, color: hasMoreUp ? '#fff' : 'rgba(255,255,255,0.3)' }} />
             </div>
           </Tooltip>
 
-          {/* 向下按钮 - 加载新的 */}
-          <Tooltip title="下一个 (↓) - 发现更多精彩" placement="left">
+          {/* 向下按钮 */}
+          <Tooltip title="下一个 (↓)" placement="left">
             <div
               onClick={loadingNext ? undefined : goDown}
               style={{
-                width: 56,
-                height: 56,
+                width: 50,
+                height: 50,
                 borderRadius: '50%',
-                background: loadingNext ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.25)',
-                border: loadingNext ? '2px solid rgba(255,255,255,0.15)' : '2px solid rgba(255,255,255,0.5)',
+                background: loadingNext ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.2)',
+                border: loadingNext ? '2px solid rgba(255,255,255,0.15)' : '2px solid rgba(255,255,255,0.4)',
                 backdropFilter: 'blur(10px)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                opacity: loadingNext ? 0.4 : 1,
+                opacity: loadingNext ? 0.3 : 1,
                 cursor: loadingNext ? 'wait' : 'pointer',
                 transition: 'all 0.3s ease',
-                pointerEvents: 'auto',
-              }}
-              onMouseEnter={(e) => {
-                if (!loadingNext) {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.35)';
-                  e.currentTarget.style.transform = 'scale(1.1)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                if (!loadingNext) {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.25)';
-                }
               }}
             >
-              {loadingNext ? (
-                <Spin size="small" />
-              ) : (
-                <CaretDownFilled style={{ fontSize: 26, color: '#fff' }} />
-              )}
+              {loadingNext ? <Spin size="small" /> : <CaretDownFilled style={{ fontSize: 22, color: '#fff' }} />}
             </div>
           </Tooltip>
         </div>
@@ -798,18 +765,18 @@ export default function SwipePage({ initialPostId: _initialPostId }: Props) {
         {loadingNext && (
           <div style={{
             position: 'absolute',
-            bottom: 200,
+            top: '50%',
             left: '50%',
-            transform: 'translateX(-50%)',
+            transform: 'translate(-50%, -50%)',
             zIndex: 100,
-            padding: '16px 24px',
-            borderRadius: 30,
-            background: 'rgba(0,0,0,0.7)',
+            padding: '20px 30px',
+            borderRadius: 20,
+            background: 'rgba(0,0,0,0.8)',
             backdropFilter: 'blur(10px)',
           }}>
             <Space size={12}>
               <Spin size="small" />
-              <Text style={{ color: '#fff', fontSize: 14 }}>发现新内容中...</Text>
+              <Text style={{ color: '#fff', fontSize: 15 }}>发现新内容...</Text>
             </Space>
           </div>
         )}
@@ -832,19 +799,6 @@ export default function SwipePage({ initialPostId: _initialPostId }: Props) {
           otherUser={chatUser}
         />
       )}
-
-      <style>{`
-        @keyframes slideHint {
-          0%, 100% {
-            transform: translateY(0);
-            opacity: 0.6;
-          }
-          50% {
-            transform: translateY(-8px);
-            opacity: 1;
-          }
-        }
-      `}</style>
     </>
   );
 }

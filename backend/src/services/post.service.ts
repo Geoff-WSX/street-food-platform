@@ -135,6 +135,7 @@ export const getPosts = async (page: number = 1, pageSize: number = 10, userId?:
     images: parseImages(p.images),
     likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
     favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
+    commentCount: typeof p.commentCount === 'number' ? p.commentCount : 0,
     isLiked: false,
     isFavorited: false
   }));
@@ -205,6 +206,7 @@ export const getPostById = async (postId: number, userId?: number) => {
     images: parseImages(post.images),
     likeCount: typeof post.likeCount === 'number' ? post.likeCount : 0,
     favoriteCount: typeof post.favoriteCount === 'number' ? post.favoriteCount : 0,
+    commentCount: typeof post.commentCount === 'number' ? post.commentCount : 0,
     isLiked,
     isFavorited,
   };
@@ -245,6 +247,7 @@ export const getUserPosts = async (
     images: parseImages(p.images),
     likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
     favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
+    commentCount: typeof p.commentCount === 'number' ? p.commentCount : 0,
     isLiked: false,
     isFavorited: false
   }));
@@ -515,6 +518,7 @@ export const getRandomPosts = async (
     images: parseImages(p.images),
     likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
     favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
+    commentCount: typeof p.commentCount === 'number' ? p.commentCount : 0,
     isLiked: false,
     isFavorited: false
   }));

@@ -1,5 +1,5 @@
-import { Layout, Menu, Button, Avatar, Space, Dropdown, Badge } from 'antd';
-import { HomeOutlined, PlusOutlined, UserOutlined, LogoutOutlined, TrophyOutlined, CaretDownOutlined, MessageOutlined, PlayCircleOutlined, CrownOutlined, WarningOutlined } from '@ant-design/icons';
+import { Layout, Menu, Button, Avatar, Space, Dropdown, Badge, Tooltip } from 'antd';
+import { HomeOutlined, PlusOutlined, UserOutlined, LogoutOutlined, TrophyOutlined, CaretDownOutlined, MessageOutlined, PlayCircleOutlined, CrownOutlined, WarningOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useMessageStore } from '../store/message';
@@ -12,9 +12,10 @@ const { Header } = Layout;
 
 interface Props {
   onPublishClick?: () => void;
+  onSearchClick?: () => void;
 }
 
-export default function Navbar({ onPublishClick }: Props) {
+export default function Navbar({ onPublishClick, onSearchClick }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isLoggedIn, user, logout } = useAuthStore();
@@ -243,7 +244,7 @@ export default function Navbar({ onPublishClick }: Props) {
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = '#e8e8e8';
-                e.currentTarget.style.color = undefined;
+                e.currentTarget.style.color = '';
               }}
             />
           </Badge>
@@ -251,6 +252,29 @@ export default function Navbar({ onPublishClick }: Props) {
 
         {/* 通知铃铛 */}
         {isLoggedIn && <NotificationBell />}
+
+        {/* 搜索按钮 */}
+        <Tooltip title="搜索">
+          <Button
+            icon={<SearchOutlined />}
+            onClick={onSearchClick}
+            style={{
+              borderRadius: '50%',
+              width: 44,
+              height: 44,
+              transition: 'all 0.3s ease',
+              border: '1px solid #e8e8e8'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#667eea';
+              e.currentTarget.style.color = '#667eea';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#e8e8e8';
+              e.currentTarget.style.color = '';
+            }}
+          />
+        </Tooltip>
 
         {isLoggedIn ? (
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">

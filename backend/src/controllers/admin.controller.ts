@@ -3,6 +3,7 @@ import { AuthRequest } from '../types';
 import prisma from '../config/database';
 import { successResponse, errorResponse } from '../utils/response';
 import bcrypt from 'bcrypt';
+import { createAdminLog } from './adminLog.controller';
 
 /**
  * 获取所有用户列表（管理员）
@@ -119,6 +120,20 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
       data: { role },
     });
 
+    // 记录操作日志
+    await createAdminLog({
+      adminId: req.user!.userId,
+      action: 'UPDATE_ROLE',
+      targetType: 'USER',
+      targetId: userId,
+      targetName: user.username,
+      description: `将用户「${user.username}」的角色从「${user.role}」修改为「${role}」`,
+      oldValue: { role: user.role },
+      newValue: { role },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
     return successResponse(res, null, '角色已更新');
   } catch (error: any) {
     return errorResponse(res, error.message, 'UPDATE_FAILED');
@@ -169,6 +184,20 @@ export const toggleUserStatus = async (req: AuthRequest, res: Response) => {
       },
     });
 
+    // 记录操作日志
+    await createAdminLog({
+      adminId: req.user!.userId,
+      action: 'TOGGLE_STATUS',
+      targetType: 'USER',
+      targetId: userId,
+      targetName: user.username,
+      description: `${updatedUser.isActive ? '启用' : '禁用'}了用户「${user.username}」`,
+      oldValue: { isActive: user.isActive },
+      newValue: { isActive: updatedUser.isActive },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
     return successResponse(res, updatedUser, `账号已${updatedUser.isActive ? '启用' : '禁用'}`);
   } catch (error: any) {
     return errorResponse(res, error.message, 'UPDATE_FAILED');
@@ -216,6 +245,18 @@ export const resetUserPassword = async (req: AuthRequest, res: Response) => {
       data: { password: hashedPassword },
     });
 
+    // 记录操作日志
+    await createAdminLog({
+      adminId: req.user!.userId,
+      action: 'RESET_PASSWORD',
+      targetType: 'USER',
+      targetId: userId,
+      targetName: user.username,
+      description: `重置了用户「${user.username}」的密码`,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
     return successResponse(res, null, '密码已重置');
   } catch (error: any) {
     return errorResponse(res, error.message, 'UPDATE_FAILED');
@@ -260,6 +301,19 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
       where: { id: userId },
     });
 
+    // 记录操作日志
+    await createAdminLog({
+      adminId: req.user!.userId,
+      action: 'DELETE_USER',
+      targetType: 'USER',
+      targetId: userId,
+      targetName: user.username,
+      description: `删除了用户「${user.username}」`,
+      oldValue: { id: user.id, username: user.username, role: user.role },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
     return successResponse(res, null, '用户已删除');
   } catch (error: any) {
     return errorResponse(res, error.message, 'DELETE_FAILED');
@@ -280,6 +334,8 @@ export const getSystemStats = async (req: AuthRequest, res: Response) => {
       newUsersToday,
       adminCount,
       superAdminCount,
+      reviewerCount,
+      reportCount,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.post.count(),
@@ -295,6 +351,8 @@ export const getSystemStats = async (req: AuthRequest, res: Response) => {
       }),
       prisma.user.count({ where: { role: 'admin' } }),
       prisma.user.count({ where: { role: 'super_admin' } }),
+      prisma.user.count({ where: { role: 'reviewer' } }),
+      prisma.report.count({ where: { status: 'pending' } }),
     ]);
 
     return successResponse(res, {
@@ -305,6 +363,9 @@ export const getSystemStats = async (req: AuthRequest, res: Response) => {
       activeUsers,
       newUsersToday,
       adminCount: adminCount + superAdminCount,
+      superAdminCount,
+      reviewerCount,
+      reportCount,
     });
   } catch (error: any) {
     return errorResponse(res, error.message, 'FETCH_FAILED', 500);

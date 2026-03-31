@@ -1,5 +1,5 @@
 import React from 'react';
-import { getRandomFoods, getAnimationStyle } from '../utils/foodAnimations';
+import { getAnimationStyle } from '../utils/foodAnimations';
 
 interface FoodBackgroundProps {
   count?: number;
@@ -20,8 +20,6 @@ const FIXED_FOODS = Array.from({ length: 20 }, (_, i) => ({
 
 const FoodBackground: React.FC<FoodBackgroundProps> = ({
   count = 15,
-  minSize = 20,
-  maxSize = 60,
   enabled = true,
 }) => {
   if (!enabled) return null;

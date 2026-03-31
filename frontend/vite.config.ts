@@ -13,6 +13,16 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      '/sw.js': {
+        target: 'http://localhost:5173',
+        changeOrigin: true,
+        rewrite: (path) => path,
+      },
+      '/manifest.json': {
+        target: 'http://localhost:5173',
+        changeOrigin: true,
+        rewrite: (path) => path,
+      },
     },
   },
 })

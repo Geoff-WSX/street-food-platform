@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Space, Button, Avatar, Typography, message, Popconfirm } from 'antd';
-import { HeartOutlined, HeartFilled, StarOutlined, StarFilled, EnvironmentOutlined, UserOutlined, PlusOutlined, CheckOutlined, MessageOutlined, StopOutlined } from '@ant-design/icons';
+import { Card, Button, Avatar, Typography, message, Popconfirm } from 'antd';
+import { HeartOutlined, HeartFilled, StarOutlined, StarFilled, EnvironmentOutlined, UserOutlined, PlusOutlined, CheckOutlined, MessageOutlined, StopOutlined, CommentOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { toggleLike, toggleFavorite } from '../api/post';
 import { followUser, unfollowUser, checkFollowStatus } from '../api/follow';
@@ -28,7 +28,6 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [likeAnimating, setLikeAnimating] = useState(false);
 
   // 处理 images 格式：确保是数组
   const processedImages = useMemo(() => {
@@ -70,8 +69,6 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
       navigate('/login');
       return;
     }
-    setLikeAnimating(true);
-    setTimeout(() => setLikeAnimating(false), 300);
     try {
       const res = await toggleLike(post.id);
       onUpdate?.({ id: post.id, isLiked: res.liked, likeCount: res.likeCount });
@@ -354,48 +351,43 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
 
         {/* 用户信息和互动 */}
         <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
           paddingTop: 12,
           borderTop: '1px solid #f0f0f0',
-          flexShrink: 0,
-          gap: 8
+          flexShrink: 0
         }}>
+          {/* 第一行：头像、用户名、关注按钮 */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
-            flex: 1,
-            minWidth: 0,
-            overflow: 'hidden'
+            gap: 10,
+            marginBottom: 12
           }}>
             <Avatar
               src={post.user.avatar}
               icon={<UserOutlined />}
-              size={28}
+              size={36}
               onClick={handleUserClick}
               style={{
                 cursor: 'pointer',
-                border: '2px solid #f0f0f0',
-                transition: 'all 0.3s ease',
+                border: '2px solid #fff',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
                 flexShrink: 0
               }}
             />
-            <Text
-              style={{
-                fontSize: 14,
-                cursor: 'pointer',
-                maxWidth: 70,
-                fontWeight: 500,
-                color: '#262626',
-                flexShrink: 1
-              }}
-              ellipsis
-              onClick={handleUserClick}
-            >
-              {post.user.username}
-            </Text>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  color: '#262626',
+                  display: 'block'
+                }}
+                onClick={handleUserClick}
+              >
+                {post.user.username}
+              </Text>
+            </div>
             {isLoggedIn && post.user.id !== useAuthStore.getState().user?.id && (
               <Button
                 type={isFollowing ? 'default' : 'primary'}
@@ -404,14 +396,12 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
                 onClick={handleFollow}
                 loading={followLoading}
                 style={{
-                  padding: '4px 10px',
-                  height: 28,
+                  padding: '4px 16px',
+                  height: 30,
                   fontSize: 13,
-                  borderRadius: 14,
-                  minWidth: 60,
+                  borderRadius: 15,
                   fontWeight: 500,
-                  boxShadow: isFollowing ? 'none' : '0 2px 8px rgba(102, 126, 234, 0.3)',
-                  flexShrink: 0
+                  boxShadow: isFollowing ? 'none' : '0 2px 8px rgba(102, 126, 234, 0.3)'
                 }}
               >
                 {isFollowing ? '已关注' : '关注'}
@@ -419,53 +409,78 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
             )}
           </div>
 
-          <Space size={4} onClick={(e) => e?.stopPropagation()} style={{ flexShrink: 0 }}>
-            <Button
-              type="text"
-              size="small"
-              icon={liked ? <HeartFilled /> : <HeartOutlined />}
+          {/* 第二行：点赞、收藏、评论 */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 4,
+            padding: '8px 8px',
+            background: 'linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%)',
+            borderRadius: 12,
+            flexWrap: 'nowrap',
+            overflow: 'hidden'
+          }}>
+            <div
               onClick={handleLike}
               style={{
-                padding: '6px 8px',
-                height: 32,
-                fontSize: 13,
-                borderRadius: 16,
-                minWidth: 'auto',
-                width: 'auto',
-                color: liked ? '#ff4d4f' : '#8c8c8c',
-                background: liked ? 'rgba(255, 77, 79, 0.1)' : 'transparent',
-                transition: 'all 0.3s ease',
-                transform: likeAnimating ? 'scale(1.2)' : 'scale(1)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4
+                gap: 4,
+                cursor: 'pointer',
+                padding: '6px 8px',
+                borderRadius: 16,
+                transition: 'all 0.3s ease',
+                background: liked ? 'rgba(255, 77, 79, 0.1)' : 'transparent',
+                color: liked ? '#ff4d4f' : '#8c8c8c',
+                flexShrink: 0
               }}
             >
-              <span>{likeCount > 0 ? likeCount : ''}</span>
-            </Button>
-            <Button
-              type="text"
-              size="small"
-              icon={favorited ? <StarFilled /> : <StarOutlined />}
+              {liked ? <HeartFilled style={{ fontSize: 16, flexShrink: 0 }} /> : <HeartOutlined style={{ fontSize: 16, flexShrink: 0 }} />}
+              <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                {likeCount > 0 ? likeCount : '点赞'}
+              </span>
+            </div>
+            <div
               onClick={handleFavorite}
               style={{
-                padding: '6px 8px',
-                height: 32,
-                fontSize: 13,
-                borderRadius: 16,
-                minWidth: 'auto',
-                width: 'auto',
-                color: favorited ? '#faad14' : '#8c8c8c',
-                background: favorited ? 'rgba(250, 173, 20, 0.1)' : 'transparent',
-                transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4
+                gap: 4,
+                cursor: 'pointer',
+                padding: '6px 8px',
+                borderRadius: 16,
+                transition: 'all 0.3s ease',
+                background: favorited ? 'rgba(250, 173, 20, 0.1)' : 'transparent',
+                color: favorited ? '#faad14' : '#8c8c8c',
+                flexShrink: 0
               }}
             >
-              <span>{favoriteCount > 0 ? favoriteCount : ''}</span>
-            </Button>
-          </Space>
+              {favorited ? <StarFilled style={{ fontSize: 16, flexShrink: 0 }} /> : <StarOutlined style={{ fontSize: 16, flexShrink: 0 }} />}
+              <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                {favoriteCount > 0 ? favoriteCount : '收藏'}
+              </span>
+            </div>
+            <div
+              onClick={() => navigate(`/post/${post.id}`)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                cursor: 'pointer',
+                padding: '6px 8px',
+                borderRadius: 16,
+                transition: 'all 0.3s ease',
+                color: '#8c8c8c',
+                flexShrink: 0
+              }}
+            >
+              <CommentOutlined style={{ fontSize: 16, flexShrink: 0 }} />
+              <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                {(post.commentCount ?? 0) > 0 ? post.commentCount : '评论'}
+              </span>
+            </div>
+          </div>
         </div>
       </Card>
 

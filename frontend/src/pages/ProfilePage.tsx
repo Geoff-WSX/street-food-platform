@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Avatar, Typography, Row, Col, Button, Form, Input,
-  Upload, Spin, Empty, message, Modal, Divider, Card, Space, Tag, Select, Switch, List, Popconfirm, Badge
+  Upload, Spin, Empty, message, Modal, Divider, Card, Space, Tag, Select, Switch, List, Popconfirm
 } from 'antd';
-import { UserOutlined, EditOutlined, CameraOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined, TrophyStarOutlined } from '@ant-design/icons';
+import { UserOutlined, EditOutlined, CameraOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined } from '@ant-design/icons';
 import { getUserById, updateProfile, updateAvatar, changePassword, updateMessageSettings } from '../api/user';
 import { getUserPosts, getUserFavorites } from '../api/post';
 import { getBlockedList, unblockUser } from '../api/block';
@@ -13,8 +13,6 @@ import { useAuthStore } from '../store/auth';
 import PostCard from '../components/PostCard';
 import ChatModal from '../components/ChatModal';
 import ReportModal from '../components/ReportModal';
-import FoodBackground from '../components/FoodBackground';
-import { getAnimationStyle, getRandomFoods } from '../utils/foodAnimations';
 import type { User, Post } from '../types';
 
 const { Title, Text, Paragraph } = Typography;

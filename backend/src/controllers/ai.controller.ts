@@ -3,9 +3,10 @@ import { AuthRequest } from '../types';
 import prisma from '../config/database';
 import { successResponse, errorResponse } from '../utils/response';
 import OpenAI from 'openai';
-import { execSync } from 'child_process';
+import { execSync, exec } from 'child_process';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import os from 'os';
 
 // 初始化 OpenAI 客户端（支持代理和自定义 baseURL）
 function createOpenAIClient() {
@@ -191,6 +192,76 @@ const tools = [
           },
         },
         required: ['userId', 'isActive'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'search_posts',
+      description: '搜索美食动态，支持关键词、地点、美食类型筛选。用于美食推荐场景',
+      parameters: {
+        type: 'object',
+        properties: {
+          keyword: {
+            type: 'string',
+            description: '搜索关键词，如美食名称、食材等',
+          },
+          location: {
+            type: 'string',
+            description: '地点筛选，如城市名、区名',
+          },
+          limit: {
+            type: 'number',
+            description: '返回数量限制，默认10',
+          },
+        },
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_comments',
+      description: '查询评论信息，可以按动态ID或用户ID筛选',
+      parameters: {
+        type: 'object',
+        properties: {
+          postId: {
+            type: 'number',
+            description: '动态ID，查询该动态的评论',
+          },
+          userId: {
+            type: 'number',
+            description: '用户ID，查询该用户的评论',
+          },
+          limit: {
+            type: 'number',
+            description: '返回数量限制，默认20',
+          },
+        },
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_dashboard_stats',
+      description: '获取平台仪表盘统计数据，包括用户数、动态数、评论数、点赞数等',
+      parameters: {
+        type: 'object',
+        properties: {},
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_system_info',
+      description: '获取系统运行状态信息，包括CPU、内存、运行时间等（仅管理员可用）',
+      parameters: {
+        type: 'object',
+        properties: {},
       },
     },
   },
@@ -562,6 +633,245 @@ async function updateUserStatus(params: { userId: number; isActive: boolean }, r
   };
 }
 
+// 搜索动态
+async function searchPosts(params: { keyword?: string; location?: string; limit?: number }) {
+  const { keyword, location, limit = 10 } = params;
+
+  const where: any = {};
+
+  // 关键词搜索（搜索内容）
+  if (keyword) {
+    where.OR = [
+      { content: { contains: keyword } },
+      { address: { contains: keyword } },
+    ];
+  }
+
+  // 地点筛选
+  if (location) {
+    where.address = { contains: location };
+  }
+
+  const posts = await prisma.post.findMany({
+    where,
+    take: limit,
+    orderBy: [
+      { likeCount: 'desc' },
+      { createdAt: 'desc' }
+    ],
+    select: {
+      id: true,
+      content: true,
+      address: true,
+      likeCount: true,
+      favoriteCount: true,
+      commentCount: true,
+      createdAt: true,
+      user: {
+        select: { username: true, avatar: true },
+      },
+    },
+  });
+
+  return {
+    keyword: keyword || '全部',
+    location: location || '不限',
+    total: posts.length,
+    posts: posts.map(p => ({
+      id: p.id,
+      content: p.content,
+      address: p.address,
+      likeCount: p.likeCount || 0,
+      favoriteCount: p.favoriteCount || 0,
+      commentCount: p.commentCount || 0,
+      username: p.user.username,
+      userAvatar: p.user.avatar,
+      createdAt: p.createdAt,
+    })),
+  };
+}
+
+// 查询评论
+async function getComments(params: { postId?: number; userId?: number; limit?: number } = {}) {
+  const { postId, userId, limit = 20 } = params;
+
+  const where: any = {};
+  if (postId) {
+    where.postId = postId;
+  }
+  if (userId) {
+    where.userId = userId;
+  }
+
+  const comments = await prisma.comment.findMany({
+    where,
+    take: limit,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      content: true,
+      createdAt: true,
+      user: {
+        select: { username: true, avatar: true },
+      },
+      post: {
+        select: { id: true, content: true },
+      },
+      parentId: true,
+    },
+  });
+
+  return {
+    total: comments.length,
+    comments: comments.map(c => ({
+      id: c.id,
+      content: c.content,
+      createdAt: c.createdAt,
+      username: c.user.username,
+      userAvatar: c.user.avatar,
+      postId: c.post.id,
+      postPreview: c.post.content.substring(0, 50),
+      isReply: !!c.parentId,
+    })),
+  };
+}
+
+// 获取仪表盘统计
+async function getDashboardStats() {
+  const [
+    totalUsers,
+    activeUsers,
+    totalPosts,
+    totalComments,
+    totalLikes,
+    totalFavorites,
+    todayPosts,
+    todayComments,
+    pendingReports,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { isActive: true } }),
+    prisma.post.count(),
+    prisma.comment.count(),
+    prisma.like.count(),
+    prisma.favorite.count(),
+    prisma.post.count({
+      where: {
+        createdAt: {
+          gte: new Date(new Date().setHours(0, 0, 0, 0)),
+        },
+      },
+    }),
+    prisma.comment.count({
+      where: {
+        createdAt: {
+          gte: new Date(new Date().setHours(0, 0, 0, 0)),
+        },
+      },
+    }),
+    prisma.report.count({ where: { status: 'pending' } }),
+  ]);
+
+  // 获取热门动态
+  const topPosts = await prisma.post.findMany({
+    take: 5,
+    orderBy: { likeCount: 'desc' },
+    select: {
+      id: true,
+      content: true,
+      likeCount: true,
+      favoriteCount: true,
+    },
+  });
+
+  // 获取最新动态
+  const latestPosts = await prisma.post.findMany({
+    take: 5,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      content: true,
+      createdAt: true,
+    },
+  });
+
+  return {
+    users: {
+      total: totalUsers,
+      active: activeUsers,
+      inactive: totalUsers - activeUsers,
+    },
+    content: {
+      totalPosts,
+      totalComments,
+      totalLikes,
+      totalFavorites,
+    },
+    today: {
+      posts: todayPosts,
+      comments: todayComments,
+    },
+    reports: {
+      pending: pendingReports,
+    },
+    topPosts,
+    latestPosts,
+  };
+}
+
+// 获取系统信息
+async function getSystemInfo() {
+  const uptime = process.uptime();
+  const memoryUsage = process.memoryUsage();
+
+  // 获取 Node.js 版本和平台信息
+  const nodeVersion = process.version;
+  const platform = os.platform();
+  const arch = os.arch();
+  const totalMemory = os.totalmem();
+  const freeMemory = os.freemem();
+
+  // 获取负载
+  const loadavg = os.loadavg();
+
+  // 获取运行时间格式化
+  const days = Math.floor(uptime / 86400);
+  const hours = Math.floor((uptime % 86400) / 3600);
+  const minutes = Math.floor((uptime % 3600) / 60);
+  const uptimeStr = `${days}天${hours}小时${minutes}分钟`;
+
+  // 获取数据库连接状态
+  let dbStatus = 'unknown';
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    dbStatus = 'connected';
+  } catch {
+    dbStatus = 'error';
+  }
+
+  return {
+    node: {
+      version: nodeVersion,
+      platform: `${platform} (${arch})`,
+    },
+    uptime: uptimeStr,
+    memory: {
+      used: Math.round(memoryUsage.heapUsed / 1024 / 1024) + ' MB',
+      total: Math.round(memoryUsage.heapTotal / 1024 / 1024) + ' MB',
+      rss: Math.round(memoryUsage.rss / 1024 / 1024) + ' MB',
+      system: {
+        total: Math.round(totalMemory / 1024 / 1024 / 1024) + ' GB',
+        free: Math.round(freeMemory / 1024 / 1024 / 1024) + ' GB',
+        usage: Math.round((1 - freeMemory / totalMemory) * 100) + '%',
+      },
+    },
+    loadavg,
+    database: {
+      status: dbStatus,
+    },
+  };
+}
+
 // 工具函数映射
 const toolFunctions: Record<string, (params: any, userRole?: string) => Promise<any>> = {
   query_reports: queryReports,
@@ -572,6 +882,10 @@ const toolFunctions: Record<string, (params: any, userRole?: string) => Promise<
   read_file: readFile,
   update_user_role: updateUserRole,
   update_user_status: updateUserStatus,
+  search_posts: searchPosts,
+  get_comments: getComments,
+  get_dashboard_stats: getDashboardStats,
+  get_system_info: getSystemInfo,
 };
 
 /**
@@ -624,6 +938,10 @@ export const chat = async (req: AuthRequest, res: Response) => {
 - 更新用户角色 (update_user_role) - 仅超级管理员
 - 更新用户状态 (update_user_status) - 仅管理员
 - 查询动态信息 (query_posts)
+- 搜索美食动态 (search_posts) - 按关键词和地点搜索
+- 查询评论信息 (get_comments) - 查看评论详情
+- 获取仪表盘统计 (get_dashboard_stats) - 查看平台数据概览
+- 获取系统信息 (get_system_info) - 查看系统运行状态
 - 执行命令 (execute_command)
 - 读取文件 (read_file)
 
@@ -642,6 +960,7 @@ export const chat = async (req: AuthRequest, res: Response) => {
 - 可以查看所有用户数据
 - 可以启用/禁用用户账号
 - 可以处理举报
+- 可以查看系统信息
 
 请根据用户需求使用合适的工具，实际执行操作而不是只说要做。`;
 
@@ -692,7 +1011,6 @@ export const chat = async (req: AuthRequest, res: Response) => {
                   toolResults.push({
                     tool_call_id: toolCall.id,
                     role: 'tool',
-                    name: functionName,
                     content: JSON.stringify(result),
                   });
                   console.log(`Tool ${functionName} result:`, JSON.stringify(result).substring(0, 200));
@@ -701,7 +1019,6 @@ export const chat = async (req: AuthRequest, res: Response) => {
                   toolResults.push({
                     tool_call_id: toolCall.id,
                     role: 'tool',
-                    name: functionName,
                     content: JSON.stringify({ error: toolError.message }),
                   });
                 }
@@ -741,173 +1058,94 @@ export const chat = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // 获取动态数据（限制数量）
-    console.log('Fetching posts...');
-    const allPosts = await prisma.post.findMany({
-      take: 20,
-      orderBy: [
-        { likeCount: 'desc' },
-        { favoriteCount: 'desc' }
-      ],
-      select: {
-        id: true,
-        content: true,
-        address: true,
-        likeCount: true,
-        favoriteCount: true,
-        user: {
-          select: {
-            username: true,
+    // 美食模式：先搜索数据，再生成回复
+    try {
+      // 先获取热门动态数据
+      const trendingPosts = await prisma.post.findMany({
+        take: 20,
+        orderBy: [
+          { likeCount: 'desc' },
+          { favoriteCount: 'desc' }
+        ],
+        select: {
+          id: true,
+          content: true,
+          address: true,
+          likeCount: true,
+          favoriteCount: true,
+          user: {
+            select: { username: true },
           },
         },
-      },
-    });
-    console.log('Found posts:', allPosts.length);
+      });
 
-    // 构建简化的数据摘要
-    const postsSummary = allPosts.map(post => ({
-      id: post.id,
-      content: post.content.substring(0, 50),
-      address: post.address,
-      likeCount: post.likeCount || 0,
-      username: post.user.username,
-    }));
+      const cities = [...new Set(trendingPosts.map(p => p.address).filter(Boolean))];
 
-    // 统计信息
-    const cities = [...new Set(allPosts.map(p => p.address).filter(Boolean))].slice(0, 8);
+      // 美食模式的系统提示词
+      const foodieSystemPrompt = `你是"小边"，街边美食平台的 AI 智能助手。你是一个热情的美食探索家，热爱发现城市的美味角落。
 
-    // 美食模式的系统提示词
-    const foodieSystemPrompt = `你是"小边"，街边美食平台的 AI 智能助手。
+**当前平台热门美食：**
+${trendingPosts.slice(0, 10).map((p, i) => `${i+1}. "${p.content.substring(0, 60)}" (${p.likeCount || 0}赞) 📍${p.address || '未知位置'}`).join('\n')}
 
-**当前平台数据：**
-- 总动态数：${allPosts.length}
-- 覆盖城市：${cities.join('、')}
+**覆盖城市：** ${cities.slice(0, 8).join('、')}
 
-**热门动态：**
-${postsSummary.map((p, i) => `${i+1}. [ID:${p.id}] "${p.content}" (${p.likeCount}赞) 📍${p.address || '未知位置'}`).join('\n')}
-
-**任务：**
-1. 根据用户需求分析上述数据
+**回复规范：**
+1. 根据用户问题，结合上述数据给出回答
 2. 回复控制在 100 字以内
 3. 回复末尾用【推荐:ID1,ID2】格式列出推荐的动态ID
 4. 如果没有相关推荐，用【推荐:】表示
+5. 使用表情符号让对话更生动（🍜🔥✨📍👍）
 
-请用中文回复，语气亲切简洁。`;
+请用中文回复，语气亲切简洁，像朋友聊天一样！`;
 
-    // 构建消息
-    const messages: any[] = [
-      { role: 'system', content: foodieSystemPrompt },
-    ];
+      const messages: any[] = [
+        { role: 'system', content: foodieSystemPrompt },
+      ];
 
-    // 添加历史对话（限制最近3条）
-    if (Array.isArray(conversationHistory)) {
-      const recentHistory = conversationHistory.slice(-6);
-      messages.push(...recentHistory);
-    }
+      // 添加历史对话
+      if (Array.isArray(conversationHistory)) {
+        const recentHistory = conversationHistory.slice(-6);
+        messages.push(...recentHistory);
+      }
 
-    // 添加当前消息
-    messages.push({ role: 'user', content: message });
+      // 添加当前消息
+      messages.push({ role: 'user', content: message });
 
-    // 调用 OpenAI API
-    console.log('Calling OpenAI...');
-    console.log('API Key (first 10 chars):', process.env.OPENAI_API_KEY?.substring(0, 10) + '...');
-    let completion;
-    try {
-      completion = await openai.chat.completions.create({
+      console.log('Calling OpenAI in foodie mode...');
+
+      const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages,
         temperature: 0.7,
         max_tokens: 500,
       });
+
       console.log('OpenAI Response received');
-    } catch (openaiError: any) {
-      console.error('OpenAI Error Details:', {
-        name: openaiError.name,
-        message: openaiError.message,
-        status: openaiError.status,
-        type: openaiError.type,
-        cause: openaiError.cause,
-        code: openaiError.code,
+      const aiResponse = completion.choices[0].message.content || '';
+
+      // 提取推荐的动态ID
+      const match = aiResponse.match(/【推荐:([^\]]*)】/);
+      let suggestedPostIds: number[] = [];
+      if (match && match[1]) {
+        suggestedPostIds = match[1].split(',')
+          .map(id => {
+            const cleanId = id.replace(/^ID/i, '').trim();
+            const numId = parseInt(cleanId);
+            return isNaN(numId) ? null : numId;
+          })
+          .filter((id): id is number => id !== null);
+      }
+
+      const cleanResponse = aiResponse.replace(/【推荐:[^\]]*】/g, '').trim();
+
+      return successResponse(res, {
+        message: cleanResponse,
+        suggestedPosts: suggestedPostIds,
       });
-      console.error('Full error stack:', openaiError.stack);
-
-      // 处理连接超时错误
-      if (openaiError.name === 'APIConnectionTimeoutError' || openaiError.message?.includes('timed out')) {
-        return errorResponse(
-          res,
-          'AI 服务连接超时，请检查网络连接或稍后重试',
-          'OPENAI_TIMEOUT',
-          504
-        );
-      }
-
-      // 处理连接错误
-      if (openaiError.message?.includes('Connection error') || openaiError.name === 'APIConnectionError') {
-        return errorResponse(
-          res,
-          '无法连接到 OpenAI 服务，请检查网络或 API Key 配置',
-          'OPENAI_CONNECTION_ERROR',
-          503
-        );
-      }
-
-      // 处理认证错误
-      if (openaiError.status === 401) {
-        return errorResponse(
-          res,
-          'OpenAI API Key 无效，请联系管理员',
-          'INVALID_API_KEY',
-          401
-        );
-      }
-
-      // 处理其他响应错误
-      if (openaiError.response) {
-        return errorResponse(
-          res,
-          `OpenAI API 错误: ${openaiError.response.data?.error?.message || openaiError.message}`,
-          'OPENAI_ERROR',
-          openaiError.status || 500
-        );
-      }
-
-      // 其他未知错误
-      return errorResponse(
-        res,
-        `AI 服务错误: ${openaiError.message}`,
-        'AI_ERROR',
-        500
-      );
+    } catch (openaiError: any) {
+      console.error('OpenAI Error in foodie mode:', openaiError.message);
+      return errorResponse(res, openaiError.message || 'AI 服务错误', 'AI_ERROR', 500);
     }
-
-    const aiResponse = completion.choices[0].message.content || '';
-    console.log('AI Response:', aiResponse);
-
-    // 提取推荐的动态ID（支持多种格式：【推荐:ID1,ID2】、【推荐:ID1, ID2】、【推荐:1,2】）
-    const match = aiResponse.match(/【推荐:([^\]]*)】/);
-    console.log('Regex match:', match);
-
-    let suggestedPostIds: number[] = [];
-    if (match && match[1]) {
-      suggestedPostIds = match[1].split(',')
-        .map(id => {
-          // 移除可能存在的 ID 前缀（不区分大小写）
-          const cleanId = id.replace(/^ID/i, '').trim();
-          const numId = parseInt(cleanId);
-          return isNaN(numId) ? null : numId;
-        })
-        .filter((id): id is number => id !== null);
-    }
-
-    const finalMessage = aiResponse.replace(/【推荐:[^\]]*】/g, '').trim();
-
-    console.log('Final Message:', finalMessage);
-    console.log('Suggested IDs:', suggestedPostIds);
-
-    return successResponse(res, {
-      message: finalMessage,
-      suggestedPosts: suggestedPostIds,
-    });
   } catch (error: any) {
     console.error('=== AI Chat Error ===');
     console.error('Error:', error.message);

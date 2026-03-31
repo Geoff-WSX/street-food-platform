@@ -286,14 +286,28 @@ export const createComment = async (userId: number, data: {
     }
   }
 
-  const comment = await prisma.comment.create({
-    data: {
-      postId,
-      userId,
-      content: content.trim(),
-      parentId,
-      replyToUserId,
-    },
+  const comment = await prisma.$transaction(async (tx) => {
+    // 创建评论
+    const newComment = await tx.comment.create({
+      data: {
+        postId,
+        userId,
+        content: content.trim(),
+        parentId,
+        replyToUserId,
+      },
+    });
+
+    // 更新动态的评论数（只计算顶级评论）
+    const newCommentCount = await tx.comment.count({
+      where: { postId, parentId: null },
+    });
+    await tx.post.update({
+      where: { id: postId },
+      data: { commentCount: newCommentCount },
+    });
+
+    return newComment;
   });
 
   // 获取用户信息
@@ -368,8 +382,19 @@ export const deleteComment = async (commentId: number, userId: number, userRole:
     throw new Error('无权删除此评论');
   }
 
-  await prisma.comment.delete({
-    where: { id: commentId },
+  await prisma.$transaction(async (tx) => {
+    await tx.comment.delete({
+      where: { id: commentId },
+    });
+
+    // 更新动态的评论数（只计算顶级评论）
+    const newCommentCount = await tx.comment.count({
+      where: { postId: comment.postId, parentId: null },
+    });
+    await tx.post.update({
+      where: { id: comment.postId },
+      data: { commentCount: newCommentCount },
+    });
   });
 
   return { success: true };

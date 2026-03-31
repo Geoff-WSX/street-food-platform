@@ -1,0 +1,21 @@
+{
+  "name": "街边美食",
+  "short_name": "街边美食",
+  "description": "发现身边的美食，分享你的味蕾故事",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#667eea",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["food", "social", "lifestyle"],
+  "lang": "zh-CN",
+  "dir": "ltr"
+}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Col, Row, Spin, Empty, Typography, Card, Space, TreeSelect, Tag, Divider, FloatButton, Skeleton, Button } from 'antd';
+import { Col, Row, Empty, Typography, Card, Space, TreeSelect, Tag, Divider, FloatButton, Skeleton, Button } from 'antd';
 import { EnvironmentOutlined, ReloadOutlined, FireOutlined } from '@ant-design/icons';
 import { getRandomPosts } from '../api/post';
 import PostCard from '../components/PostCard';
@@ -138,7 +138,6 @@ const PostSkeleton = () => (
 
 export default function HomePage() {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
@@ -151,11 +150,8 @@ export default function HomePage() {
         setRefreshing(true);
       }
 
-      const currentIds = posts.map(p => p.id);
-      const data = await getRandomPosts({
-        limit: 20,
-        excludeIds: currentIds.length > 0 ? currentIds.join(',') : undefined
-      });
+      // 始终请求20条，不排除已显示的，允许重复推荐
+      const data = await getRandomPosts({ limit: 20 });
 
       const validPosts = (data.data || []).filter((post) => {
         return post &&
@@ -186,7 +182,7 @@ export default function HomePage() {
     if (selectedLocation) {
       const fetchData = async () => {
         try {
-          setLoading(true);
+          setRefreshing(true);
           const data = await getRandomPosts({ limit: 20 });
 
           const validPosts = (data.data || []).filter((post) => {
@@ -202,7 +198,7 @@ export default function HomePage() {
           setPosts(validPosts);
         } catch (error) {
         } finally {
-          setLoading(false);
+          setRefreshing(false);
         }
       };
       fetchData();

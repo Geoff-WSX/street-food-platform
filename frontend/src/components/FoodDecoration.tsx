@@ -3,10 +3,9 @@ import { getAnimationStyle } from '../utils/foodAnimations';
 
 interface FoodDecorationProps {
   type?: 'top' | 'bottom' | 'corner' | 'scattered';
-  className?: string;
 }
 
-const FoodDecoration: React.FC<FoodDecorationProps> = ({ type = 'scattered', className = '' }) => {
+const FoodDecoration: React.FC<FoodDecorationProps> = ({ type = 'scattered' }) => {
   const decorations = {
     top: ['🍜', '🍲', '🍛', '🍣'],
     bottom: ['🍕', '🍔', '🍟', '🌭'],

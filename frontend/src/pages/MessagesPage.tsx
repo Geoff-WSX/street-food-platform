@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, List, Avatar, Typography, Tag, Empty, Spin, Badge, Space, Skeleton, Modal, message, Button } from 'antd';
-import { UserOutlined, MessageOutlined, MailOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Card, List, Avatar, Typography, Tag, Empty, Badge, Space, Skeleton, Modal, message, Button } from 'antd';
+import { UserOutlined, MailOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getConversations, deleteConversation, type Conversation } from '../api/message';
 import ChatModal from '../components/ChatModal';
 import { useAuthStore } from '../store/auth';

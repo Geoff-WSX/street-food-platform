@@ -156,7 +156,7 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
 
   // 消息长按菜单
   const getMessageMenuItems = (msg: Message): MenuProps['items'] => {
-    if (!isMe(msg)) return null;
+    if (!isMe(msg)) return [];
 
     return [
       {
