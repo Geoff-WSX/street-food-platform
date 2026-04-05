@@ -26,8 +26,12 @@ import {
   fetchAdminLogs,
   fetchAdminLogStats,
   fetchActionTypes as fetchActionTypesApi,
+  type AdminUser,
+  type SystemStats,
+  type AdminLog,
+  type AdminLogStats,
+  type ActionType,
 } from '../api/admin';
-import type { AdminUser, SystemStats, AdminLog, AdminLogStats, ActionType } from '../api/admin';
 import { useAuthStore } from '../store/auth';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -212,9 +216,10 @@ export default function AdminPage() {
         pageSize,
         total: result.pagination.total,
       });
-    } catch (error: any) {
-      console.error('❌ 获取用户列表失败:', error.message);
-      void message.error('获取用户列表失败: ' + (error.message || '未知错误'));
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : '未知错误';
+      console.error('❌ 获取用户列表失败:', errMsg);
+      void message.error('获取用户列表失败: ' + errMsg);
     } finally {
       setTableLoading(false);
     }
@@ -224,7 +229,7 @@ export default function AdminPage() {
   const fetchLogs = useCallback(async (page = 1, pageSize = 20) => {
     setLogsLoading(true);
     try {
-      const params: any = { page, pageSize };
+      const params: { page: number; pageSize: number; action?: string; adminId?: number; startDate?: string; endDate?: string } = { page, pageSize };
       if (logFilter.action) params.action = logFilter.action;
       if (logFilter.adminId) params.adminId = logFilter.adminId;
       if (logFilter.dateRange) {
@@ -277,7 +282,8 @@ export default function AdminPage() {
     ]);
     setRefreshing(false);
     void message.success('数据已刷新');
-  }, [fetchStats, fetchUsers, pagination.current, pagination.pageSize, fetchLogs, fetchLogStats, logsPagination]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchStats, fetchUsers, fetchLogs, fetchLogStats, logsPagination]);
 
   // 批量操作
   const handleBatchDisable = async () => {
@@ -442,7 +448,7 @@ export default function AdminPage() {
       title: '用户信息',
       key: 'user',
       width: 260,
-      render: (_: any, record: AdminUser) => (
+      render: (_: unknown, record: AdminUser) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Avatar
             src={record.avatar}
@@ -516,7 +522,7 @@ export default function AdminPage() {
       title: '内容统计',
       key: 'stats',
       width: 180,
-      render: (_: any, record: AdminUser) => (
+      render: (_: unknown, record: AdminUser) => (
         <Space size={12}>
           <Tooltip title={`动态: ${record._count.posts}`}>
             <Tag icon={<FileTextOutlined />} color="blue">{record._count.posts}</Tag>
@@ -543,7 +549,7 @@ export default function AdminPage() {
       key: 'actions',
       width: 140,
       fixed: 'right' as const,
-      render: (_: any, record: AdminUser) => {
+      render: (_: unknown, record: AdminUser) => {
         const { canEdit, canDelete } = canManageUser(record);
         return (
           <Space size={4}>
@@ -1248,7 +1254,7 @@ export default function AdminPage() {
                         title: '操作者',
                         key: 'admin',
                         width: 150,
-                        render: (_: any, record: AdminLog) => (
+                        render: (_: unknown, record: AdminLog) => (
                           <Space>
                             <Avatar src={record.admin?.avatar} icon={<UserOutlined />} size={24} />
                             <Text style={{ fontSize: 13 }}>{record.admin?.username || '-'}</Text>
@@ -1284,7 +1290,7 @@ export default function AdminPage() {
                       {
                         title: '目标',
                         key: 'target',
-                        render: (_: any, record: AdminLog) => (
+                        render: (_: unknown, record: AdminLog) => (
                           <div>
                             <Tag>{record.targetType}</Tag>
                             {record.targetId && <Text type="secondary" style={{ marginLeft: 4 }}>#{record.targetId}</Text>}
@@ -1310,7 +1316,7 @@ export default function AdminPage() {
                         key: 'actions',
                         width: 80,
                         fixed: 'right' as const,
-                        render: (_: any, record: AdminLog) => (
+                        render: (_: unknown, record: AdminLog) => (
                           <Button
                             type="link"
                             size="small"
@@ -1523,7 +1529,7 @@ export default function AdminPage() {
               <div>
                 <Text type="secondary" style={{ fontSize: 12 }}>操作描述</Text>
                 <Paragraph style={{ marginBottom: 0, marginTop: 4, fontSize: 14 }}>
-                  {selectedLog.description}
+                  {(selectedLog.description as string | undefined) || ''}
                 </Paragraph>
               </div>
 
@@ -1553,26 +1559,26 @@ export default function AdminPage() {
               </div>
 
               {/* 变更详情 */}
-              {(selectedLog.oldValue || selectedLog.newValue) && (
+              {!!(selectedLog.oldValue || selectedLog.newValue) && (
                 <div>
                   <Text type="secondary" style={{ fontSize: 12 }}>变更详情</Text>
                   <Row gutter={16} style={{ marginTop: 8 }}>
-                    {selectedLog.oldValue && (
+                    {!!selectedLog.oldValue && (
                       <Col span={12}>
                         <Card size="small" style={{ background: '#fff2f0', borderRadius: 8 }}>
                           <Text type="danger" style={{ fontSize: 11 }}>变更前</Text>
                           <pre style={{ margin: '8px 0 0', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                            {JSON.stringify(selectedLog.oldValue, null, 2)}
+                            {(selectedLog.oldValue as any)?.toString() || JSON.stringify(selectedLog.oldValue)}
                           </pre>
                         </Card>
                       </Col>
                     )}
-                    {selectedLog.newValue && (
+                    {!!selectedLog.newValue && (
                       <Col span={12}>
                         <Card size="small" style={{ background: '#f6ffed', borderRadius: 8 }}>
                           <Text type="success" style={{ fontSize: 11 }}>变更后</Text>
                           <pre style={{ margin: '8px 0 0', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                            {JSON.stringify(selectedLog.newValue, null, 2)}
+                            {(selectedLog.newValue as any)?.toString() || JSON.stringify(selectedLog.newValue)}
                           </pre>
                         </Card>
                       </Col>

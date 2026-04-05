@@ -13,10 +13,14 @@ router.get('/', optionalAuth, postController.getPosts);
 router.get('/random', optionalAuth, postController.getRandomPosts);
 
 // POST /api/posts - 发布动态（需登录）
+// 支持两种方式：1. multipart/form-data 上传图片 2. JSON 格式传递图片 URL
 router.post('/', authenticate, uploadPostImages, postController.createPost);
 
 // GET /api/posts/favorites - 获取我的收藏（需登录）
 router.get('/favorites', authenticate, postController.getUserFavorites);
+
+// GET /api/posts/likes - 获取我的点赞（需登录)
+router.get('/likes', authenticate, postController.getUserLikes);
 
 // GET /api/posts/user/:userId - 获取指定用户的动态（可选登录）
 router.get('/user/:userId', optionalAuth, postController.getUserPosts);

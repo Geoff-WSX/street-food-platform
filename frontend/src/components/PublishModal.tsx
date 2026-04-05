@@ -1,12 +1,43 @@
-import { useState, useEffect } from 'react';
-import { Modal, Form, Input, Button, Upload, message, Typography, Space, Divider } from 'antd';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Modal, Form, Input, Button, Upload, message, Typography, Space } from 'antd';
 import { PlusOutlined, EnvironmentOutlined, LoadingOutlined, CloseOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { createPost } from '../api/post';
 import { checkContent } from '../api/comment';
+import { generateFoodCopy } from '../api/ai';
 import type { UploadFile } from 'antd/es/upload';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
+
+// 常量定义
+const MODAL_CONFIG = {
+  WIDTH: 520,
+  MAX_CONTENT_LENGTH: 1000,
+  MAX_ADDRESS_LENGTH: 200,
+  MAX_IMAGES: 9
+} as const;
+
+const AI_COPY_MESSAGES = {
+  EMPTY_KEYWORDS: '请先输入关键词',
+  GENERATE_SUCCESS: '文案生成成功！',
+  GENERATE_FAILED: '生成文案失败，请重试',
+  COPY_APPLIED: '文案已应用',
+  SERVICE_UNAVAILABLE: '内容审查服务暂时不可用，请文明发言'
+} as const;
+
+const ACCURACY_TIPS: Record<string, string> = {
+  high: '定位成功！地址已精确填充',
+  medium: '定位成功，地址已填充，请确认是否准确',
+  low: '定位成功，但地址可能不精确，请手动确认',
+  none: '定位成功，但地址获取失败，请手动输入'
+} as const;
+
+const COPY_CARD_STYLE = {
+  marginBottom: 16,
+  padding: 12,
+  background: '#f5f5f5',
+  borderRadius: 8
+} as const;
 
 interface Props {
   open: boolean;
@@ -21,16 +52,74 @@ export default function PublishModal({ open, onClose }: Props) {
   const [locationLoading, setLocationLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
 
-  // 重置表单和文件列表
+  // AI 文案生成状态 - 合并为单个状态对象
+  const [aiState, setAiState] = useState({
+    keywords: '',
+    isGenerating: false,
+    generatedCopy: ''
+  });
+
+  // 派生状态：是否显示文案卡片
+  const showCopyCard = useMemo(() => !!aiState.generatedCopy, [aiState.generatedCopy]);
+
+  // 重置表单和文件列表 - 添加条件检查避免无意义更新
   useEffect(() => {
     if (!open) {
       form.resetFields();
       setFileList([]);
       setIsPrivate(false);
+      // 只在有值时才更新，避免不必要的重渲染
+      if (aiState.keywords !== '' || aiState.generatedCopy !== '') {
+        setAiState({ keywords: '', isGenerating: false, generatedCopy: '' });
+      }
     }
-  }, [open, form]);
+  }, [open, form, aiState.keywords, aiState.generatedCopy]);
 
-  const getCurrentLocation = () => {
+  // 处理 AI 生成文案 - 修复重复 trim 调用
+  const handleGenerateCopy = useCallback(async () => {
+    const trimmedKeywords = aiState.keywords.trim();
+    if (!trimmedKeywords) {
+      void message.warning(AI_COPY_MESSAGES.EMPTY_KEYWORDS);
+      return;
+    }
+
+    setAiState(prev => ({ ...prev, isGenerating: true }));
+    try {
+      const response = await generateFoodCopy(trimmedKeywords);
+      if (response.data.success && response.data.data?.message) {
+        setAiState(prev => ({ ...prev, generatedCopy: response.data.data.message, isGenerating: false }));
+        void message.success(AI_COPY_MESSAGES.GENERATE_SUCCESS);
+      } else {
+        void message.error(AI_COPY_MESSAGES.GENERATE_FAILED);
+        setAiState(prev => ({ ...prev, isGenerating: false }));
+      }
+    } catch {
+      void message.error(AI_COPY_MESSAGES.GENERATE_FAILED);
+      setAiState(prev => ({ ...prev, isGenerating: false }));
+    }
+  }, [aiState.keywords]);
+
+  // 文案操作处理 - 合并为单个函数
+  const handleCopyAction = useCallback((action: 'apply' | 'regenerate' | 'discard') => {
+    switch (action) {
+      case 'apply':
+        if (aiState.generatedCopy) {
+          form.setFieldsValue({ content: aiState.generatedCopy });
+          setAiState(prev => ({ ...prev, generatedCopy: '' }));
+          void message.success(AI_COPY_MESSAGES.COPY_APPLIED);
+        }
+        break;
+      case 'regenerate':
+        void handleGenerateCopy();
+        break;
+      case 'discard':
+        setAiState(prev => ({ ...prev, generatedCopy: '' }));
+        break;
+    }
+  }, [aiState.generatedCopy, form, handleGenerateCopy]);
+
+  // 获取当前位置 - 使用常量对象
+  const getCurrentLocation = useCallback(() => {
     setLocationLoading(true);
     void message.loading({ content: '正在获取位置，请稍候...', key: 'location', duration: 0 });
 
@@ -53,26 +142,21 @@ export default function PublishModal({ open, onClose }: Props) {
             const details = data.data.details || {};
             const nearestPoi = details.nearestPoi;
 
-            // 构建更详细的地址
             let displayAddress = address;
             if (nearestPoi && !address.includes(nearestPoi)) {
               displayAddress = `${address}${nearestPoi}`;
             }
 
             form.setFieldsValue({ address: displayAddress });
-
-            // 根据精度给出不同的提示
-            const accuracyTips: Record<string, string> = {
-              high: '定位成功！地址已精确填充',
-              medium: '定位成功，地址已填充，请确认是否准确',
-              low: '定位成功，但地址可能不精确，请手动确认',
-              none: '定位成功，但地址获取失败，请手动输入'
-            };
-            void message.info({ content: accuracyTips[details.accuracy] || accuracyTips.medium, key: 'location', duration: 3 });
+            void message.info({
+              content: ACCURACY_TIPS[details.accuracy] || ACCURACY_TIPS.medium,
+              key: 'location',
+              duration: 3
+            });
           } else {
             throw new Error('未返回地址信息');
           }
-        } catch (error) {
+        } catch {
           void message.error({ content: '获取地址失败，请手动输入', key: 'location', duration: 2 });
         } finally {
           setLocationLoading(false);
@@ -100,7 +184,7 @@ export default function PublishModal({ open, onClose }: Props) {
         maximumAge: 60000
       }
     );
-  };
+  }, [form]);
 
   const handleSubmit = async (values: { content: string; address?: string }) => {
     if (fileList.length === 0) {
@@ -115,9 +199,8 @@ export default function PublishModal({ open, onClose }: Props) {
         void message.error(checkResult.data.message || '内容包含违规词汇，请修改后重试');
         return;
       }
-    } catch (error: unknown) {
-      // 审查失败时允许继续，但给出警告
-      void message.warning('内容审查服务暂时不可用，请文明发言');
+    } catch {
+      void message.warning(AI_COPY_MESSAGES.SERVICE_UNAVAILABLE);
     }
 
     setLoading(true);
@@ -134,6 +217,7 @@ export default function PublishModal({ open, onClose }: Props) {
       form.resetFields();
       setFileList([]);
       setIsPrivate(false);
+      setAiState({ keywords: '', isGenerating: false, generatedCopy: '' });
       onClose();
       navigate(`/post/${post.id}`);
     } finally {
@@ -146,30 +230,20 @@ export default function PublishModal({ open, onClose }: Props) {
       open={open}
       onCancel={onClose}
       footer={null}
-      width={560}
-      closeIcon={<CloseOutlined style={{ fontSize: 20 }} />}
+      width={MODAL_CONFIG.WIDTH}
+      closeIcon={<CloseOutlined style={{ fontSize: 18 }} />}
       style={{ top: 20 }}
       bodyStyle={{ maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}
     >
       {/* 头部 */}
-      <div style={{ marginBottom: 24, textAlign: 'center' }}>
-        <Title level={4} style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>
-          🍜 发布美食动态
-        </Title>
-        <Text type="secondary" style={{ fontSize: 13 }}>
-          分享你发现的街边美食
-        </Text>
+      <div style={{ marginBottom: 20, textAlign: 'center' }}>
+        <Text strong style={{ fontSize: 18, color: '#333' }}>发布美食动态</Text>
       </div>
 
       <Form form={form} layout="vertical" onFinish={handleSubmit}>
         {/* 图片上传 */}
         <Form.Item
-          label={
-            <Space>
-              <span style={{ fontWeight: 500 }}>美食图片</span>
-              <Text type="secondary" style={{ fontSize: 12 }}>1-9张</Text>
-            </Space>
-          }
+          label={`美食图片 (1-${MODAL_CONFIG.MAX_IMAGES}张)`}
           required
           style={{ marginBottom: 16 }}
         >
@@ -179,13 +253,12 @@ export default function PublishModal({ open, onClose }: Props) {
             beforeUpload={() => false}
             onChange={({ fileList: fl }) => setFileList(fl)}
             accept="image/*"
-            maxCount={9}
-            style={{ width: '100%' }}
+            maxCount={MODAL_CONFIG.MAX_IMAGES}
           >
-            {fileList.length < 9 && (
-              <div style={{ width: 104, height: 104 }}>
-                <PlusOutlined style={{ fontSize: 24, color: '#d9d9d9' }} />
-                <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>上传图片</div>
+            {fileList.length < MODAL_CONFIG.MAX_IMAGES && (
+              <div>
+                <PlusOutlined />
+                <div style={{ marginTop: 8 }}>上传</div>
               </div>
             )}
           </Upload>
@@ -193,90 +266,97 @@ export default function PublishModal({ open, onClose }: Props) {
 
         {/* 内容输入 */}
         <Form.Item
-          label={<span style={{ fontWeight: 500 }}>分享内容</span>}
+          label="分享内容"
           name="content"
-          rules={[{ required: true, message: '请填写分享内容' }, { max: 1000, message: '最多1000字' }]}
+          rules={[{ required: true, message: '请填写分享内容' }]}
           style={{ marginBottom: 16 }}
         >
           <Input.TextArea
             rows={4}
             placeholder="这道美食怎么样？味道如何？有什么特别的推荐理由？..."
             showCount
-            maxLength={1000}
-            style={{ borderRadius: 8 }}
+            maxLength={MODAL_CONFIG.MAX_CONTENT_LENGTH}
           />
         </Form.Item>
 
-        {/* 隐私设置 */}
-        <Form.Item style={{ marginBottom: 16 }}>
-          <Button
-            type={isPrivate ? 'primary' : 'default'}
-            onClick={() => setIsPrivate(!isPrivate)}
-            style={{ borderRadius: 8 }}
-          >
-            {isPrivate ? '🔒 仅自己可见' : '🌐 公开'}
-          </Button>
-          <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
-            {isPrivate ? '开启后只有你能看到这条动态' : '关闭后所有人都能看到'}
-          </Text>
-        </Form.Item>
-
-        <Divider style={{ margin: '16px 0' }} />
-
-        {/* 位置信息 */}
+        {/* AI 文案生成 */}
         <div style={{ marginBottom: 16 }}>
-          <Space style={{ marginBottom: 8 }}>
-            <span style={{ fontWeight: 500 }}>位置信息</span>
-          </Space>
-
-          <Form.Item name="address" style={{ marginBottom: 8 }}>
-            <Input.TextArea
-              placeholder="填写店铺地址（选填）"
-              autoSize={{ minRows: 2, maxRows: 3 }}
-              maxLength={200}
-              style={{ borderRadius: 8 }}
+          <Space.Compact style={{ width: '100%' }}>
+            <Input
+              placeholder="输入关键词让AI帮你写文案..."
+              value={aiState.keywords}
+              onChange={(e) => setAiState(prev => ({ ...prev, keywords: e.target.value }))}
+              onPressEnter={handleGenerateCopy}
             />
-          </Form.Item>
-
-          <Button
-            icon={locationLoading ? <LoadingOutlined /> : <EnvironmentOutlined />}
-            onClick={getCurrentLocation}
-            loading={locationLoading}
-            block
-            size="large"
-            style={{
-              borderRadius: 8,
-              height: 40,
-              fontSize: 14
-            }}
-          >
-            {locationLoading ? '正在获取位置...' : '📍 获取当前位置'}
-          </Button>
+            <Button
+              type="primary"
+              onClick={handleGenerateCopy}
+              loading={aiState.isGenerating}
+            >
+              AI生成
+            </Button>
+          </Space.Compact>
         </div>
 
-        <Divider style={{ margin: '16px 0' }} />
+        {/* 生成的文案预览 */}
+        {showCopyCard && (
+          <div style={COPY_CARD_STYLE}>
+            <div style={{ marginBottom: 8, fontSize: 12, color: '#666' }}>AI生成文案：</div>
+            <div style={{ marginBottom: 12, whiteSpace: 'pre-wrap', fontSize: 14 }}>
+              {aiState.generatedCopy}
+            </div>
+            <Space>
+              <Button size="small" type="primary" onClick={() => handleCopyAction('apply')}>使用</Button>
+              <Button size="small" onClick={() => handleCopyAction('regenerate')} loading={aiState.isGenerating}>重新生成</Button>
+              <Button size="small" onClick={() => handleCopyAction('discard')}>丢弃</Button>
+            </Space>
+          </div>
+        )}
+
+        {/* 位置信息 */}
+        <Form.Item name="address" style={{ marginBottom: 12 }}>
+          <Input.TextArea
+            placeholder="填写店铺地址（选填）"
+            autoSize={{ minRows: 2, maxRows: 3 }}
+            maxLength={MODAL_CONFIG.MAX_ADDRESS_LENGTH}
+          />
+        </Form.Item>
+
+        <Button
+          icon={locationLoading ? <LoadingOutlined /> : <EnvironmentOutlined />}
+          onClick={getCurrentLocation}
+          loading={locationLoading}
+          block
+          style={{ marginBottom: 16 }}
+        >
+          获取当前位置
+        </Button>
+
+        {/* 隐私设置 */}
+        <Space style={{ marginBottom: 16 }}>
+          <Button
+            size="small"
+            type={isPrivate ? 'primary' : 'default'}
+            onClick={() => setIsPrivate(!isPrivate)}
+          >
+            {isPrivate ? '私密' : '公开'}
+          </Button>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {isPrivate ? '仅自己可见' : '所有人可见'}
+          </Text>
+        </Space>
 
         {/* 发布按钮 */}
         <Form.Item style={{ marginBottom: 0 }}>
-          <Space direction="vertical" style={{ width: '100%' }} size={12}>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={loading}
-              block
-              size="large"
-              style={{
-                height: 44,
-                fontSize: 15,
-                fontWeight: 500,
-                borderRadius: 8,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                border: 'none'
-              }}
-            >
-              {loading ? '发布中...' : '🎉 发布动态'}
-            </Button>
-          </Space>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={loading}
+            block
+            size="large"
+          >
+            {loading ? '发布中...' : '发布动态'}
+          </Button>
         </Form.Item>
       </Form>
     </Modal>

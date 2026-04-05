@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AuthRequest } from '../types';
 import prisma from '../config/database';
 import { successResponse, errorResponse } from '../utils/response';
+import { buildPinyinSearchCondition } from '../utils/pinyin';
 
 /**
  * 全局搜索
@@ -28,13 +29,16 @@ export const search = async (req: AuthRequest, res: Response) => {
 
     // 搜索用户
     if (type === 'all' || type === 'users') {
+      // 构建拼音搜索条件
+      const userSearchConditions = [
+        ...buildPinyinSearchCondition(['username'], keyword),
+        ...buildPinyinSearchCondition(['bio'], keyword),
+      ];
+
       const [users, totalUsers] = await Promise.all([
         prisma.user.findMany({
           where: {
-            OR: [
-              { username: { contains: keyword } },
-              { bio: { contains: keyword } },
-            ],
+            OR: userSearchConditions,
             isActive: true,
           },
           select: {
@@ -57,10 +61,7 @@ export const search = async (req: AuthRequest, res: Response) => {
         }),
         prisma.user.count({
           where: {
-            OR: [
-              { username: { contains: keyword } },
-              { bio: { contains: keyword } },
-            ],
+            OR: userSearchConditions,
             isActive: true,
           },
         }),
@@ -82,13 +83,16 @@ export const search = async (req: AuthRequest, res: Response) => {
 
     // 搜索动态
     if (type === 'all' || type === 'posts') {
+      // 构建拼音搜索条件
+      const postSearchConditions = [
+        ...buildPinyinSearchCondition(['content'], keyword),
+        ...buildPinyinSearchCondition(['address'], keyword),
+      ];
+
       const [posts, totalPosts] = await Promise.all([
         prisma.post.findMany({
           where: {
-            OR: [
-              { content: { contains: keyword } },
-              { address: { contains: keyword } },
-            ],
+            OR: postSearchConditions,
             isPrivate: false, // 只搜索公开动态
           },
           include: {
@@ -110,10 +114,7 @@ export const search = async (req: AuthRequest, res: Response) => {
         }),
         prisma.post.count({
           where: {
-            OR: [
-              { content: { contains: keyword } },
-              { address: { contains: keyword } },
-            ],
+            OR: postSearchConditions,
             isPrivate: false,
           },
         }),
@@ -161,12 +162,14 @@ export const searchUsers = async (req: Request, res: Response) => {
 
     const keyword = query.trim();
 
+    // 构建拼音搜索条件
+    const searchConditions = [
+      ...buildPinyinSearchCondition(['username'], keyword),
+    ];
+
     const users = await prisma.user.findMany({
       where: {
-        OR: [
-          { username: { startsWith: keyword } },
-          { username: { contains: keyword } },
-        ],
+        OR: searchConditions,
         isActive: true,
       },
       select: {
@@ -211,13 +214,16 @@ export const searchPosts = async (req: Request, res: Response) => {
     const keyword = query.trim();
     const skip = (page - 1) * pageSize;
 
+    // 构建拼音搜索条件
+    const searchConditions = [
+      ...buildPinyinSearchCondition(['content'], keyword),
+      ...buildPinyinSearchCondition(['address'], keyword),
+    ];
+
     const [posts, total] = await Promise.all([
       prisma.post.findMany({
         where: {
-          OR: [
-            { content: { contains: keyword } },
-            { address: { contains: keyword } },
-          ],
+          OR: searchConditions,
           isPrivate: false,
         },
         include: {
@@ -238,10 +244,7 @@ export const searchPosts = async (req: Request, res: Response) => {
       }),
       prisma.post.count({
         where: {
-          OR: [
-            { content: { contains: keyword } },
-            { address: { contains: keyword } },
-          ],
+          OR: searchConditions,
           isPrivate: false,
         },
       }),

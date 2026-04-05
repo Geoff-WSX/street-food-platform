@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { List, Avatar, Button, Input, message, Typography, Divider, Popconfirm, Tag } from 'antd';
 import {
   UserOutlined, HeartOutlined, HeartFilled, MessageOutlined,
   DeleteOutlined, LoadingOutlined
 } from '@ant-design/icons';
-import { getComments, createComment, deleteComment, toggleCommentLike, getCommentReplies, type Comment } from '../api/comment';
-import { checkContent } from '../api/comment';
+import { getComments, createComment, deleteComment, toggleCommentLike, getCommentReplies, checkContent, type Comment } from '../api/comment';
 import { useAuthStore } from '../store/auth';
 import { getErrorMessage } from '../utils/error';
 
@@ -32,10 +31,6 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
   const [expandedReplies, setExpandedReplies] = useState<Set<number>>(new Set());
   const [loadingReplies, setLoadingReplies] = useState<Set<number>>(new Set());
 
-  useEffect(() => {
-    loadComments();
-  }, [postId]);
-
   // 处理评论高亮和滚动
   useEffect(() => {
     if (highlightCommentId) {
@@ -55,7 +50,7 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
     }
   }, [highlightCommentId, comments]);
 
-  const loadComments = async (pageNum: number = 1) => {
+  const loadComments = useCallback(async (pageNum: number = 1) => {
     try {
       if (pageNum === 1) {
         setLoading(true);
@@ -74,7 +69,11 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
     } finally {
       setLoading(false);
     }
-  };
+  }, [postId]);
+
+  useEffect(() => {
+    loadComments();
+  }, [postId, loadComments]);
 
   const loadMoreReplies = async (commentId: number) => {
     try {
@@ -155,14 +154,32 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
     }
   };
 
-  const handleDeleteComment = async (commentId: number) => {
+  const handleDeleteComment = async (commentId: number, parentId?: number) => {
     try {
       await deleteComment(commentId);
+
       setComments(prev => {
+        // 如果是回复，从父评论的 replies 中移除
+        if (parentId) {
+          return prev.map(c => {
+            if (c.id === parentId) {
+              const newReplies = (c.replies || []).filter(r => r.id !== commentId);
+              return {
+                ...c,
+                replies: newReplies,
+                replyCount: Math.max((c.replyCount || 1) - 1, 0),
+              };
+            }
+            return c;
+          });
+        }
+
+        // 如果是主评论，直接移除
         const newComments = prev.filter(c => c.id !== commentId);
         onCommentCountChange?.(newComments.length);
         return newComments;
       });
+
       void message.success('删除成功');
     } catch (error: unknown) {
       void message.error(getErrorMessage(error));
@@ -349,7 +366,7 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
               {isMyComment && (
                 <Popconfirm
                   title="确定删除这条评论？"
-                  onConfirm={() => handleDeleteComment(comment.id)}
+                  onConfirm={() => handleDeleteComment(comment.id, comment.parentId || undefined)}
                   okText="删除"
                   cancelText="取消"
                 >

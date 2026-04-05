@@ -5,6 +5,8 @@ import { getRandomPosts } from '../api/post';
 import PostCard from '../components/PostCard';
 import FoodBackground from '../components/FoodBackground';
 import { getAnimationStyle, getRandomFoods } from '../utils/foodAnimations';
+import { parseImages } from '../utils/images';
+import { useScreenSize } from '../hooks/useScreenSize';
 import type { Post } from '../types';
 
 const { Title, Text } = Typography;
@@ -128,15 +130,17 @@ const PostSkeleton = () => (
         overflow: 'hidden',
         height: '100%'
       }}
+      bodyStyle={{ padding: 12 }}
     >
-      <Skeleton.Image active style={{ width: '100%', height: 200, borderRadius: 12 }} />
-      <Skeleton active paragraph={{ rows: 2 }} style={{ marginTop: 16 }} />
+      <Skeleton.Image active style={{ width: '100%', height: 180, borderRadius: 12 }} />
+      <Skeleton active paragraph={{ rows: 2 }} style={{ marginTop: 12 }} />
       <Skeleton active avatar paragraph={{ rows: 1 }} style={{ marginTop: 12 }} />
     </Card>
   </Col>
 );
 
 export default function HomePage() {
+  const screenSize = useScreenSize();
   const [posts, setPosts] = useState<Post[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
@@ -150,21 +154,26 @@ export default function HomePage() {
         setRefreshing(true);
       }
 
+      console.log('🔄 开始加载随机动态...');
       // 始终请求20条，不排除已显示的，允许重复推荐
       const data = await getRandomPosts({ limit: 20 });
+      console.log('✅ API响应:', data);
 
       const validPosts = (data.data || []).filter((post) => {
+        const images = parseImages(post.images);
         return post &&
           post.content &&
           post.images &&
-          Array.isArray(post.images) &&
-          post.images.length > 0 &&
+          images.length > 0 &&
           post.user &&
           post.user.username;
       });
 
+      console.log('📦 有效动态数量:', validPosts.length, '/', (data.data || []).length);
       setPosts(validPosts);
     } catch (error) {
+      // 静默处理加载失败，保持当前帖子列表
+      console.error('❌ 加载动态失败:', error);
     } finally {
       if (showLoading) {
         setInitialLoading(false);
@@ -196,7 +205,8 @@ export default function HomePage() {
           });
 
           setPosts(validPosts);
-        } catch (error) {
+        } catch {
+          // 静默处理加载失败
         } finally {
           setRefreshing(false);
         }
@@ -235,96 +245,113 @@ export default function HomePage() {
 
   if (initialLoading) {
     return (
-      <div style={{ padding: '24px 0 80px', background: 'linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%)', minHeight: '60vh' }}>
-        <div style={{ marginBottom: 32 }}>
-          <Title level={2} style={{ margin: 0, fontSize: 28, fontWeight: 700, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            🔥 发现美食
+      <div style={{ padding: screenSize.isSmallMobile ? '16px 0 60px' : screenSize.isMobile ? '20px 0 70px' : '24px 0 80px', background: 'linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%)', minHeight: '60vh' }}>
+        <div style={{ marginBottom: screenSize.isMobile ? 16 : 20, position: 'relative', zIndex: 1, padding: screenSize.isSmallMobile ? '0 12px' : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: screenSize.isSmallMobile ? 8 : 12, marginBottom: 8 }}>
+            {getRandomFoods(screenSize.isMobile ? 3 : 5).map((food, i) => (
+              <span
+                key={i}
+                style={{
+                  fontSize: screenSize.isSmallMobile ? 18 : 24,
+                  display: 'inline-block',
+                  ...getAnimationStyle('float', 4 + i * 0.5, i * 0.2),
+                }}
+              >
+                {food}
+              </span>
+            ))}
+          </div>
+          <Title level={2} style={{ margin: 0, fontSize: screenSize.isSmallMobile ? 20 : screenSize.isMobile ? 22 : 26, fontWeight: 700 }}>
+            <span style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+              🔥 发现美食
+            </span>
           </Title>
-          <Text type="secondary" style={{ fontSize: 15, marginLeft: 4 }}>加载精彩内容中...</Text>
+          <Text type="secondary" style={{ fontSize: screenSize.isSmallMobile ? 12 : 13, color: '#8c8c8c' }}>
+            加载精彩内容中...
+          </Text>
         </div>
-        <Row gutter={[16, 16]}>
-          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <PostSkeleton key={i} />)}
+        <Row gutter={[screenSize.isSmallMobile ? 12 : screenSize.isMobile ? 14 : 16, screenSize.isSmallMobile ? 12 : 16]}>
+          {[1, 2, 3, 4, 5, 6].map(i => <PostSkeleton key={i} />)}
         </Row>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '24px 0 80px', background: 'linear-gradient(180deg, #fff5f0 0%, #f8f9fa 50%, #ffffff 100%)', minHeight: '80vh', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ padding: screenSize.isSmallMobile ? '16px 0 60px' : screenSize.isMobile ? '20px 0 70px' : '24px 0 80px', background: 'linear-gradient(180deg, #fff5f0 0%, #f8f9fa 50%, #ffffff 100%)', minHeight: '80vh', position: 'relative', overflow: 'hidden' }}>
       {/* 美食背景 */}
-      <FoodBackground count={20} minSize={24} maxSize={48} />
+      <FoodBackground count={screenSize.isMobile ? 12 : 20} minSize={screenSize.isSmallMobile ? 16 : 24} maxSize={screenSize.isSmallMobile ? 32 : 48} />
 
       {/* 页面标题 */}
-      <div style={{ marginBottom: 24, position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
-          {getRandomFoods(5).map((food, i) => (
+      <div style={{ marginBottom: screenSize.isMobile ? 16 : 20, position: 'relative', zIndex: 1, padding: screenSize.isSmallMobile ? '0 12px' : 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: screenSize.isSmallMobile ? 8 : 12, marginBottom: 8 }}>
+          {getRandomFoods(screenSize.isMobile ? 3 : 5).map((food, i) => (
             <span
               key={i}
               style={{
-                fontSize: 36,
+                fontSize: screenSize.isSmallMobile ? 18 : 24,
                 display: 'inline-block',
-                ...getAnimationStyle('bounceIn', 0.6, i * 0.1),
+                ...getAnimationStyle('float', 4 + i * 0.5, i * 0.2),
               }}
             >
               {food}
             </span>
           ))}
         </div>
-        <Title level={2} style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>
+        <Title level={2} style={{ margin: 0, fontSize: screenSize.isSmallMobile ? 20 : screenSize.isMobile ? 22 : 26, fontWeight: 700 }}>
           <span style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
             🔥 发现美食
           </span>
         </Title>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
-          <div style={{ height: 1, flex: 1, maxWidth: 100, background: 'linear-gradient(to right, #ff6b6b, transparent)' }} />
-          <Text type="secondary" style={{ fontSize: 15, color: '#8c8c8c', fontWeight: 400 }}>
-            ✨ 随机推荐精彩美食动态，点击刷新发现更多
-          </Text>
-        </div>
+        <Text type="secondary" style={{ fontSize: screenSize.isSmallMobile ? 12 : 13, color: '#8c8c8c' }}>
+          {screenSize.isMobile ? '随机推荐美食动态' : '✨ 随机推荐精彩美食动态，点击刷新发现更多'}
+        </Text>
       </div>
 
       {/* 筛选条件 */}
       <Card
         style={{
-          marginBottom: 24,
-          borderRadius: 16,
+          marginBottom: screenSize.isMobile ? 16 : 20,
+          margin: screenSize.isSmallMobile ? '0 12px 16px' : '0 0 20px',
+          borderRadius: screenSize.isMobile ? 10 : 12,
           border: '1px solid #e8e8e8',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
           background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
         }}
-        bodyStyle={{ padding: '16px 20px' }}
+        bodyStyle={{ padding: screenSize.isSmallMobile ? '10px 12px' : '12px 16px' }}
       >
-        <Space size={20} wrap>
+        <Space size={screenSize.isMobile ? 12 : 20} wrap>
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
-            padding: '8px 16px',
+            gap: screenSize.isSmallMobile ? 6 : 8,
+            padding: screenSize.isSmallMobile ? '6px 12px' : '8px 16px',
             background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
-            borderRadius: 12
+            borderRadius: screenSize.isMobile ? 10 : 12
           }}>
-            <EnvironmentOutlined style={{ color: '#667eea', fontSize: 16 }} />
-            <Text strong style={{ fontSize: 15, color: '#262626' }}>地区筛选</Text>
+            <EnvironmentOutlined style={{ color: '#667eea', fontSize: screenSize.isSmallMobile ? 14 : 16 }} />
+            <Text strong style={{ fontSize: screenSize.isSmallMobile ? 13 : 15, color: '#262626' }}>地区筛选</Text>
           </div>
           <TreeSelect
             value={selectedLocation}
             onChange={setSelectedLocation}
             treeData={LOCATION_DATA}
-            placeholder="选择地区发现美食"
-            style={{ width: 220 }}
-            size="large"
+            placeholder={screenSize.isMobile ? "选择地区" : "选择地区发现美食"}
+            style={{ width: screenSize.isSmallMobile ? 140 : screenSize.isMobile ? 180 : 220 }}
+            size={screenSize.isMobile ? "middle" : "large"}
             allowClear
             showSearch
             treeDefaultExpandAll={false}
+            dropdownStyle={{ minWidth: screenSize.isSmallMobile ? 200 : 260 }}
           />
           {selectedLocation && (
             <Tag
               closable
               onClose={() => setSelectedLocation('')}
               style={{
-                borderRadius: 16,
-                padding: '6px 14px',
-                fontSize: 14,
+                borderRadius: screenSize.isMobile ? 12 : 16,
+                padding: screenSize.isSmallMobile ? '4px 10px' : '6px 14px',
+                fontSize: screenSize.isSmallMobile ? 12 : 14,
                 background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
                 color: '#667eea',
                 border: '1px solid rgba(102, 126, 234, 0.2)'
@@ -333,21 +360,21 @@ export default function HomePage() {
               📍 {selectedLocation.split('-').pop()}
             </Tag>
           )}
-          <Divider type="vertical" style={{ margin: 0, height: 24 }} />
+          <Divider type="vertical" style={{ margin: 0, height: screenSize.isSmallMobile ? 20 : 24 }} />
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
-            padding: '8px 16px',
+            gap: screenSize.isSmallMobile ? 6 : 8,
+            padding: screenSize.isSmallMobile ? '6px 12px' : '8px 16px',
             background: 'linear-gradient(135deg, rgba(255, 77, 79, 0.1) 0%, rgba(255, 77, 79, 0.05) 100%)',
-            borderRadius: 12,
+            borderRadius: screenSize.isMobile ? 10 : 12,
             border: '1px solid rgba(255, 77, 79, 0.2)'
           }}>
             <FireOutlined style={{ color: '#ff4d4f' }} />
             <Text strong style={{ fontSize: 15, color: '#262626' }}>
               {filteredPosts.length}
             </Text>
-            <Text style={{ fontSize: 14, color: '#8c8c8c' }}>条美食动态</Text>
+            <Text style={{ fontSize: screenSize.isSmallMobile ? 12 : 14, color: '#8c8c8c' }}>条美食动态</Text>
           </div>
         </Space>
       </Card>
@@ -355,32 +382,31 @@ export default function HomePage() {
       {/* 空状态 */}
       {filteredPosts.length === 0 ? (
         <Card style={{
+          margin: screenSize.isSmallMobile ? '0 12px' : 0,
           textAlign: 'center',
-          padding: 80,
-          borderRadius: 20,
+          padding: screenSize.isSmallMobile ? 40 : screenSize.isMobile ? 60 : 80,
+          borderRadius: screenSize.isMobile ? 16 : 20,
           border: '2px dashed #e8e8e8',
           background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
         }}>
           <Empty
-            imageStyle={{ height: 120 }}
+            imageStyle={{ height: screenSize.isMobile ? 80 : 120 }}
             description={
-              <Space direction="vertical" size={16}>
-                <div style={{ fontSize: 64 }}>🍽️</div>
-                <Text style={{ fontSize: 18, color: '#595959', fontWeight: 500 }}>
+              <Space direction="vertical" size={screenSize.isMobile ? 12 : 16}>
+                <div style={{ fontSize: screenSize.isMobile ? 48 : 64 }}>🍽️</div>
+                <Text style={{ fontSize: screenSize.isSmallMobile ? 15 : screenSize.isMobile ? 16 : 18, color: '#595959', fontWeight: 500 }}>
                   {selectedLocation ? `${selectedLocation.split('-').pop()}暂无美食动态` : '暂无美食动态'}
                 </Text>
-                <Text type="secondary" style={{ fontSize: 15 }}>
+                <Text type="secondary" style={{ fontSize: screenSize.isSmallMobile ? 13 : 15 }}>
                   {selectedLocation ? '🔄 试试切换其他地区' : '✨ 成为第一个分享美食的人吧！'}
                 </Text>
                 {selectedLocation && (
                   <Button
                     type="primary"
                     onClick={() => setSelectedLocation('')}
+                    size={screenSize.isMobile ? "middle" : "large"}
                     style={{
-                      borderRadius: 20,
-                      height: 40,
-                      paddingLeft: 24,
-                      paddingRight: 24,
+                      borderRadius: screenSize.isMobile ? 16 : 20,
                       fontWeight: 500
                     }}
                   >
@@ -394,7 +420,7 @@ export default function HomePage() {
       ) : (
         <>
           {/* 动态列表 */}
-          <Row gutter={[20, 20]}>
+          <Row gutter={[screenSize.isSmallMobile ? 12 : screenSize.isMobile ? 16 : 20, screenSize.isSmallMobile ? 12 : 16]}>
             {filteredPosts.map((post, index) => (
               <Col key={post.id} xs={24} sm={12} md={8} lg={6} style={{ display: 'flex', animation: `fadeInUp 0.5s ease ${index * 0.1}s both` }}>
                 <div style={{ width: '100%', display: 'flex' }}>
@@ -408,16 +434,16 @@ export default function HomePage() {
           {filteredPosts.length > 0 && (
             <div style={{
               textAlign: 'center',
-              marginTop: 40,
-              padding: '24px 0',
+              marginTop: screenSize.isMobile ? 24 : 40,
+              padding: screenSize.isMobile ? '16px 0' : '24px 0',
               background: 'linear-gradient(to right, transparent, rgba(102, 126, 234, 0.1), transparent)'
             }}>
-              <Space size={12}>
-                <div style={{ width: 40, height: 1, background: 'linear-gradient(to right, transparent, #d9d9d9, transparent)' }} />
-                <Text type="secondary" style={{ fontSize: 14, color: '#8c8c8c' }}>
-                  💡 点击刷新按钮发现更多美食
+              <Space size={screenSize.isSmallMobile ? 8 : 12}>
+                <div style={{ width: screenSize.isSmallMobile ? 30 : 40, height: 1, background: 'linear-gradient(to right, transparent, #d9d9d9, transparent)' }} />
+                <Text type="secondary" style={{ fontSize: screenSize.isSmallMobile ? 12 : 14, color: '#8c8c8c' }}>
+                  💡 {screenSize.isMobile ? '下拉刷新发现更多' : '点击刷新按钮发现更多美食'}
                 </Text>
-                <div style={{ width: 40, height: 1, background: 'linear-gradient(to right, transparent, #d9d9d9, transparent)' }} />
+                <div style={{ width: screenSize.isSmallMobile ? 30 : 40, height: 1, background: 'linear-gradient(to right, transparent, #d9d9d9, transparent)' }} />
               </Space>
             </div>
           )}
@@ -427,7 +453,7 @@ export default function HomePage() {
       {/* 右下角刷新按钮 */}
       <FloatButton.Group
         shape="circle"
-        style={{ right: 24, bottom: 24, zIndex: 1001 }}
+        style={{ right: screenSize.isSmallMobile ? 16 : 24, bottom: screenSize.isSmallMobile ? 70 : 24, zIndex: 1001 }}
       >
         <FloatButton
           icon={<ReloadOutlined spin={refreshing} />}

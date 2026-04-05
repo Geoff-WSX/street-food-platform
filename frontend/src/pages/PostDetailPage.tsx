@@ -7,6 +7,7 @@ import {
 } from '@ant-design/icons';
 import { getPost, toggleLike, toggleFavorite, deletePost } from '../api/post';
 import { useAuthStore } from '../store/auth';
+import { parseImages } from '../utils/images';
 import type { Post } from '../types';
 import CommentSection from '../components/CommentSection';
 
@@ -25,12 +26,7 @@ export default function PostDetailPage() {
 
   // 处理 images 格式：确保是数组
   const processedImages = useMemo(() => {
-    if (!post?.images) return [];
-    if (Array.isArray(post.images)) return post.images;
-    if (typeof post.images === 'string') {
-      return post.images.split(',').filter(Boolean);
-    }
-    return [];
+    return parseImages(post?.images);
   }, [post?.images]);
 
   useEffect(() => {

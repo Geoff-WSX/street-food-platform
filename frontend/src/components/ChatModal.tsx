@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Modal, Input, Button, message, Avatar, Typography, Space, Empty, Spin, Tag, Dropdown } from 'antd';
+import { Modal, Input, Button, message, Avatar, Typography, Space, Empty, Spin, Tag, Dropdown, type MenuProps } from 'antd';
 import { SendOutlined, UserOutlined, ArrowLeftOutlined, WarningOutlined, MoreOutlined, StopOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getMessages, sendMessage, checkCanSendMessage, markAsRead, deleteMessage, blockUser, type Message } from '../api/message';
 import { useAuthStore } from '../store/auth';
 import { getErrorMessage } from '../utils/error';
 import { useMessageStore } from '../store/message';
 import ReportModal from './ReportModal';
-import type { MenuProps } from 'antd';
 
 const { Text } = Typography;
 
@@ -358,7 +357,8 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
         onClose={() => setReportModalOpen(false)}
         reportedUserId={otherUser.id}
         reportedUsername={otherUser.username}
-        chatRecords={messages.map(msg => ({
+        chatRecords={messages.map((msg, index) => ({
+          id: index, // 添加必需的 id 字段
           senderId: msg.senderId,
           senderUsername: isMe(msg) ? currentUser?.username || '我' : otherUser.username,
           content: msg.content,

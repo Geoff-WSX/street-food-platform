@@ -40,6 +40,9 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     if (!content || content.trim().length === 0) {
       return errorResponse(res, '消息内容不能为空', 'EMPTY_CONTENT');
     }
+    if (content.length > 1000) {
+      return errorResponse(res, '消息内容不能超过1000个字符', 'CONTENT_TOO_LONG');
+    }
     const message = await messageService.sendMessage(req.user!.userId, receiverId, content.trim());
     return successResponse(res, message, '发送成功');
   } catch (error: unknown) {
@@ -157,5 +160,35 @@ export const deleteConversation = async (req: AuthRequest, res: Response) => {
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '操作失败';
     return errorResponse(res, errorMessage, 'DELETE_CONVERSATION_FAILED');
+  }
+};
+
+// 撤回消息（2分钟内）
+export const recallMessage = async (req: AuthRequest, res: Response) => {
+  try {
+    const messageId = parseInt(req.params.messageId);
+    if (isNaN(messageId)) {
+      return errorResponse(res, '无效的消息ID', 'INVALID_PARAM');
+    }
+    const result = await messageService.recallMessage(messageId, req.user!.userId);
+    return successResponse(res, result);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败';
+    return errorResponse(res, errorMessage, 'RECALL_MESSAGE_FAILED');
+  }
+};
+
+// 批量删除消息
+export const batchDeleteMessages = async (req: AuthRequest, res: Response) => {
+  try {
+    const { messageIds } = req.body;
+    if (!Array.isArray(messageIds)) {
+      return errorResponse(res, 'messageIds 必须是数组', 'INVALID_PARAM');
+    }
+    const result = await messageService.batchDeleteMessages(messageIds, req.user!.userId);
+    return successResponse(res, result);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败';
+    return errorResponse(res, errorMessage, 'BATCH_DELETE_FAILED');
   }
 };

@@ -13,19 +13,22 @@ import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import RankingPage from './pages/RankingPage';
 import MessagesPage from './pages/MessagesPage';
-import SwipePage from './pages/SwipePage';
 import AdminPage from './pages/AdminPage';
 import ReportsPage from './pages/ReportsPage';
 import AIAssistantPage from './pages/AIAssistantPage';
 import { useAuthStore } from './store/auth';
 import { getMe } from './api/user';
 import { wsService, requestNotificationPermission } from './services/websocket';
+import { useScreenSize } from './hooks/useScreenSize';
 import './styles/backgrounds.css';
+import './styles/foodAnimations.css';
+import './styles/foodTheme.css';
 
 const { Content } = Layout;
 
 function AppContent() {
   const location = useLocation();
+  const screenSize = useScreenSize();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const updateUser = useAuthStore((s) => s.updateUser);
   const [publishModalOpen, setPublishModalOpen] = useState(false);
@@ -64,12 +67,16 @@ function AppContent() {
   }, [location.pathname, isLoggedIn]);
 
   // 监听路由变化，控制弹窗显示
+  // 使用 setTimeout 避免在 effect 中同步调用 setState
   useEffect(() => {
     if (shouldOpenFromPath && location.pathname !== handledPath) {
-      setManualOpen(true);
-      setHandledPath(location.pathname);
-      // 替换历史记录，避免用户点击后退时再次打开弹窗
-      window.history.replaceState({}, '', '/');
+      const timer = setTimeout(() => {
+        setManualOpen(true);
+        setHandledPath(location.pathname);
+        // 替换历史记录，避免用户点击后退时再次打开弹窗
+        window.history.replaceState({}, '', '/');
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [shouldOpenFromPath, location.pathname, handledPath]);
 
@@ -88,8 +95,6 @@ function AppContent() {
         return 'home-page-bg';
       case '/ranking':
         return 'ranking-page-bg';
-      case '/swipe':
-        return 'swipe-page-bg';
       case '/profile':
         return 'profile-page-bg';
       case '/messages':
@@ -115,10 +120,14 @@ function AppContent() {
           onSearchClick={() => setSearchModalOpen(true)}
         />
       )}
-        <Content style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: location.pathname === '/login' ? '0' : '0 24px' }}>
+        <Content style={{
+          maxWidth: 1200,
+          margin: '0 auto',
+          width: '100%',
+          padding: location.pathname === '/login' ? '0' : `0 ${screenSize.isSmallMobile ? 12 : screenSize.isMobile ? 16 : 24}px`
+        }}>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/swipe" element={<SwipePage />} />
             <Route path="/post/:id" element={<PostDetailPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/ranking" element={<RankingPage />} />
@@ -145,7 +154,20 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ConfigProvider locale={zhCN} theme={{ token: { colorPrimary: '#fa541c' } }}>
+    <ConfigProvider
+      locale={zhCN}
+      theme={{
+        token: {
+          colorPrimary: '#ff6b35',
+          colorSuccess: '#52c41a',
+          colorWarning: '#faad14',
+          colorError: '#ff4d4f',
+          colorInfo: '#1890ff',
+          borderRadius: 12,
+          fontSize: 14,
+        },
+      }}
+    >
       <AntdApp>
         <BrowserRouter>
           <AppContent />

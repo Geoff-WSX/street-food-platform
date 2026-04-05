@@ -1,19 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, Upload, Button, message, Space, Tag } from 'antd';
+import { Modal, Form, Input, Select, Upload, Button, message, Space, Tag, type UploadFile } from 'antd';
 import { PlusOutlined, LoadingOutlined } from '@ant-design/icons';
-import type { UploadFile } from 'antd';
-import { getReportTypes, createReport } from '../api/report';
-import type { ReportType } from '../api/report';
+import { getReportTypes, createReport, type ReportType } from '../api/report';
 
 const { TextArea } = Input;
 const { Option } = Select;
+
+interface ChatRecord {
+  id: number;
+  content: string;
+  createdAt: string;
+  senderId: number;
+}
 
 interface Props {
   open: boolean;
   onClose: () => void;
   reportedUserId: number;
   reportedUsername: string;
-  chatRecords?: any[];
+  chatRecords?: ChatRecord[];
 }
 
 export default function ReportModal({ open, onClose, reportedUserId, reportedUsername, chatRecords = [] }: Props) {
@@ -37,7 +42,7 @@ export default function ReportModal({ open, onClose, reportedUserId, reportedUse
     }
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: { type: string; description: string }) => {
     setLoading(true);
     try {
       // 上传图片
@@ -68,7 +73,7 @@ export default function ReportModal({ open, onClose, reportedUserId, reportedUse
         type: values.type,
         description: values.description,
         images,
-        chatRecords: chatRecords.length > 0 ? chatRecords : undefined,
+        chatRecords: chatRecords.length > 0 ? chatRecords as any : undefined,
       });
 
       void message.success('举报已提交，感谢您的反馈');

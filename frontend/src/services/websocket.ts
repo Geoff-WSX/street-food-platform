@@ -3,9 +3,29 @@ import { useMessageStore } from '../store/message';
 
 type MessageType = 'notification' | 'message' | 'ping' | 'connected' | 'error';
 
+interface NotificationData {
+  id: number;
+  type: string;
+  actor?: {
+    id: number;
+    username: string;
+    avatar?: string;
+  };
+  entityId: number;
+  entityType: string;
+  createdAt: string;
+  content?: string;
+}
+
+interface MessageData {
+  senderName: string;
+  senderAvatar: string;
+  content: string;
+}
+
 interface WebSocketMessage {
   type: MessageType;
-  data?: any;
+  data?: NotificationData | MessageData | { message: string };
 }
 
 class WebSocketService {
@@ -71,10 +91,14 @@ class WebSocketService {
   private handleMessage(message: WebSocketMessage) {
     switch (message.type) {
       case 'notification':
-        this.handleNotification(message.data);
+        if (message.data) {
+          this.handleNotification(message.data as NotificationData);
+        }
         break;
       case 'message':
-        this.handleMessage_(message.data);
+        if (message.data) {
+          this.handleMessage_(message.data as MessageData);
+        }
         break;
       case 'ping':
         this.send({ type: 'pong' });
@@ -89,20 +113,20 @@ class WebSocketService {
   }
 
   // 处理通知
-  private handleNotification(data: any) {
+  private handleNotification(data: NotificationData) {
     const notificationStore = useNotificationStore.getState();
 
     // 添加通知到 store
     notificationStore.addNotification({
       id: data.id,
       userId: 0, // 不需要
-      type: data.type,
+      type: data.type as any, // 类型断言以处理字符串类型
       actorId: data.actor?.id || 0,
       entityId: data.entityId,
-      entityType: data.entityType,
+      entityType: data.entityType as any, // 类型断言以处理字符串类型
       createdAt: data.createdAt,
       isRead: false,
-      actor: data.actor,
+      actor: data.actor || { id: 0, username: '未知用户' }, // 提供默认值
     });
 
     // 增加未读计数
@@ -113,7 +137,7 @@ class WebSocketService {
   }
 
   // 处理私信
-  private handleMessage_(data: any) {
+  private handleMessage_(data: MessageData) {
     const { incrementUnread: incrementMessageUnread } = useMessageStore.getState();
     incrementMessageUnread();
 
@@ -126,7 +150,7 @@ class WebSocketService {
   }
 
   // 显示浏览器通知
-  private showBrowserNotification(data: any) {
+  private showBrowserNotification(data: NotificationData | { type: string; actor?: { username: string; avatar?: string }; content?: string }) {
     if (!('Notification' in window)) return;
 
     if (Notification.permission === 'granted') {
@@ -143,7 +167,7 @@ class WebSocketService {
   }
 
   // 发送消息
-  send(message: any) {
+  send(message: { type: string; [key: string]: unknown }) {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     }

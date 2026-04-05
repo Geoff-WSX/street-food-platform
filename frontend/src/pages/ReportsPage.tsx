@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card, Row, Col, Table, Button, Space, Typography, Tag, Select,
   Modal, Form, Input, message, Statistic, Drawer, Divider, Avatar,
@@ -16,8 +16,9 @@ import {
   reviewReport,
   handleReport,
   getReportStats,
+  type Report,
+  type ReportStats,
 } from '../api/report';
-import type { Report, ReportStats } from '../api/report';
 import { useAuthStore } from '../store/auth';
 
 const { Title, Text, Paragraph } = Typography;
@@ -29,19 +30,7 @@ export default function ReportsPage() {
   const isReviewer = user?.role === 'reviewer' || user?.role === 'admin' || user?.role === 'super_admin';
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
-  // 如果用户没有审核员或管理员权限，显示提示信息
-  if (!user || !isReviewer) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <Card style={{ textAlign: 'center', maxWidth: 400 }}>
-          <WarningOutlined style={{ fontSize: 48, color: '#faad14', marginBottom: 16 }} />
-          <Title level={4}>权限不足</Title>
-          <Text type="secondary">您需要审核员或管理员权限才能访问此页面</Text>
-        </Card>
-      </div>
-    );
-  }
-
+  // 必须在所有条件判断之前调用 Hooks
   const [stats, setStats] = useState<ReportStats | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,16 +45,17 @@ export default function ReportsPage() {
   const [reviewForm] = Form.useForm();
   const [handleForm] = Form.useForm();
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     if (!isAdmin) return;
     try {
       const res = await getReportStats();
       setStats(res.data?.data || res.data);
-    } catch (error: unknown) {
+    } catch {
+      // 忽略错误
     }
-  };
+  }, [isAdmin]);
 
-  const fetchReports = async (page = 1, pageSize = 20) => {
+  const fetchReports = useCallback(async (page = 1, pageSize = 20) => {
     setTableLoading(true);
     try {
       const res = await getAllReports({
@@ -82,12 +72,12 @@ export default function ReportsPage() {
         pageSize,
         total: paginationData.total,
       });
-    } catch (error: unknown) {
+    } catch {
       void message.error('获取举报列表失败');
     } finally {
       setTableLoading(false);
     }
-  };
+  }, [statusFilter, typeFilter]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -96,7 +86,20 @@ export default function ReportsPage() {
       setLoading(false);
     };
     loadData();
-  }, [statusFilter, typeFilter]);
+  }, [statusFilter, typeFilter, fetchStats, fetchReports]);
+
+  // 如果用户没有审核员或管理员权限，显示提示信息
+  if (!user || !isReviewer) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <Card style={{ textAlign: 'center', maxWidth: 400 }}>
+          <WarningOutlined style={{ fontSize: 48, color: '#faad14', marginBottom: 16 }} />
+          <Title level={4}>权限不足</Title>
+          <Text type="secondary">您需要审核员或管理员权限才能访问此页面</Text>
+        </Card>
+      </div>
+    );
+  }
 
   const openDetail = async (report: Report) => {
     if (!isAdmin) {
@@ -108,7 +111,7 @@ export default function ReportsPage() {
       const res = await getReportDetail(report.id);
       setSelectedReport(res.data?.data || res.data);
       setDetailDrawerOpen(true);
-    } catch (error: unknown) {
+    } catch {
       void message.error('获取详情失败');
     }
   };
@@ -288,7 +291,7 @@ export default function ReportsPage() {
       key: 'actions',
       width: 180,
       fixed: 'right' as const,
-      render: (_: any, record: Report) => {
+      render: (_: unknown, record: Report) => {
         const actions = getAvailableActions(record);
         return (
           <Space size="small">
@@ -618,7 +621,7 @@ export default function ReportsPage() {
                   <Title level={5}>聊天记录</Title>
                   <List
                     dataSource={selectedReport.chatRecords}
-                    renderItem={(item: any) => (
+                    renderItem={(item: { senderUsername: string; content: string; createdAt: string }) => (
                       <List.Item>
                         <div style={{ width: '100%' }}>
                           <div style={{ marginBottom: 4 }}>

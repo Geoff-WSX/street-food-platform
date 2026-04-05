@@ -20,16 +20,6 @@
   min-height: 100vh;
 }
 
-/* 视频页面背景 */
-.swipe-page-bg {
-  background:
-    linear-gradient(135deg, rgba(240, 248, 255, 0.95) 0%, rgba(255, 240, 245, 0.95) 100%),
-    url('https://images.unsplash.com/photo-1496116608603-f7f8085a0b38?w=1920&q=80') center/cover;
-  background-attachment: fixed;
-  background-size: cover;
-  min-height: 100vh;
-}
-
 /* 个人主页背景 */
 .profile-page-bg {
   background:

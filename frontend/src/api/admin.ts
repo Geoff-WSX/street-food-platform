@@ -27,6 +27,17 @@ const adminUserShape = {
 
 export const AdminUserSchema = z.object(adminUserShape);
 
+// 用户列表响应 Schema
+export const UserListDataSchema = z.object({
+  data: z.array(AdminUserSchema),
+  pagination: z.object({
+    page: z.number(),
+    pageSize: z.number(),
+    total: z.number(),
+    totalPages: z.number(),
+  }),
+});
+
 // 系统统计 Schema
 export const SystemStatsSchema = z.object({
   totalUsers: z.number(),
@@ -42,15 +53,6 @@ export const SystemStatsSchema = z.object({
 });
 
 // 用户列表响应 Schema（内部数据结构）
-const UserListDataSchema = z.object({
-  data: z.array(AdminUserSchema),
-  pagination: z.object({
-    page: z.number(),
-    pageSize: z.number(),
-    total: z.number(),
-    totalPages: z.number(),
-  }),
-});
 
 // 管理员操作日志 Schema
 export const AdminLogSchema = z.object({
@@ -61,8 +63,8 @@ export const AdminLogSchema = z.object({
   targetId: z.number().optional(),
   targetName: z.string().optional(),
   description: z.string(),
-  oldValue: z.any().optional(),
-  newValue: z.any().optional(),
+  oldValue: z.unknown().optional(),
+  newValue: z.unknown().optional(),
   ipAddress: z.string().optional(),
   userAgent: z.string().optional(),
   createdAt: z.string(),
@@ -134,35 +136,36 @@ function validateSchema<T>(schema: z.ZodSchema<T>, data: unknown, errorMessage: 
 }
 
 // 带错误处理的 API 调用包装器
-async function withErrorHandling(
-  apiCall: () => Promise<{ data: any }>,
+async function withErrorHandling<T>(
+  apiCall: () => Promise<{ data: T }>,
   errorMessage: string
-): Promise<{ data: any }> {
+): Promise<{ data: T }> {
   try {
     const res = await apiCall();
-    if (!res.data?.success) {
-      const errMsg = res.data?.error || res.data?.message || errorMessage;
+    if (!(res.data as { success?: boolean }).success) {
+      const errMsg = (res.data as { error?: string; message?: string })?.error || (res.data as { error?: string; message?: string })?.message || errorMessage;
       console.error(`❌ API 错误 [${errorMessage}]:`, errMsg);
       // 上报问题
       reportIssue('api_error', errorMessage, errMsg);
       throw new Error(errMsg);
     }
     return res;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 如果是 Zod 验证错误，直接抛出详细信息
-    if (error.name === 'ZodError' || error.message?.includes('验证失败')) {
-      console.error(`❌ 验证错误 [${errorMessage}]:`, error.issues || error.message);
-      reportIssue('validation_error', errorMessage, error.message, { issues: error.issues });
+    const zodError = error as { name?: string; message?: string; issues?: unknown };
+    if (zodError.name === 'ZodError' || zodError.message?.includes('验证失败')) {
+      console.error(`❌ 验证错误 [${errorMessage}]:`, zodError.issues || zodError.message);
+      reportIssue('validation_error', errorMessage, zodError.message || '未知验证错误', { issues: zodError.issues });
       throw error;
     }
-    if (error.response) {
+    const axiosError = error as { response?: { status: number; data?: { error?: string; message?: string } }; request?: unknown; message?: string };
+    if (axiosError.response) {
       // HTTP 错误
-      const status = error.response.status;
-      const errMsg = error.response.data?.error || error.response.data?.message || error.message;
+      const status = axiosError.response.status;
+      const errMsg = axiosError.response.data?.error || axiosError.response.data?.message || axiosError.message;
       console.error(`❌ HTTP ${status} [${errorMessage}]:`, errMsg);
-      reportIssue('api_error', `${errorMessage} (HTTP ${status})`, errMsg);
-      throw new Error(`请求失败 (${status}): ${errMsg}`);
-    } else if (error.request) {
+      reportIssue('api_error', `${errorMessage} (HTTP ${status})`, errMsg || '未知HTTP错误');
+    } else if (axiosError.request) {
       // 网络错误
       console.error(`❌ 网络错误 [${errorMessage}]: 无响应`);
       reportIssue('api_error', errorMessage, '网络错误，请检查网络连接');

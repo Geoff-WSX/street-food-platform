@@ -37,6 +37,16 @@ export interface QuickSearchUser {
 }
 
 /**
+ * 搜索建议项
+ */
+export interface SearchSuggestion {
+  text: string;
+  type: 'location' | 'user';
+  pinyin: string;
+  abbr: string;
+}
+
+/**
  * 全局搜索
  */
 export const search = async (params: {
@@ -67,6 +77,16 @@ export const searchPosts = async (params: {
   page?: number;
   pageSize?: number;
 }) => {
-  const res = await api.get<{ success: boolean; data: { data: Post[]; pagination: any } }>('/search/posts', { params });
+  const res = await api.get<{ success: boolean; data: { data: Post[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } } }>('/search/posts', { params });
+  return res.data.data;
+};
+
+/**
+ * 获取搜索建议（拼音自动补全）
+ */
+export const searchSuggestions = async (q: string) => {
+  const res = await api.get<{ success: boolean; data: SearchSuggestion[] }>('/search/suggest', {
+    params: { q },
+  });
   return res.data.data;
 };

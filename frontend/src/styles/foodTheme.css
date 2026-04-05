@@ -1,0 +1,325 @@
+/* 美食主题全局样式 */
+
+/* 美食主题色变量 */
+:root {
+  --food-primary: #ff6b35;
+  --food-secondary: #ffb347;
+  --food-accent: #ffd700;
+  --food-warm: #fff8f0;
+  --food-spicy: #ff4757;
+  --food-salty: #74b9ff;
+  --food-sweet: #ff9ff3;
+  --food-bitter: #a4b0be;
+}
+
+/* 美食渐变背景 */
+.food-gradient-bg {
+  background: linear-gradient(135deg, var(--food-warm) 0%, #fff 50%, var(--food-warm) 100%);
+}
+
+.food-gradient-bg-warm {
+  background: linear-gradient(135deg, #fff5f0 0%, #ffe8d6 50%, #ffd9b3 100%);
+}
+
+.food-gradient-bg-spicy {
+  background: linear-gradient(135deg, #ffe8e8 0%, #ffd9d9 50%, #ffc9c9 100%);
+}
+
+/* 美食卡片样式 */
+.food-card-enhanced {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.food-card-enhanced:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(255, 107, 53, 0.15);
+}
+
+.food-card-enhanced.food-card-hovered::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 179, 71, 0.1) 100%);
+  pointer-events: none;
+}
+
+/* 美食按钮样式 */
+.food-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.food-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.food-button:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* 美食输入框样式 */
+.food-input {
+  border: 2px solid #ffe8d6;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 248, 240, 0.9) 100%);
+  transition: all 0.3s ease;
+}
+
+.food-input:focus {
+  border-color: var(--food-primary);
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+  outline: none;
+}
+
+.food-input::placeholder {
+  color: #bbb;
+}
+
+/* 美食导航栏样式 */
+.food-navbar {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 248, 240, 0.95) 100%);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 107, 53, 0.1);
+  box-shadow: 0 2px 12px rgba(255, 107, 53, 0.08);
+}
+
+/* 美食滚动条 */
+.food-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.food-scrollbar::-webkit-scrollbar-track {
+  background: var(--food-warm);
+  border-radius: 4px;
+}
+
+.food-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, var(--food-primary) 0%, var(--food-secondary) 100%);
+  border-radius: 4px;
+}
+
+.food-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, var(--food-secondary) 0%, var(--food-primary) 100%);
+}
+
+/* 美食分页器样式 */
+.food-pagination .ant-pagination-item {
+  border-color: #ffe8d6;
+}
+
+.food-pagination .ant-pagination-item-active {
+  background: linear-gradient(135deg, var(--food-primary) 0%, var(--food-secondary) 100%);
+  border-color: transparent;
+}
+
+.food-pagination .ant-pagination-item-active a {
+  color: #fff;
+}
+
+/* 美食模态框样式 */
+.food-modal .ant-modal-content {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 248, 240, 0.95) 100%);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 107, 53, 0.1);
+}
+
+.food-modal .ant-modal-header {
+  border-bottom: 1px solid rgba(255, 107, 53, 0.1);
+}
+
+.food-modal .ant-modal-footer {
+  border-top: 1px solid rgba(255, 107, 53, 0.1);
+}
+
+/* 美食通知样式 */
+.food-notification .ant-notification-notice {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 248, 240, 0.95) 100%);
+  backdrop-filter: blur(10px);
+  border-left: 4px solid var(--food-primary);
+}
+
+/* 美食下拉菜单样式 */
+.food-dropdown .ant-dropdown-menu {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 248, 240, 0.98) 100%);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 107, 53, 0.1);
+}
+
+.food-dropdown .ant-dropdown-menu-item:hover {
+  background: rgba(255, 107, 53, 0.08);
+}
+
+/* 美食标签页样式 */
+.food-tabs .ant-tabs-tab {
+  transition: all 0.3s ease;
+}
+
+.food-tabs .ant-tabs-tab-active {
+  color: var(--food-primary);
+}
+
+.food-tabs .ant-tabs-ink-bar {
+  background: linear-gradient(90deg, var(--food-primary) 0%, var(--food-secondary) 100%);
+}
+
+/* 美食进度条样式 */
+.food-progress .ant-progress-bg {
+  background: linear-gradient(90deg, var(--food-primary) 0%, var(--food-secondary) 100%);
+}
+
+/* 美食滑块样式 */
+.food-slider .ant-slider-rail {
+  background: #ffe8d6;
+}
+
+.food-slider .ant-slider-track {
+  background: linear-gradient(90deg, var(--food-primary) 0%, var(--food-secondary) 100%);
+}
+
+.food-slider .ant-slider-handle {
+  background: var(--food-primary);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+}
+
+/* 美食开关样式 */
+.food-switch .ant-switch-checked {
+  background: linear-gradient(90deg, var(--food-primary) 0%, var(--food-secondary) 100%);
+}
+
+/* 美食单选框样式 */
+.food-radio .ant-radio-wrapper-checked .ant-radio-inner {
+  background: var(--food-primary);
+  border-color: var(--food-primary);
+}
+
+/* 美食复选框样式 */
+.food-checkbox .ant-checkbox-checked .ant-checkbox-inner {
+  background: var(--food-primary);
+  border-color: var(--food-primary);
+}
+
+/* 美食表格样式 */
+.food-table .ant-table {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 248, 240, 0.95) 100%);
+}
+
+.food-table .ant-table-thead > tr > th {
+  background: rgba(255, 107, 53, 0.05);
+  border-bottom: 2px solid rgba(255, 107, 53, 0.1);
+}
+
+.food-table .ant-table-tbody > tr:hover > td {
+  background: rgba(255, 107, 53, 0.03);
+}
+
+/* 美食日期选择器样式 */
+.food-picker .ant-picker-input {
+  border-color: #ffe8d6;
+}
+
+.food-picker .ant-picker-focused .ant-picker-input {
+  border-color: var(--food-primary);
+  box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.1);
+}
+
+/* 美食时间轴样式 */
+.food-timeline .ant-timeline-item-tail {
+  border-left: 2px solid #ffe8d6;
+}
+
+.food-timeline .ant-timeline-item-head {
+  background: var(--food-primary);
+  border-color: var(--food-primary);
+}
+
+/* 美食步骤条样式 */
+.food-steps .ant-steps-item-process .ant-steps-item-icon {
+  background: var(--food-primary);
+  border-color: var(--food-primary);
+}
+
+.food-steps .ant-steps-item-finish .ant-steps-item-icon {
+  background: var(--food-secondary);
+  border-color: var(--food-secondary);
+}
+
+/* 美食骨架屏样式 */
+.food-skeleton .ant-skeleton-content {
+  background: linear-gradient(90deg, #ffe8d6 25%, #fff 50%, #ffe8d6 75%);
+  background-size: 200% 100%;
+  animation: food-skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes food-skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 美食提示框样式 */
+.food-tooltip .ant-tooltip-inner {
+  background: linear-gradient(135deg, var(--food-primary) 0%, var(--food-secondary) 100%);
+}
+
+.food-tooltip .ant-tooltip-arrow-content {
+  background: linear-gradient(135deg, var(--food-primary) 0%, var(--food-secondary) 100%);
+}
+
+/* 美食气泡样式 */
+.food-popover .ant-popover-inner {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 248, 240, 0.98) 100%);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 107, 53, 0.1);
+}
+
+/* 美食警告框样式 */
+.food-alert .ant-alert-success {
+  background: linear-gradient(135deg, rgba(82, 196, 26, 0.1) 0%, rgba(82, 196, 26, 0.05) 100%);
+  border-color: rgba(82, 196, 26, 0.3);
+}
+
+.food-alert .ant-alert-info {
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.1) 0%, rgba(24, 144, 255, 0.05) 100%);
+  border-color: rgba(24, 144, 255, 0.3);
+}
+
+.food-alert .ant-alert-warning {
+  background: linear-gradient(135deg, rgba(250, 173, 20, 0.1) 0%, rgba(250, 173, 20, 0.05) 100%);
+  border-color: rgba(250, 173, 20, 0.3);
+}
+
+.food-alert .ant-alert-error {
+  background: linear-gradient(135deg, rgba(255, 77, 79, 0.1) 0%, rgba(255, 77, 79, 0.05) 100%);
+  border-color: rgba(255, 77, 79, 0.3);
+}
+
+/* 美食徽章样式 */
+.food-badge .ant-badge-count {
+  background: linear-gradient(135deg, var(--food-primary) 0%, var(--food-secondary) 100%);
+}
+
+/* 美食统计数字样式 */
+.food-statistic .ant-statistic-content-value {
+  background: linear-gradient(135deg, var(--food-primary) 0%, var(--food-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

@@ -9,7 +9,7 @@ interface Issue {
   type: 'api_error' | 'validation_error' | 'runtime_error' | 'warning' | 'type_mismatch';
   source: string;
   message: string;
-  details?: any;
+  details?: Record<string, unknown>;
   resolved: boolean;
 }
 
@@ -127,7 +127,7 @@ export const projectMonitor = new ProjectMonitor();
 
 // 自动捕获 console.error
 const originalError = console.error;
-console.error = (...args: any[]) => {
+console.error = (...args: unknown[]) => {
   const message = args[0];
   if (typeof message === 'string' && !message.includes('[监控]')) {
     // 检查是否是 API 错误
@@ -144,7 +144,7 @@ console.error = (...args: any[]) => {
 };
 
 // 导出便捷方法
-export const reportIssue = (type: Issue['type'], source: string, message: string, details?: any) => {
+export const reportIssue = (type: Issue['type'], source: string, message: string, details?: Record<string, unknown>) => {
   return projectMonitor.addIssue({ type, source, message, details });
 };
 

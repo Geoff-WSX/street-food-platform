@@ -12,6 +12,9 @@ router.get('/conversations', authenticate, messageController.getConversations);
 // GET /api/messages/unread - 获取未读消息数
 router.get('/unread', authenticate, messageController.getUnreadCount);
 
+// GET /api/messages/blocked/list - 获取已屏蔽用户列表 (必须放在 /:userId 之前)
+router.get('/blocked/list', authenticate, messageController.getBlockedUsers);
+
 // GET /api/messages/:userId - 获取与指定用户的消息
 router.get('/:userId', authenticate, messageController.getMessages);
 
@@ -30,14 +33,16 @@ router.delete('/conversations/:userId', authenticate, messageController.deleteCo
 // DELETE /api/messages/:messageId - 删除消息
 router.delete('/:messageId', authenticate, messageController.deleteMessage);
 
-// 屏蔽相关路由
+// POST /api/messages/:messageId/recall - 撤回消息
+router.post('/:messageId/recall', authenticate, messageController.recallMessage);
+
+// POST /api/messages/batch-delete - 批量删除消息
+router.post('/batch-delete', authenticate, messageController.batchDeleteMessages);
+
 // POST /api/messages/block/:userId - 屏蔽用户
 router.post('/block/:userId', authenticate, messageController.blockUser);
 
 // DELETE /api/messages/block/:userId - 取消屏蔽用户
 router.delete('/block/:userId', authenticate, messageController.unblockUser);
-
-// GET /api/messages/blocked - 获取已屏蔽用户列表
-router.get('/blocked/list', authenticate, messageController.getBlockedUsers);
 
 export default router;

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API测试</title>
+</head>
+<body>
+    <h1>API测试页面</h1>
+    <button onclick="testAPI()">测试获取随机动态</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testAPI() {
+            const resultEl = document.getElementById('result');
+            resultEl.textContent = '正在请求...';
+
+            try {
+                const response = await fetch('/api/posts/random?limit=5');
+                const data = await response.json();
+
+                resultEl.textContent = JSON.stringify(data, null, 2);
+
+                if (data.success && data.data && data.data.data) {
+                    console.log('获取到动态数量:', data.data.data.length);
+                    data.data.data.forEach((post, i) => {
+                        console.log(`动态${i+1}:`, {
+                            content: post.content,
+                            images: post.images,
+                            user: post.user?.username
+                        });
+                    });
+                }
+            } catch (error) {
+                resultEl.textContent = '错误: ' + error.message;
+                console.error('API错误:', error);
+            }
+        }
+
+        // 页面加载时自动测试
+        window.addEventListener('load', () => {
+            setTimeout(testAPI, 500);
+        });
+    </script>
+</body>
+</html>

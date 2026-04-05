@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Modal, Avatar, Typography, Button, Empty, Spin } from 'antd';
 import { UserOutlined, EnvironmentOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { getPost } from '../api/post';
+import { parseImages } from '../utils/images';
 import type { Post } from '../types';
 
 const { Text, Paragraph } = Typography;
@@ -18,21 +19,10 @@ export default function PostDetailModal({ postId, visible, onClose }: Props) {
 
   // 处理 images 格式：确保是数组
   const processedImages = useMemo(() => {
-    if (!post?.images) return [];
-    if (Array.isArray(post.images)) return post.images;
-    if (typeof post.images === 'string') {
-      return post.images.split(',').filter(Boolean);
-    }
-    return [];
+    return parseImages(post?.images);
   }, [post?.images]);
 
-  useEffect(() => {
-    if (visible && postId) {
-      loadPost();
-    }
-  }, [visible, postId]);
-
-  const loadPost = async () => {
+  const loadPost = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getPost(postId);
@@ -42,7 +32,13 @@ export default function PostDetailModal({ postId, visible, onClose }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [postId]);
+
+  useEffect(() => {
+    if (visible && postId) {
+      loadPost();
+    }
+  }, [visible, postId, loadPost]);
 
   if (!visible) return null;
 

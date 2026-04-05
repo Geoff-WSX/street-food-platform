@@ -2,20 +2,29 @@ import { Request, Response } from 'express';
 import { AuthRequest } from '../types';
 import * as postService from '../services/post.service';
 import { successResponse, errorResponse } from '../utils/response';
-import { processPostImagesUpload, processAvatarUpload } from '../middleware/upload';
+import { processPostImagesUpload } from '../middleware/upload';
 
 export const createPost = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
+    let images: string[] = [];
+
+    // 方式1: 通过 multipart/form-data 上传文件
+    if (req.files && (req.files as Express.Multer.File[]).length > 0) {
+      const processedImages = await processPostImagesUpload(req.files as Express.Multer.File[]);
+      images = processedImages.original;
+    }
+    // 方式2: 通过 JSON body 传递图片 URL 数组
+    else if (req.body.images && Array.isArray(req.body.images) && req.body.images.length > 0) {
+      images = req.body.images;
+    }
+    // 两种方式都没有提供图片
+    else {
       return errorResponse(res, '至少需要上传一张图片', 'NO_FILE');
     }
 
-    // 处理图片压缩
-    const processedImages = await processPostImagesUpload(req.files as Express.Multer.File[]);
-
     const post = await postService.createPost(req.user!.userId, {
       ...req.body,
-      images: processedImages.original,
+      images,
       latitude: req.body.latitude ? parseFloat(req.body.latitude) : undefined,
       longitude: req.body.longitude ? parseFloat(req.body.longitude) : undefined,
       isPrivate: req.body.isPrivate === 'true' || req.body.isPrivate === true,
@@ -144,6 +153,17 @@ export const getUserFavorites = async (req: AuthRequest, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = Math.min(parseInt(req.query.pageSize as string) || 10, 50);
     const result = await postService.getUserFavorites(req.user!.userId, page, pageSize);
+    return successResponse(res, result);
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'FETCH_FAILED', 500);
+  }
+};
+
+export const getUserLikes = async (req: AuthRequest, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = Math.min(parseInt(req.query.pageSize as string) || 10, 50);
+    const result = await postService.getUserLikes(req.user!.userId, page, pageSize);
     return successResponse(res, result);
   } catch (error: any) {
     return errorResponse(res, error.message, 'FETCH_FAILED', 500);

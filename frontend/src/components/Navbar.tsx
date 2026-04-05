@@ -1,12 +1,11 @@
-import { Layout, Menu, Button, Avatar, Space, Dropdown, Badge, Tooltip } from 'antd';
-import { HomeOutlined, PlusOutlined, UserOutlined, LogoutOutlined, TrophyOutlined, CaretDownOutlined, MessageOutlined, PlayCircleOutlined, CrownOutlined, WarningOutlined, SearchOutlined } from '@ant-design/icons';
+import { Layout, Menu, Button, Avatar, Space, Dropdown, Badge, Tooltip, type MenuProps } from 'antd';
+import { HomeOutlined, PlusOutlined, UserOutlined, LogoutOutlined, TrophyOutlined, CaretDownOutlined, MessageOutlined, CrownOutlined, WarningOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useMessageStore } from '../store/message';
 import NotificationBell from './NotificationBell';
 import { useEffect, useState } from 'react';
 import { getUnreadCount } from '../api/message';
-import type { MenuProps } from 'antd';
 
 const { Header } = Layout;
 
@@ -47,7 +46,6 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
 
   const selectedKey = location.pathname === '/' ? 'home'
     : location.pathname.startsWith('/ranking') ? 'ranking'
-    : location.pathname.startsWith('/swipe') ? 'swipe'
     : '';
 
   const menuItems = [
@@ -56,12 +54,6 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
       icon: <HomeOutlined />,
       label: '首页',
       onClick: () => navigate('/')
-    },
-    {
-      key: 'swipe',
-      icon: <PlayCircleOutlined />,
-      label: '视频',
-      onClick: () => navigate('/swipe')
     },
     {
       key: 'ranking',

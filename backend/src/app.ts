@@ -17,6 +17,7 @@ import aiRoutes from './routes/ai.routes';
 import commentRoutes from './routes/comment.routes';
 import notificationRoutes from './routes/notification.routes';
 import searchRoutes from './routes/search.routes';
+import uploadRoutes from './routes/upload.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { initWebSocket } from './websocket';
 
@@ -51,6 +52,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api', commentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/upload', uploadRoutes);
 
 // 健康检查
 app.get('/health', (req, res) => {

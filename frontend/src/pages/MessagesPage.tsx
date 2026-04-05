@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, List, Avatar, Typography, Tag, Empty, Badge, Space, Skeleton, Modal, message, Button } from 'antd';
 import { UserOutlined, MailOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -29,7 +29,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [selectedChat, setSelectedChat] = useState<{ id: number; username: string; avatar?: string } | null>(null);
 
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     if (!isLoggedIn) {
       navigate('/login');
       return;
@@ -38,11 +38,12 @@ export default function MessagesPage() {
     try {
       const data = await getConversations();
       setConversations(data);
-    } catch (error: unknown) {
+    } catch {
+      // 忽略错误
     } finally {
       setLoading(false);
     }
-  };
+  }, [isLoggedIn, navigate]);
 
   useEffect(() => {
     loadConversations();
@@ -50,7 +51,7 @@ export default function MessagesPage() {
     if (isLoggedIn) {
       clearUnread();
     }
-  }, [isLoggedIn, clearUnread]);
+  }, [isLoggedIn, clearUnread, loadConversations]);
 
   const handleChatClose = () => {
     setSelectedChat(null);

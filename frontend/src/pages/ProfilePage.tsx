@@ -131,7 +131,9 @@ export default function ProfilePage() {
       updateUser(updated);
       setProfileUser(updated);
       void message.success('头像已更新');
-    } catch {}
+    } catch {
+      // 忽略错误
+    }
     return false;
   };
 

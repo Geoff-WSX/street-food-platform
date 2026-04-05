@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    port: 5176,
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
@@ -12,16 +13,6 @@ export default defineConfig({
       '/uploads': {
         target: 'http://localhost:3000',
         changeOrigin: true,
-      },
-      '/sw.js': {
-        target: 'http://localhost:5173',
-        changeOrigin: true,
-        rewrite: (path) => path,
-      },
-      '/manifest.json': {
-        target: 'http://localhost:5173',
-        changeOrigin: true,
-        rewrite: (path) => path,
       },
     },
   },

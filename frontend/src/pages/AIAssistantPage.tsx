@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import { chatWithAI, type ChatMessage } from '../api/ai';
 import { getPosts } from '../api/post';
+import { parseImages } from '../utils/images';
 import type { Post } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
@@ -61,7 +62,7 @@ const generateSessionTitle = (messages: ChatMessage[]): string => {
 export default function AIAssistantPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const fromPath = (location.state as any)?.from || '/';
+  const fromPath = (location.state as { from?: string } | null)?.from || '/';
   const { user } = useAuthStore();
 
   // 小边身份模式
@@ -143,30 +144,6 @@ export default function AIAssistantPage() {
     xiaobianModeRef.current = xiaobianMode;
   }, [xiaobianMode]);
 
-  // 切换小边身份模式
-  const handleModeSwitch = useCallback((newMode: XiaobianMode) => {
-    setXiaobianMode(newMode);
-
-    // 清空当前会话并切换欢迎消息
-    const welcomeMessage = newMode === 'foodie' ? foodieWelcomeMessage : adminWelcomeMessage;
-    setMessages([welcomeMessage]);
-    setSuggestedPosts([]);
-    setExcludedPostIds(new Set<number>());
-    setShowSuggestions(false);
-    setInputValue('');
-
-    // 立即更新推荐问题
-    setQuickQuestions(getQuickQuestions(newMode));
-
-    // 保存状态
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
-
-    // 显示切换提示
-    void message.success(
-      newMode === 'foodie' ? '已切换到美食助手模式' : '已切换到管理模式'
-    );
-  }, []);
-
   // 根据模式获取推荐问题
   const getQuickQuestions = useCallback((mode: XiaobianMode) => {
     if (mode === 'foodie') {
@@ -191,10 +168,34 @@ export default function AIAssistantPage() {
   // 动态推荐的快捷问题
   const [quickQuestions, setQuickQuestions] = useState<string[]>(getQuickQuestions(xiaobianMode));
 
+  // 切换小边身份模式
+  const handleModeSwitch = useCallback((newMode: XiaobianMode) => {
+    setXiaobianMode(newMode);
+
+    // 清空当前会话并切换欢迎消息
+    const welcomeMessage = newMode === 'foodie' ? foodieWelcomeMessage : adminWelcomeMessage;
+    setMessages([welcomeMessage]);
+    setSuggestedPosts([]);
+    setExcludedPostIds(new Set<number>());
+    setShowSuggestions(false);
+    setInputValue('');
+
+    // 立即更新推荐问题
+    setQuickQuestions(getQuickQuestions(newMode));
+
+    // 保存状态
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
+
+    // 显示切换提示
+    void message.success(
+      newMode === 'foodie' ? '已切换到美食助手模式' : '已切换到管理模式'
+    );
+  }, [getQuickQuestions]);
+
   // 更新快捷问题（当模式切换时）
   useEffect(() => {
     setQuickQuestions(getQuickQuestions(xiaobianMode));
-  }, [xiaobianMode]);
+  }, [xiaobianMode, getQuickQuestions]);
 
   // 根据对话内容生成推荐的后续问题
   const generateFollowUpQuestions = useCallback((userMessage: string, aiResponse: string): string[] => {
@@ -284,7 +285,7 @@ export default function AIAssistantPage() {
       return true;
     }
     return false;
-  }, []);
+  }, [getQuickQuestions]);
 
   // 初始化时加载当前会话（只在 currentSessionId 变化时触发）
   useEffect(() => {
@@ -367,7 +368,7 @@ export default function AIAssistantPage() {
 
     // 更新 React 状态
     setSessions(allSessions);
-  }, [currentSessionId, messages, suggestedPosts, excludedPostIds, saveSessions]);
+  }, [currentSessionId, messages, suggestedPosts, excludedPostIds, saveSessions, xiaobianMode]);
 
   // 在消息、推荐或排除状态变化时保存当前会话
   // 使用防抖避免频繁保存
@@ -421,7 +422,7 @@ export default function AIAssistantPage() {
     setExcludedPostIds(new Set());
     setShowSuggestions(false);
     setQuickQuestions(getQuickQuestions(currentMode)); // 重置推荐问题
-  }, [currentSessionId, messages, saveCurrentSession, saveSessions]);
+  }, [currentSessionId, messages, saveCurrentSession, saveSessions, getQuickQuestions]);
 
   // 切换会话
   const handleSelectSession = useCallback((sessionId: string) => {
@@ -433,7 +434,7 @@ export default function AIAssistantPage() {
     // 切换到目标会话
     setCurrentSessionId(sessionId);
     loadSession(sessionId, sessions);
-  }, [currentSessionId, messages, saveCurrentSession, sessions]);
+  }, [currentSessionId, messages, saveCurrentSession, sessions, loadSession]);
 
   // 删除会话
   const handleDeleteSession = useCallback((sessionId: string, e: React.MouseEvent) => {
@@ -926,13 +927,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
               <Space direction="vertical" style={{ width: '100%' }}>
                 {suggestedPosts.map((post) => {
                   const isExcluded = excludedPostIds.has(post.id);
-                  // 处理 images 字段：可能是字符串或数组
-                  const images = post.images as string | string[] | undefined;
-                  const processedImages = images
-                    ? Array.isArray(images)
-                      ? images
-                      : images.split(',').filter(Boolean)
-                    : [];
+                  const processedImages = parseImages(post.images);
                   const firstImage = processedImages.length > 0 ? processedImages[0] : null;
 
                   return (

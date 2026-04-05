@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Button, Avatar, Typography, message, Popconfirm } from 'antd';
 import { HeartOutlined, HeartFilled, StarOutlined, StarFilled, EnvironmentOutlined, UserOutlined, PlusOutlined, CheckOutlined, MessageOutlined, StopOutlined, CommentOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
 import { toggleLike, toggleFavorite } from '../api/post';
 import { followUser, unfollowUser, checkFollowStatus } from '../api/follow';
 import { blockUser } from '../api/block';
@@ -34,7 +34,14 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
     if (!post.images) return [];
     if (Array.isArray(post.images)) return post.images;
     if (typeof post.images === 'string') {
-      return post.images.split(',').filter(Boolean);
+      try {
+        // 尝试解析 JSON 数组字符串
+        const parsed = JSON.parse(post.images);
+        return Array.isArray(parsed) ? parsed : [post.images];
+      } catch {
+        // 如果不是 JSON，按逗号分割
+        return post.images.split(',').filter(Boolean);
+      }
     }
     return [];
   }, [post.images]);
@@ -47,7 +54,7 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
   const favoriteCount = typeof post.favoriteCount === 'number' ? post.favoriteCount :
                         typeof post.favoriteCount === 'string' ? parseInt(post.favoriteCount, 10) || 0 : 0;
 
-  const checkFollow = async () => {
+  const checkFollow = useCallback(async () => {
     if (isLoggedIn && post.user.id) {
       try {
         const result = await checkFollowStatus(post.user.id);
@@ -56,11 +63,11 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
       // 忽略错误
     }
     }
-  };
+  }, [isLoggedIn, post.user.id]);
 
   useEffect(() => {
     checkFollow();
-  }, []);
+  }, [checkFollow]);
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -532,20 +539,20 @@ function UserModal({ user, visible, onClose, onFollowChange, onOpenChat }: {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
 
-  useEffect(() => {
-    if (visible && isLoggedIn) {
-      checkFollow();
-    }
-  }, [visible, user.id]);
-
-  const checkFollow = async () => {
+  const checkFollow = useCallback(async () => {
     try {
       const result = await checkFollowStatus(user.id);
       setIsFollowing(result.isFollowing);
     } catch {
       // 忽略错误
     }
-  };
+  }, [user.id]);
+
+  useEffect(() => {
+    if (visible && isLoggedIn) {
+      checkFollow();
+    }
+  }, [visible, isLoggedIn, checkFollow]);
 
   const handleFollow = async () => {
     if (!isLoggedIn) {

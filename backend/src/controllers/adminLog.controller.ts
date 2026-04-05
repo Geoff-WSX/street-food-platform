@@ -99,7 +99,7 @@ export const getAdminLogs = async (req: Request, res: Response) => {
       prisma.adminLog.findMany({
         where,
         include: {
-          admin: {
+          user: {
             select: {
               id: true,
               username: true,
@@ -148,7 +148,7 @@ export const getAdminLogById = async (req: Request, res: Response) => {
     const log = await prisma.adminLog.findUnique({
       where: { id: parseInt(id) },
       include: {
-        admin: {
+        user: {
           select: {
             id: true,
             username: true,

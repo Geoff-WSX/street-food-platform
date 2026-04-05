@@ -466,6 +466,61 @@ export const getUserFavorites = async (
 };
 
 /**
+ * 获取用户点赞的动态列表
+ */
+export const getUserLikes = async (
+  userId: number,
+  page: number = 1,
+  pageSize: number = 10
+) => {
+  const skip = (page - 1) * pageSize;
+
+  const [likes, total] = await Promise.all([
+    prisma.like.findMany({
+      where: { userId },
+      skip,
+      take: pageSize,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        post: {
+          include: {
+            user: { select: { id: true, username: true, avatar: true } },
+          },
+        },
+      },
+    }),
+    prisma.like.count({ where: { userId } }),
+  ]);
+
+  const posts = likes.map((l: any) => ({
+    ...l.post,
+    images: parseImages(l.post.images),
+    likeCount: typeof l.post.likeCount === 'number' ? l.post.likeCount : 0,
+    favoriteCount: typeof l.post.favoriteCount === 'number' ? l.post.favoriteCount : 0,
+    isLiked: true,
+  }));
+
+  const postIds = posts.map(p => p.id);
+  const favorites = await prisma.favorite.findMany({
+    where: { userId, postId: { in: postIds } },
+  });
+  const favoritedPostIds = new Set(favorites.map(f => f.postId));
+
+  return {
+    data: posts.map(p => ({
+      ...p,
+      isFavorited: favoritedPostIds.has(p.id),
+    })),
+    pagination: {
+      page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
+    },
+  };
+};
+
+/**
  * 获取随机推荐的动态
  */
 export const getRandomPosts = async (

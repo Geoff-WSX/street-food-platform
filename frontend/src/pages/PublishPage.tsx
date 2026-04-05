@@ -70,7 +70,7 @@ export default function PublishPage() {
           } else {
             throw new Error('未返回地址信息');
           }
-        } catch (error) {
+        } catch {
           void message.error({ content: '获取地址失败，请手动输入', key: 'location', duration: 2 });
         } finally {
           setLocationLoading(false);

@@ -10,17 +10,19 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  console.log('API Request:', config.method?.toUpperCase(), config.url);
+  console.log('🚀 API Request:', config.method?.toUpperCase(), config.url);
   return config;
 });
 
 api.interceptors.response.use(
   (res) => {
-    console.log('API Response:', res.status, res.config.url);
+    console.log('✅ API Response:', res.status, res.config.url);
     return res;
   },
   (error) => {
-    console.error('API Error:', error.config?.url, error.message);
+    console.error('❌ API Error:', error.config?.url, error.message);
+    console.error('❌ API Error Details:', error.response?.data);
+
     // 只在已登录但 token 失效时才跳转到登录页
     // 如果已经在登录页且登录失败，不要跳转
     const isLoginPage = window.location.pathname === '/login';
@@ -35,6 +37,9 @@ api.interceptors.response.use(
       }
       window.location.href = '/login';
     }
+
+    // 对于 400 错误，确保错误信息能正确传递到调用方
+    // 不要在这里拦截，让具体的错误处理逻辑处理
     return Promise.reject(error);
   }
 );

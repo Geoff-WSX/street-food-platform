@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { pushMessage } from '../websocket/notification';
 
 /**
  * 获取或创建对话
@@ -53,11 +54,24 @@ export const checkCanSendMessage = async (senderId: number, receiverId: number) 
   // 检查对方是否开启了私信功能
   const receiver = await prisma.user.findUnique({
     where: { id: receiverId },
-    select: { allowMessage: true },
+    select: { allowMessage: true, followOnlyMessage: true },
   });
 
   if (!receiver || !receiver.allowMessage) {
     return { canSend: false, reason: '对方未开启私信功能' };
+  }
+
+  // 检查对方是否设置了仅关注可私信
+  if (receiver.followOnlyMessage) {
+    const followRelation = await prisma.follow.findFirst({
+      where: {
+        followerId: senderId,
+        followingId: receiverId,
+      },
+    });
+    if (!followRelation) {
+      return { canSend: false, reason: '对方仅允许关注者发送私信' };
+    }
   }
 
   // 获取对话
@@ -129,6 +143,23 @@ export const sendMessage = async (senderId: number, receiverId: number, content:
     where: { id: conversation.id },
     data: { updatedAt: new Date() },
   });
+
+  // 获取发送者信息
+  const sender = await prisma.user.findUnique({
+    where: { id: senderId },
+    select: { id: true, username: true, avatar: true },
+  });
+
+  // 实时推送消息给接收方
+  if (sender) {
+    pushMessage(receiverId, {
+      conversationId: conversation.id,
+      senderId: senderId,
+      senderName: sender.username,
+      senderAvatar: sender.avatar,
+      content: content,
+    });
+  }
 
   return message;
 };
@@ -394,4 +425,79 @@ export const deleteConversation = async (userId: number, otherUserId: number) =>
   });
 
   return { success: true };
+};
+
+/**
+ * 撤回消息（2分钟内有效）
+ */
+export const recallMessage = async (messageId: number, userId: number) => {
+  const message = await prisma.message.findUnique({
+    where: { id: messageId },
+  });
+
+  if (!message) {
+    throw new Error('消息不存在');
+  }
+
+  // 只能撤回自己发送的消息
+  if (message.senderId !== userId) {
+    throw new Error('只能撤回自己发送的消息');
+  }
+
+  // 检查是否已撤回
+  if (message.recalled) {
+    throw new Error('消息已撤回');
+  }
+
+  // 检查是否超过2分钟
+  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+  if (message.createdAt < twoMinutesAgo) {
+    throw new Error('只能撤回2分钟内的消息');
+  }
+
+  // 标记为已撤回
+  await prisma.message.update({
+    where: { id: messageId },
+    data: {
+      recalled: true,
+      recalledAt: new Date(),
+    },
+  });
+
+  return { success: true, message: '消息已撤回' };
+};
+
+/**
+ * 批量删除消息
+ */
+export const batchDeleteMessages = async (messageIds: number[], userId: number) => {
+  if (!messageIds || messageIds.length === 0) {
+    throw new Error('请选择要删除的消息');
+  }
+
+  if (messageIds.length > 50) {
+    throw new Error('一次最多删除50条消息');
+  }
+
+  // 验证所有消息都是用户自己发送的
+  const messages = await prisma.message.findMany({
+    where: {
+      id: { in: messageIds },
+    },
+  });
+
+  const notOwnedMessages = messages.filter((m) => m.senderId !== userId);
+  if (notOwnedMessages.length > 0) {
+    throw new Error('只能删除自己发送的消息');
+  }
+
+  // 批量删除
+  const result = await prisma.message.deleteMany({
+    where: {
+      id: { in: messageIds },
+      senderId: userId,
+    },
+  });
+
+  return { success: true, deletedCount: result.count };
 };

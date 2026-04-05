@@ -246,7 +246,8 @@ export default function RankingPage() {
       setLoading(true);
       const data = await getPosts({ page: 1, pageSize: 100 });
       setPosts(data.data);
-    } catch (error) {
+    } catch {
+      // 忽略错误
     } finally {
       setLoading(false);
     }

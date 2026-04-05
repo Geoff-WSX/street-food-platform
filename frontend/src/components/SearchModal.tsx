@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Modal, Input, Tabs, List, Avatar, Empty, Spin, Tag, Space, Typography, Badge } from 'antd';
+import { Modal, Input, Tabs, List, Avatar, Empty, Spin, Tag, Space, Typography, AutoComplete } from 'antd';
 import { SearchOutlined, UserOutlined, FileTextOutlined, EnvironmentOutlined, HeartOutlined, StarOutlined, TeamOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { search, type SearchResult } from '../api/search';
+import { search, searchSuggestions, type SearchResult, type SearchSuggestion } from '../api/search';
+import { parseImages } from '../utils/images';
 import type { Post, User } from '../types';
 import './SearchModal.css';
 
@@ -13,13 +14,59 @@ interface SearchModalProps {
   onClose: () => void;
 }
 
+interface CachedResult {
+  data: SearchResult;
+  timestamp: number;
+}
+
 export default function SearchModal({ open, onClose }: SearchModalProps) {
   const navigate = useNavigate();
   const [keyword, setKeyword] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SearchResult | null>(null);
-  const inputRef = useRef<any>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // 搜索建议相关
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // 缓存各 Tab 的搜索结果，key 格式: "keyword-tabType"
+  const resultsCacheRef = useRef<Map<string, CachedResult>>(new Map());
+
+  // 获取搜索建议（防抖）
+  const fetchSuggestions = useCallback(async (q: string) => {
+    if (!q.trim() || q.trim().length < 1) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    try {
+      const data = await searchSuggestions(q.trim());
+      setSuggestions(data);
+      setShowSuggestions(data.length > 0);
+    } catch (error) {
+      console.error('获取搜索建议失败:', error);
+      setSuggestions([]);
+    }
+  }, []);
+
+  // 防抖：根据输入状态决定显示建议还是搜索
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (keyword && !result) {
+        // 没有搜索结果时，显示建议
+        fetchSuggestions(keyword);
+      } else if (result && keyword !== result.keyword) {
+        // 有关键词变化时，清除结果并显示建议
+        setResult(null);
+        fetchSuggestions(keyword);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [keyword, result, fetchSuggestions]);
 
   // 防抖搜索
   const doSearch = useCallback(async (q: string, type: string) => {
@@ -28,14 +75,31 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       return;
     }
 
+    const trimmedKeyword = q.trim();
+    const cacheKey = `${trimmedKeyword}-${type}`;
+
+    // 检查缓存
+    const cached = resultsCacheRef.current.get(cacheKey);
+    if (cached) {
+      setResult(cached.data);
+      setShowSuggestions(false);
+      return;
+    }
+
     setLoading(true);
+    setShowSuggestions(false);
     try {
       const data = await search({
-        q: q.trim(),
-        type: type as any,
+        q: trimmedKeyword,
+        type: type as 'all' | 'users' | 'posts',
         pageSize: 20,
       });
       setResult(data);
+      // 缓存结果
+      resultsCacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
     } catch (error) {
       console.error('搜索失败:', error);
     } finally {
@@ -43,16 +107,30 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     }
   }, []);
 
-  // 延迟搜索
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (keyword.trim()) {
-        doSearch(keyword, activeTab);
-      }
-    }, 300);
+  // 处理输入变化
+  const handleInputChange = (value: string) => {
+    setKeyword(value);
+    // 如果清空输入，重置状态
+    if (!value.trim()) {
+      setResult(null);
+      resultsCacheRef.current.clear();
+    }
+  };
 
-    return () => clearTimeout(timer);
-  }, [keyword, activeTab, doSearch]);
+  // 处理回车搜索
+  const handlePressEnter = () => {
+    if (keyword.trim()) {
+      setShowSuggestions(false);
+      doSearch(keyword, activeTab);
+    }
+  };
+
+  // 选择建议项
+  const handleSelectSuggestion = (value: string) => {
+    setKeyword(value);
+    setShowSuggestions(false);
+    doSearch(value, activeTab);
+  };
 
   // 自动聚焦
   useEffect(() => {
@@ -61,15 +139,29 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     } else {
       setKeyword('');
       setResult(null);
+      resultsCacheRef.current.clear();
+      setSuggestions([]);
+      setShowSuggestions(false);
     }
   }, [open]);
 
-  // Tab 切换
+  // Tab 切换 - 优先使用缓存
   useEffect(() => {
-    if (keyword.trim()) {
-      doSearch(keyword, activeTab);
+    // 只有当已经有搜索结果时才响应 Tab 切换
+    if (result && keyword.trim()) {
+      const cacheKey = `${keyword.trim()}-${activeTab}`;
+      const cached = resultsCacheRef.current.get(cacheKey);
+
+      if (cached) {
+        // 有缓存，立即显示
+        setResult(cached.data);
+        setLoading(false);
+      } else {
+        // 无缓存，发起搜索
+        doSearch(keyword, activeTab);
+      }
     }
-  }, [activeTab]);
+  }, [activeTab, keyword, result, doSearch]);
 
   const handleUserClick = (user: User) => {
     onClose();
@@ -125,6 +217,23 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     );
   };
 
+  // 获取首张图片 URL
+  const getFirstImageUrl = (post: Post): string | null => {
+    const images = parseImages(post.images);
+    if (images.length === 0) return null;
+
+    const firstImage = images[0];
+
+    // 如果是完整 URL，直接返回
+    if (firstImage.startsWith('http://') || firstImage.startsWith('https://')) {
+      return firstImage;
+    }
+
+    // 处理相对路径
+    const filename = firstImage.split('/').pop() || firstImage;
+    return `/uploads/posts/${filename}`;
+  };
+
   // 动态列表
   const renderPosts = () => {
     const posts = result?.posts || [];
@@ -136,18 +245,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       <List
         dataSource={posts}
         renderItem={(post) => {
-          // 处理图片 URL
-          let imageUrl = '';
-          if (post.images) {
-            const images = Array.isArray(post.images)
-              ? post.images
-              : post.images.split(',').filter(Boolean);
-            if (images.length > 0) {
-              imageUrl = images[0].startsWith('http')
-                ? images[0]
-                : `/uploads/posts/${images[0].split('/').pop()}`;
-            }
-          }
+          const imageUrl = getFirstImageUrl(post);
 
           return (
             <List.Item
@@ -167,12 +265,21 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                         borderRadius: 8,
                       }}
                       onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                        (e.target as HTMLImageElement).nextElementSibling?.remove();
+                        const target = e.target as HTMLImageElement;
+                        // 图片加载失败，显示占位符
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector('.placeholder-icon')) {
+                          const placeholder = document.createElement('div');
+                          placeholder.className = 'placeholder-icon';
+                          placeholder.style.cssText = 'width:80px;height:80px;background:#f5f5f5;borderRadius:8px;display:flex;alignItems:center;justifyContent:center;fontSize:24px;';
+                          placeholder.textContent = '🍜';
+                          parent.insertBefore(placeholder, target);
+                        }
                       }}
                     />
                   ) : (
-                    <div style={{
+                    <div className="placeholder-icon" style={{
                       width: 80,
                       height: 80,
                       background: '#f5f5f5',
@@ -227,18 +334,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
   const tabItems = [
     {
       key: 'all',
-      label: (
-        <span>
-          全部
-          {result && (result.users?.length || result.posts?.length) ? (
-            <Badge
-              count={(result.users?.length || 0) + (result.posts?.length || 0)}
-              style={{ marginLeft: 8 }}
-              size="small"
-            />
-          ) : null}
-        </span>
-      ),
+      label: '全部',
       children: (
         <div className="search-results">
           {loading ? (
@@ -276,9 +372,6 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       label: (
         <span>
           <UserOutlined /> 用户
-          {result?.users?.length ? (
-            <Badge count={result.users.length} style={{ marginLeft: 8 }} size="small" />
-          ) : null}
         </span>
       ),
       children: (
@@ -296,9 +389,6 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       label: (
         <span>
           <FileTextOutlined /> 动态
-          {result?.posts?.length ? (
-            <Badge count={result.posts.length} style={{ marginLeft: 8 }} size="small" />
-          ) : null}
         </span>
       ),
       children: (
@@ -312,6 +402,17 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       ),
     },
   ];
+
+  // 构建自动补全选项
+  const autoCompleteOptions = suggestions.map((item) => ({
+    value: item.text,
+    label: (
+      <Space>
+        {item.type === 'location' ? <EnvironmentOutlined /> : <UserOutlined />}
+        <Text>{item.text}</Text>
+      </Space>
+    ),
+  }));
 
   return (
     <Modal
@@ -327,23 +428,31 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       }}
     >
       {/* 搜索框 */}
-      <div className="search-header">
-        <Input
-          ref={inputRef}
-          placeholder="搜索用户、美食、地点..."
-          prefix={<SearchOutlined style={{ color: '#999' }} />}
+      <div className="search-header" style={{ position: 'relative' }}>
+        <AutoComplete
           value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          size="large"
-          allowClear
-          suffix={
-            keyword ? (
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                {loading ? '搜索中...' : '回车搜索'}
-              </Text>
-            ) : null
-          }
-        />
+          onChange={handleInputChange}
+          onSelect={handleSelectSuggestion}
+          options={autoCompleteOptions}
+          open={showSuggestions && !result}
+          style={{ width: '100%' }}
+          placement="bottomLeft"
+        >
+          <Input
+            placeholder="搜索用户、美食、地点... 支持拼音"
+            prefix={<SearchOutlined style={{ color: '#999' }} />}
+            size="large"
+            allowClear
+            onPressEnter={handlePressEnter}
+            suffix={
+              keyword ? (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {loading ? '搜索中...' : '回车搜索'}
+                </Text>
+              ) : null
+            }
+          />
+        </AutoComplete>
       </div>
 
       {/* 结果 Tabs */}
