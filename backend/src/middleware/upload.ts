@@ -31,9 +31,10 @@ async function processImage(
     maxHeight?: number;
     quality?: number;
     thumbnail?: boolean;
+    deleteInput?: boolean; // 新增选项：是否删除输入文件
   } = {}
 ): Promise<string> {
-  const { maxWidth = 1920, maxHeight = 1920, quality = 80, thumbnail = false } = options;
+  const { maxWidth = 1920, maxHeight = 1920, quality = 80, thumbnail = false, deleteInput = true } = options;
 
   let pipeline = sharp(inputPath);
 
@@ -55,8 +56,10 @@ async function processImage(
 
   await pipeline.toFile(outputPath);
 
-  // 删除原始文件
-  fs.unlinkSync(inputPath);
+  // 根据选项决定是否删除原始文件
+  if (deleteInput) {
+    fs.unlinkSync(inputPath);
+  }
 
   return outputPath.replace(/\\/g, '/').split('/uploads/')[1];
 }
@@ -133,26 +136,50 @@ export async function processPostImageUpload(file: Express.Multer.File): Promise
 }> {
   const baseFilename = file.filename.replace(/\.[^.]+$/, '');
 
-  // 处理原图
-  const originalPath = path.join(postUploadDir, `${baseFilename}.webp`);
-  const original = await processImage(file.path, originalPath, {
+  console.log('[DEBUG] Processing image upload:', {
+    originalFilename: file.filename,
+    baseFilename,
+    filePath: file.path,
+    postUploadDir,
+    thumbnailDir
+  });
+
+  // 处理原图 - 不删除输入文件，因为还要用它生成缩略图
+  const originalFullPath = path.join(postUploadDir, `${baseFilename}.webp`);
+  console.log('[DEBUG] Original full path:', originalFullPath);
+
+  const originalRelativePath = await processImage(file.path, originalFullPath, {
     maxWidth: 1920,
     maxHeight: 1920,
     quality: 80,
+    deleteInput: false, // 不删除原始上传的文件
   });
 
-  // 处理缩略图
-  const thumbnailPath = path.join(thumbnailDir, `${baseFilename}.webp`);
-  const thumbnail = await processImage(
-    originalPath.startsWith('/') ? originalPath : path.join(postUploadDir, `${baseFilename}.webp`),
-    thumbnailPath,
+  console.log('[DEBUG] Original processed, now processing thumbnail');
+
+  // 处理缩略图 - 使用原图作为输入，不删除原图
+  const thumbnailFullPath = path.join(thumbnailDir, `${baseFilename}.webp`);
+  console.log('[DEBUG] Thumbnail full path:', thumbnailFullPath);
+
+  const thumbnailRelativePath = await processImage(
+    originalFullPath,
+    thumbnailFullPath,
     {
       thumbnail: true,
       quality: 70,
+      deleteInput: false, // 不删除原图
     }
   );
 
-  return { original, thumbnail };
+  console.log('[DEBUG] Thumbnail processed');
+
+  // 现在可以安全删除原始上传的临时文件了
+  if (fs.existsSync(file.path)) {
+    fs.unlinkSync(file.path);
+    console.log('[DEBUG] Deleted original temp file');
+  }
+
+  return { original: originalRelativePath, thumbnail: thumbnailRelativePath };
 }
 
 // 批量处理动态图片

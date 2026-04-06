@@ -77,78 +77,84 @@ export const getAddressByLocation = async (req: Request, res: Response) => {
         // 判断是否直辖市
         const isDirectCity = DIRECT_CITIES.some(dc => province.includes(dc.replace('市', '')));
 
+        // 优先级：POI > 道路门牌 > AOI > 街道 > 区域
         if (isDirectCity) {
           // 直辖市：区 + 详细地址
-          if (district) {
-            address += district;
-          }
-
-          // 优先使用道路+门牌
-          if (street && number) {
-            address += `${street}${number}`;
-            detailedAddress = `${direction ? direction + '约' + distance + '米' : ''}`;
+          if (nearestPoiName) {
+            // 优先使用POI名称（最准确）
+            address = `${district}${nearestPoiName}`;
+            accuracy = 'high';
+          } else if (street && number) {
+            // 道路+门牌
+            address = `${district}${street}${number}`;
+            detailedAddress = direction ? `${direction}${distance}米` : '';
             accuracy = 'high';
           } else if (street) {
-            address += street;
+            // 只有道路
+            address = `${district}${street}`;
             accuracy = 'high';
-          } else if (nearestPoiName) {
-            // 没有道路信息时，用POI名称
-            address += nearestPoiName;
-            if (nearestPoiAddress && nearestPoiAddress !== nearestPoiName) {
-              detailedAddress = nearestPoiAddress;
-            }
+          } else if (aoiName) {
+            // AOI（如商场、小区）
+            address = `${district}${aoiName}`;
             accuracy = 'medium';
+          } else if (township && township !== district) {
+            // 街道/乡镇
+            address = `${district}${township}`;
+            accuracy = 'medium';
+          } else {
+            address = district;
+            accuracy = 'low';
           }
         } else {
           // 普通省市：省/市 + 区 + 详细地址
-          if (province && !city.includes(province)) {
-            address += province;
-          }
-
-          if (city && !address.includes(city)) {
-            address += city;
-          }
-
-          if (district && !address.includes(district)) {
-            address += district;
-          }
-
-          // 道路+门牌优先
-          if (street && number) {
-            address += `${street}${number}`;
-            detailedAddress = `${direction ? direction + '约' + distance + '米' : ''}`;
+          if (nearestPoiName) {
+            // 优先使用POI
+            address = `${province}${city}${district}${nearestPoiName}`;
+            accuracy = 'high';
+          } else if (street && number) {
+            // 道路+门牌
+            address = `${province}${city}${district}${street}${number}`;
+            detailedAddress = direction ? `${direction}${distance}米` : '';
             accuracy = 'high';
           } else if (street) {
-            address += street;
+            // 只有道路
+            address = `${province}${city}${district}${street}`;
             accuracy = 'high';
-          } else if (nearestPoiName) {
-            // 没有道路信息时，用POI
-            address += nearestPoiName;
-            if (nearestPoiAddress && nearestPoiAddress !== nearestPoiName) {
-              detailedAddress = nearestPoiAddress;
-            }
+          } else if (aoiName) {
+            // AOI
+            address = `${province}${city}${district}${aoiName}`;
             accuracy = 'medium';
           } else if (township && township !== district) {
-            address += township;
+            // 街道/乡镇
+            address = `${province}${city}${district}${township}`;
             accuracy = 'medium';
+          } else {
+            // 只有区
+            address = `${province}${city}${district}`;
+            accuracy = 'low';
           }
         }
 
         // 清理地址
         address = address.replace(/undefined/g, '').replace(/\s+/g, '').trim();
 
-        // 如果地址仍然太短，使用formatted_address
-        if (address.length < 6 && regeocode.formatted_address) {
-          address = regeocode.formatted_address.replace(province + city + district, '').trim();
+        // 如果地址仍然太短，使用formatted_address并优化
+        if (address.length < 6) {
+          if (regeocode.formatted_address) {
+            // 从完整地址中移除省市，保留详细部分
+            let formatted = regeocode.formatted_address;
+            // 移除省市区前缀
+            formatted = formatted.replace(new RegExp(`^${province}`), '');
+            formatted = formatted.replace(new RegExp(`^${city}`), '');
+            formatted = formatted.replace(new RegExp(`^${district}`), '');
+            address = formatted.trim();
+          }
         }
 
-        // 组合完整地址（给用户看的精简版）
-        let finalAddress = address;
-
-        console.log('解析结果:', { address: finalAddress, detailedAddress, nearestPoiName, accuracy });
+        console.log('解析结果:', { address, nearestPoiName, accuracy });
 
         return successResponse(res, {
-          address: finalAddress,
+          address: address,
           details: {
             latitude,
             longitude,

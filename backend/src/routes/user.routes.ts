@@ -15,7 +15,13 @@ router.get('/:id', optionalAuth, userController.getUserById);
 router.put('/me/profile', authenticate, userController.updateProfile);
 
 // PUT /api/users/me/avatar - 更新头像
-router.put('/me/avatar', authenticate, uploadAvatar, userController.updateAvatar);
+router.put('/me/avatar', authenticate, (req, res, next) => {
+  console.log('[DEBUG] Avatar upload request received');
+  console.log('[DEBUG] Content-Type:', req.headers['content-type']);
+  console.log('[DEBUG] Has body:', !!req.body);
+  console.log('[DEBUG] Body keys:', req.body ? Object.keys(req.body) : 'no body');
+  next();
+}, uploadAvatar, userController.updateAvatar);
 
 // PUT /api/users/me/password - 修改密码
 router.put('/me/password', authenticate, userController.changePassword);

@@ -1,15 +1,30 @@
-/* 美食主题全局样式 */
+/* 美食主题全局样式 - 完全美食主题化 */
 
 /* 美食主题色变量 */
 :root {
+  /* 主色系 - 橙红温暖色 */
   --food-primary: #ff6b35;
   --food-secondary: #ffb347;
   --food-accent: #ffd700;
   --food-warm: #fff8f0;
+
+  /* 功能色 */
   --food-spicy: #ff4757;
   --food-salty: #74b9ff;
   --food-sweet: #ff9ff3;
   --food-bitter: #a4b0be;
+
+  /* 中性色 */
+  --food-dark: #2d3436;
+  --food-gray: #8c8c8c;
+  --food-light: #fff8f0;
+  --food-white: #ffffff;
+  --food-border: #ffe8d6;
+
+  /* 渐变 */
+  --food-gradient: linear-gradient(135deg, #ff6b35 0%, #ffb347 100%);
+  --food-gradient-light: linear-gradient(135deg, #fff8f0 0%, #ffe8d6 100%);
+  --food-gradient-warm: linear-gradient(135deg, #ff6b35 0%, #ff8e53 50%, #ffb347 100%);
 }
 
 /* 美食渐变背景 */

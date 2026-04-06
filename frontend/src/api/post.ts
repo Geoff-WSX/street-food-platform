@@ -14,9 +14,7 @@ export const getUserFavorites = (params?: { page?: number; pageSize?: number }) 
   api.get<ApiResponse<PaginatedPosts>>('/posts/favorites', { params }).then((r) => r.data.data);
 
 export const createPost = (formData: FormData) =>
-  api.post<ApiResponse<Post>>('/posts', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }).then((r) => r.data.data);
+  api.post<ApiResponse<Post>>('/posts', formData).then((r) => r.data.data);
 
 export const deletePost = (id: number) =>
   api.delete(`/posts/${id}`).then((r) => r.data);
@@ -31,4 +29,4 @@ export const getAddressByLocation = (lat: number, lng: number) =>
   api.get<ApiResponse<{ address: string }>>('/posts/address/location', { params: { lat, lng } }).then((r) => r.data.data);
 
 export const getRandomPosts = (params?: { limit?: number; excludeIds?: string }) =>
-  api.get<ApiResponse<{ data: Post[] }>>('/posts/random', { params }).then((r) => r.data.data);
+  api.get<ApiResponse<{ data: Post[] }>>('/posts/random', { params }).then((r) => r.data.data.data);

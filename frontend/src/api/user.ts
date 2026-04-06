@@ -11,9 +11,7 @@ export const updateProfile = (data: { username?: string; bio?: string }) =>
   api.put<ApiResponse<User>>('/users/me/profile', data).then((r) => r.data.data);
 
 export const updateAvatar = (formData: FormData) =>
-  api.put<ApiResponse<User>>('/users/me/avatar', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }).then((r) => r.data.data);
+  api.put<ApiResponse<User>>('/users/me/avatar', formData).then((r) => r.data.data);
 
 export const changePassword = (data: { currentPassword: string; newPassword: string }) =>
   api.put('/users/me/password', { oldPassword: data.currentPassword, newPassword: data.newPassword }).then((r) => r.data);

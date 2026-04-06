@@ -10,6 +10,7 @@ import { useAuthStore } from '../store/auth';
 import { parseImages } from '../utils/images';
 import type { Post } from '../types';
 import CommentSection from '../components/CommentSection';
+import MapModal from '../components/MapModal';
 
 const { Text, Paragraph } = Typography;
 
@@ -20,6 +21,10 @@ export default function PostDetailPage() {
   const { isLoggedIn, user } = useAuthStore();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // 记录来源页面
+  const from = (location.state as any)?.from || '/';
+  const [showMapModal, setShowMapModal] = useState(false);
 
   // 从路由 state 获取需要高亮的评论ID
   const highlightCommentId = location.state?.highlightCommentId;
@@ -53,7 +58,12 @@ export default function PostDetailPage() {
   const handleDelete = async () => {
     await deletePost(Number(id));
     void message.success('已删除');
-    navigate('/');
+    // 根据来源决定跳转目标
+    if (from === '/profile') {
+      navigate('/profile');
+    } else {
+      navigate('/');
+    }
   };
 
   if (loading) {
@@ -161,12 +171,29 @@ export default function PostDetailPage() {
                   padding: '6px 14px',
                   borderRadius: 16,
                   fontSize: 14,
-                  background: 'linear-gradient(135deg, rgba(255, 165, 0, 0.1) 0%, rgba(255, 165, 0, 0.05) 100%)',
-                  color: '#D48806',
-                  border: '1px solid rgba(255, 165, 0, 0.2)'
+                  background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 179, 71, 0.05) 100%)',
+                  color: '#ff6b35',
+                  border: '1px solid rgba(255, 107, 53, 0.2)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+                onClick={() => {
+                  if (post.address) {
+                    setShowMapModal(true);
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 107, 53, 0.2) 0%, rgba(255, 179, 71, 0.1) 100%)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 107, 53, 0.4)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 179, 71, 0.05) 100%)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 107, 53, 0.2)';
+                  e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
-                📍 {post.address}
+                📍 {post.address} <span style={{ marginLeft: 4, fontSize: 12, opacity: 0.7 }}>查看地图 →</span>
               </Tag>
             )}
             <Tag
@@ -175,9 +202,9 @@ export default function PostDetailPage() {
                 padding: '6px 14px',
                 borderRadius: 16,
                 fontSize: 14,
-                background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(102, 126, 234, 0.05) 100%)',
-                color: '#667eea',
-                border: '1px solid rgba(102, 126, 234, 0.2)'
+                background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.08) 0%, rgba(255, 179, 71, 0.04) 100%)',
+                color: '#ff6b35',
+                border: '1px solid rgba(255, 107, 53, 0.15)'
               }}
             >
               {new Date(post.createdAt).toLocaleString('zh-CN')}
@@ -342,6 +369,15 @@ export default function PostDetailPage() {
           object-fit: contain;
         }
       `}</style>
+
+      {/* 地图弹窗 */}
+      {post && post.address && (
+        <MapModal
+          visible={showMapModal}
+          onClose={() => setShowMapModal(false)}
+          address={post.address}
+        />
+      )}
     </div>
   );
 }

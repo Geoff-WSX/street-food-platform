@@ -25,13 +25,6 @@ const AI_COPY_MESSAGES = {
   SERVICE_UNAVAILABLE: '内容审查服务暂时不可用，请文明发言'
 } as const;
 
-const ACCURACY_TIPS: Record<string, string> = {
-  high: '定位成功！地址已精确填充',
-  medium: '定位成功，地址已填充，请确认是否准确',
-  low: '定位成功，但地址可能不精确，请手动确认',
-  none: '定位成功，但地址获取失败，请手动输入'
-} as const;
-
 const COPY_CARD_STYLE = {
   marginBottom: 16,
   padding: 12,
@@ -118,7 +111,7 @@ export default function PublishModal({ open, onClose }: Props) {
     }
   }, [aiState.generatedCopy, form, handleGenerateCopy]);
 
-  // 获取当前位置 - 使用常量对象
+  // 获取当前位置 - 改进版，支持多次尝试
   const getCurrentLocation = useCallback(() => {
     setLocationLoading(true);
     void message.loading({ content: '正在获取位置，请稍候...', key: 'location', duration: 0 });
@@ -129,12 +122,56 @@ export default function PublishModal({ open, onClose }: Props) {
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
+    // 首先尝试高精度定位
+    const tryHighAccuracyLocation = () => {
+      return new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+          }
+        );
+      });
+    };
+
+    // 如果高精度失败，尝试低精度
+    const tryLowAccuracyLocation = () => {
+      return new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: false,
+            timeout: 15000,
+            maximumAge: 300000
+          }
+        );
+      });
+    };
+
+    // 执行定位
+    (async () => {
+      try {
+        let position: GeolocationPosition;
 
         try {
-          const response = await fetch(`/api/posts/address/location?lat=${latitude}&lng=${longitude}`);
+          // 尝试高精度定位
+          position = await tryHighAccuracyLocation();
+          console.log('高精度定位成功');
+        } catch {
+          // 高精度失败，尝试低精度
+          console.log('高精度定位失败，尝试低精度');
+          position = await tryLowAccuracyLocation();
+        }
+
+        const { latitude, longitude } = position.coords;
+        console.log('定位成功:', latitude, longitude);
+
+        try {
+          const response = await fetch(`http://localhost:3000/api/posts/address/location?lat=${latitude}&lng=${longitude}`);
           const data = await response.json();
 
           if (data.success && data.data && data.data.address) {
@@ -143,26 +180,32 @@ export default function PublishModal({ open, onClose }: Props) {
             const nearestPoi = details.nearestPoi;
 
             let displayAddress = address;
+            // 如果有最近POI且地址中不包含，添加POI名称
             if (nearestPoi && !address.includes(nearestPoi)) {
-              displayAddress = `${address}${nearestPoi}`;
+              displayAddress = `${nearestPoi}（${address}）`;
             }
 
             form.setFieldsValue({ address: displayAddress });
-            void message.info({
-              content: ACCURACY_TIPS[details.accuracy] || ACCURACY_TIPS.medium,
+
+            const accuracyMsg = details.accuracy === 'high'
+              ? '✅ 定位成功！地址已精确填充'
+              : details.accuracy === 'medium'
+              ? '📍 定位成功，请确认地址是否准确'
+              : '⚠️ 定位成功，但地址可能不够精确，建议手动调整';
+
+            void message.success({
+              content: accuracyMsg,
               key: 'location',
-              duration: 3
+              duration: 4
             });
           } else {
             throw new Error('未返回地址信息');
           }
-        } catch {
+        } catch (err) {
+          console.error('获取地址失败:', err);
           void message.error({ content: '获取地址失败，请手动输入', key: 'location', duration: 2 });
-        } finally {
-          setLocationLoading(false);
         }
-      },
-      (error) => {
+      } catch (error: any) {
         let errorMsg = '获取位置失败';
         switch (error.code) {
           case error.PERMISSION_DENIED:
@@ -174,16 +217,14 @@ export default function PublishModal({ open, onClose }: Props) {
           case error.TIMEOUT:
             errorMsg = '定位超时，请确保在空旷处重试';
             break;
+          default:
+            errorMsg = `定位失败：${error.message || '未知错误'}`;
         }
-        void message.error({ content: errorMsg, key: 'location', duration: 3 });
+        void message.error({ content: errorMsg, key: 'location', duration: 4 });
+      } finally {
         setLocationLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 30000,
-        maximumAge: 60000
       }
-    );
+    })();
   }, [form]);
 
   const handleSubmit = async (values: { content: string; address?: string }) => {

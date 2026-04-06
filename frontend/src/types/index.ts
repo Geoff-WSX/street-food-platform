@@ -4,6 +4,7 @@ export interface User {
   email: string;
   bio?: string;
   avatar?: string;
+  avatarData?: string;
   role?: string;
   createdAt: string;
   allowMessage?: boolean;

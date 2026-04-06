@@ -39,11 +39,41 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 
 export const updateAvatar = async (req: AuthRequest, res: Response) => {
   try {
+    console.log('[DEBUG] Avatar upload request:', {
+      hasFile: !!req.file,
+      file: req.file ? {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: req.file.path
+      } : null,
+      headers: req.headers['content-type'],
+      bodyKeys: Object.keys(req.body)
+    });
+
     if (!req.file) {
+      console.log('[DEBUG] No file in request');
       return errorResponse(res, '请上传头像图片', 'NO_FILE');
     }
-    const avatarPath = `/uploads/avatars/${req.file.filename}`;
-    const user = await userService.updateAvatar(req.user!.userId, avatarPath);
+
+    // 将图片转换为 Base64 存储到数据库
+    const fs = await import('fs');
+    const imageBuffer = fs.readFileSync(req.file.path);
+
+    // 压缩图片
+    const sharp = await import('sharp');
+    const compressedImage = await sharp.default(imageBuffer)
+      .resize(400, 400, { fit: 'cover', position: 'centre' })
+      .webp({ quality: 85 })
+      .toBuffer();
+
+    // 转换为 Base64
+    const base64Image = `data:image/webp;base64,${compressedImage.toString('base64')}`;
+
+    // 删除临时文件
+    fs.unlinkSync(req.file.path);
+
+    const user = await userService.updateAvatar(req.user!.userId, base64Image);
     return successResponse(res, user, '头像更新成功');
   } catch (error: any) {
     return errorResponse(res, error.message, 'UPDATE_FAILED');

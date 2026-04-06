@@ -6,6 +6,7 @@ import { useMessageStore } from '../store/message';
 import NotificationBell from './NotificationBell';
 import { useEffect, useState } from 'react';
 import { getUnreadCount } from '../api/message';
+import { getAvatarUrl } from '../utils/images';
 
 const { Header } = Layout;
 
@@ -107,7 +108,7 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
         zIndex: 100,
         height: 70,
         transition: 'all 0.3s ease',
-        borderBottom: scrolled ? '1px solid rgba(102, 126, 234, 0.1)' : '1px solid #f0f0f0'
+        borderBottom: scrolled ? '1px solid rgba(255, 107, 53, 0.1)' : '1px solid #f0f0f0'
       }}
     >
       {/* Logo */}
@@ -128,14 +129,14 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
       >
         <span style={{
           fontSize: 32,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #ff6b35 0%, #ffb347 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
-          filter: 'drop-shadow(0 2px 4px rgba(102, 126, 234, 0.3))'
+          filter: 'drop-shadow(0 2px 4px rgba(255, 107, 53, 0.3))'
         }}>🍜</span>
         <span style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #ff6b35 0%, #ffb347 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
@@ -159,7 +160,7 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
           ...item,
           label: (
             <span style={{
-              color: selectedKey === item.key ? '#667eea' : '#262626',
+              color: selectedKey === item.key ? '#ff6b35' : '#262626',
               position: 'relative',
               padding: '8px 16px',
               borderRadius: 8,
@@ -174,7 +175,7 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
                   transform: 'translateX(-50%)',
                   width: '30px',
                   height: '3px',
-                  background: 'linear-gradient(90deg, #667eea, #764ba2)',
+                  background: 'linear-gradient(90deg, #ff6b35, #ffb347)',
                   borderRadius: '2px'
                 }} />
               )}
@@ -199,18 +200,18 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
               paddingRight: 20,
               fontWeight: 600,
               fontSize: 15,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, #ff6b35 0%, #ffb347 100%)',
               border: 'none',
-              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
+              boxShadow: '0 4px 15px rgba(255, 107, 53, 0.3)',
               transition: 'all 0.3s ease'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 107, 53, 0.4)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.3)';
+              e.currentTarget.style.boxShadow = '0 4px 15px rgba(255, 107, 53, 0.3)';
             }}
           >
             发布动态
@@ -231,8 +232,8 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
                 border: '1px solid #e8e8e8'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#667eea';
-                e.currentTarget.style.color = '#667eea';
+                e.currentTarget.style.borderColor = '#ff6b35';
+                e.currentTarget.style.color = '#ff6b35';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = '#e8e8e8';
@@ -258,8 +259,8 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
               border: '1px solid #e8e8e8'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#667eea';
-              e.currentTarget.style.color = '#667eea';
+              e.currentTarget.style.borderColor = '#ff6b35';
+              e.currentTarget.style.color = '#ff6b35';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = '#e8e8e8';
@@ -270,9 +271,9 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
 
         {isLoggedIn ? (
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-            <Space style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: 20, transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.05)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+            <Space style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: 20, transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 107, 53, 0.05)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
               <Avatar
-                src={user?.avatar}
+                src={getAvatarUrl(user)}
                 icon={<UserOutlined />}
                 size={40}
                 style={{
@@ -298,9 +299,9 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
               paddingRight: 24,
               fontWeight: 600,
               fontSize: 15,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, #ff6b35 0%, #ffb347 100%)',
               border: 'none',
-              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
+              boxShadow: '0 4px 15px rgba(255, 107, 53, 0.3)'
             }}
           >
             登录

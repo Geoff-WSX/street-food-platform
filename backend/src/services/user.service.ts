@@ -14,6 +14,7 @@ export const getUserById = async (userId: number, currentUserId?: number) => {
       username: true,
       email: true,
       avatar: true,
+      avatarData: true,
       bio: true,
       role: true,
       createdAt: true,
@@ -52,8 +53,12 @@ export const getUserById = async (userId: number, currentUserId?: number) => {
     isFollowing = !!follow;
   }
 
+  // 优先使用 avatarData，如果没有则使用 avatar
+  const avatar = user.avatarData || user.avatar;
+
   return {
     ...user,
+    avatar,
     postCount,
     followingCount,
     followerCount,
@@ -101,6 +106,7 @@ export const updateProfile = async (
       username: true,
       email: true,
       avatar: true,
+      avatarData: true,
       bio: true,
       role: true,
       createdAt: true,
@@ -108,21 +114,31 @@ export const updateProfile = async (
     },
   });
 
-  return user;
+  // 优先使用 avatarData
+  const avatar = user.avatarData || user.avatar;
+
+  return {
+    ...user,
+    avatar,
+  };
 };
 
 /**
- * 更新头像
+ * 更新头像（存储 Base64 到数据库）
  */
-export const updateAvatar = async (userId: number, avatarPath: string) => {
+export const updateAvatar = async (userId: number, avatarData: string) => {
   const user = await prisma.user.update({
     where: { id: userId },
-    data: { avatar: avatarPath },
+    data: {
+      avatar: null, // 清空旧路径
+      avatarData: avatarData, // 存储 Base64 数据
+    },
     select: {
       id: true,
       username: true,
       email: true,
       avatar: true,
+      avatarData: true,
       bio: true,
       role: true,
       createdAt: true,
@@ -130,7 +146,11 @@ export const updateAvatar = async (userId: number, avatarPath: string) => {
     },
   });
 
-  return user;
+  // 返回时使用 avatarData 作为 avatar
+  return {
+    ...user,
+    avatar: user.avatarData,
+  };
 };
 
 /**
@@ -196,6 +216,7 @@ export const updateSettings = async (
       username: true,
       email: true,
       avatar: true,
+      avatarData: true,
       bio: true,
       allowMessage: true,
       createdAt: true,
@@ -203,7 +224,13 @@ export const updateSettings = async (
     },
   });
 
-  return user;
+  // 优先使用 avatarData
+  const avatar = user.avatarData || user.avatar;
+
+  return {
+    ...user,
+    avatar,
+  };
 };
 
 /**
@@ -268,6 +295,7 @@ export const getFollowing = async (userId: number, params?: { page?: number; pag
           id: true,
           username: true,
           avatar: true,
+          avatarData: true,
           bio: true,
         },
       },
@@ -295,10 +323,15 @@ export const getFollowing = async (userId: number, params?: { page?: number; pag
     });
   }
 
-  return follows.map(f => ({
-    ...f.following,
-    isFollowing: currentUserId ? !!followingStatus[f.following.id] : false,
-  }));
+  return follows.map(f => {
+    const user = f.following;
+    const avatar = user.avatarData || user.avatar;
+    return {
+      ...user,
+      avatar,
+      isFollowing: currentUserId ? !!followingStatus[f.following.id] : false,
+    };
+  });
 };
  /**
  * 获取粉丝列表
@@ -314,6 +347,7 @@ export const getFollowers = async (userId: number, params?: { page?: number; pag
           id: true,
           username: true,
           avatar: true,
+          avatarData: true,
           bio: true,
         },
       },
@@ -341,10 +375,15 @@ export const getFollowers = async (userId: number, params?: { page?: number; pag
     });
   }
 
-  return follows.map(f => ({
-    ...f.follower,
-    isFollowing: currentUserId ? !!followingStatus[f.follower.id] : false,
-  }));
+  return follows.map(f => {
+    const user = f.follower;
+    const avatar = user.avatarData || user.avatar;
+    return {
+      ...user,
+      avatar,
+      isFollowing: currentUserId ? !!followingStatus[f.follower.id] : false,
+    };
+  });
 };
  /**
  * 检查关注状态
@@ -441,6 +480,7 @@ export const getBlockedUsers = async (userId: number) => {
           id: true,
           username: true,
           avatar: true,
+          avatarData: true,
           bio: true,
         },
       },
@@ -448,5 +488,12 @@ export const getBlockedUsers = async (userId: number) => {
     orderBy: { createdAt: 'desc' },
   });
 
-  return blocks.map(b => b.blocked);
+  return blocks.map(b => {
+    const user = b.blocked;
+    const avatar = user.avatarData || user.avatar;
+    return {
+      ...user,
+      avatar,
+    };
+  });
 };

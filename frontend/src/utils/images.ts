@@ -52,3 +52,31 @@ export function getFirstImage(images: string | string[] | undefined | null): str
 export function getImageCount(images: string | string[] | undefined | null): number {
   return parseImages(images).length;
 }
+
+/**
+ * 获取用户头像 URL
+ * 优先使用 avatarData (Base64)，其次使用 avatar (路径)
+ * @param user - 用户对象
+ * @returns 头像 URL 或 Base64 数据
+ */
+export function getAvatarUrl(user: { avatar?: string; avatarData?: string; username?: string } | undefined | null): string {
+  if (!user) return 'https://api.dicebear.com/7.x/avataaars/svg?seed=default';
+
+  // 优先使用 Base64 数据
+  if (user.avatarData) {
+    return user.avatarData;
+  }
+
+  // 使用路径
+  if (user.avatar) {
+    // 如果是完整的 URL 或 Base64，直接返回
+    if (user.avatar.startsWith('http') || user.avatar.startsWith('data:')) {
+      return user.avatar;
+    }
+    // 否则拼接后端地址
+    return `http://localhost:3000${user.avatar}`;
+  }
+
+  // 默认头像
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || 'default'}`;
+}

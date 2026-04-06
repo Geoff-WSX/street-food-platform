@@ -7,7 +7,9 @@ import { followUser, unfollowUser, checkFollowStatus } from '../api/follow';
 import { blockUser } from '../api/block';
 import { useAuthStore } from '../store/auth';
 import ChatModal from './ChatModal';
+import MapModal from './MapModal';
 import type { Post } from '../types';
+import { getAvatarUrl } from '../utils/images';
 
 const { Text, Paragraph } = Typography;
 
@@ -16,9 +18,10 @@ interface Props {
   onUpdate?: (updated: Partial<Post> & { id: number }) => void;
   showRank?: boolean;
   rank?: number;
+  from?: string; // 来源页面
 }
 
-export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
+export default function PostCard({ post, onUpdate, showRank, rank, from = '/' }: Props) {
   const navigate = useNavigate();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -27,6 +30,7 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
   const [followLoading, setFollowLoading] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   // 处理 images 格式：确保是数组
@@ -136,9 +140,21 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
 
   const getRankBadge = () => {
     if (!showRank || rank === undefined) return null;
-    if (rank === 0) return { badge: '🥇', bg: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', shadow: '0 4px 15px rgba(255, 215, 0, 0.4)' };
-    if (rank === 1) return { badge: '🥈', bg: 'linear-gradient(135deg, #E8E8E8 0%, #BDBDBD 100%)', shadow: '0 4px 15px rgba(189, 189, 189, 0.4)' };
-    if (rank === 2) return { badge: '🥉', bg: 'linear-gradient(135deg, #E6A17D 0%, #CD7F32 100%)', shadow: '0 4px 15px rgba(205, 127, 50, 0.4)' };
+    if (rank === 0) return {
+      badge: '1',
+      bg: 'linear-gradient(135deg, #ff6b35 0%, #ffb347 100%)',
+      shadow: '0 6px 20px rgba(255, 107, 53, 0.5)'
+    };
+    if (rank === 1) return {
+      badge: '2',
+      bg: 'linear-gradient(135deg, #ff8e53 0%, #ffc170 100%)',
+      shadow: '0 6px 20px rgba(255, 142, 83, 0.5)'
+    };
+    if (rank === 2) return {
+      badge: '3',
+      bg: 'linear-gradient(135deg, #ffb347 0%, #ffd700 100%)',
+      shadow: '0 6px 20px rgba(255, 179, 71, 0.5)'
+    };
     return null;
   };
 
@@ -149,23 +165,25 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
       <Card
         hoverable
         style={{
-          borderRadius: 16,
+          borderRadius: 12,
           overflow: 'hidden',
-          boxShadow: isHovered ? '0 8px 25px rgba(0,0,0,0.12)' : '0 2px 12px rgba(0,0,0,0.08)',
+          boxShadow: isHovered ? '0 6px 20px rgba(0,0,0,0.12)' : '0 2px 10px rgba(0,0,0,0.08)',
           transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-          height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          border: isHovered ? '1px solid rgba(102, 126, 234, 0.3)' : '1px solid #f0f0f0',
-          transform: isHovered ? 'translateY(-4px)' : 'translateY(0)',
+          border: isHovered ? '1px solid rgba(255, 107, 53, 0.3)' : '1px solid #f0f0f0',
+          transform: isHovered ? 'translateY(-3px)' : 'translateY(0)',
+          height: 480,
+          width: '100%',
         }}
         bodyStyle={{
-          padding: 16,
-          flex: 1,
+          padding: 12,
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          height: '100%',
+          width: '100%'
         }}
-        onClick={() => navigate(`/post/${post.id}`)}
+        onClick={() => navigate(`/post/${post.id}`, { state: { from } })}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -174,20 +192,22 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
           <div
             style={{
               position: 'absolute',
-              top: -10,
+              top: 12,
               left: 12,
               zIndex: 10,
-              width: 40,
-              height: 40,
-              borderRadius: '50%',
+              width: 36,
+              height: 36,
+              borderRadius: 10,
               background: rankStyle.bg,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 20,
+              fontSize: 18,
+              fontWeight: 800,
               boxShadow: rankStyle.shadow,
-              fontWeight: 'bold',
-              animation: 'pulse 2s infinite'
+              color: '#fff',
+              border: '2px solid rgba(255, 255, 255, 0.8)',
+              letterSpacing: '-0.5px'
             }}
           >
             {rankStyle.badge}
@@ -199,13 +219,13 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
           style={{
             position: 'relative',
             width: '100%',
-            paddingTop: '75%',
-            borderRadius: 12,
+            height: 280,
+            borderRadius: 10,
             overflow: 'hidden',
             backgroundColor: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-            marginBottom: 16,
+            marginBottom: 12,
             flexShrink: 0,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+            boxShadow: '0 3px 10px rgba(0,0,0,0.08)'
           }}
         >
           {processedImages.length > 0 && !imageError ? (
@@ -238,7 +258,7 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
               justifyContent: 'center',
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: '#fff',
-              fontSize: 48
+              fontSize: 40
             }}>
               🍜
             </div>
@@ -249,21 +269,21 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
             <div
               style={{
                 position: 'absolute',
-                top: 12,
-                right: 12,
-                borderRadius: 20,
-                padding: '4px 12px',
-                fontSize: 12,
+                top: 10,
+                right: 10,
+                borderRadius: 18,
+                padding: '3px 10px',
+                fontSize: 11,
                 fontWeight: 600,
                 background: 'rgba(0,0,0,0.65)',
                 color: '#fff',
                 backdropFilter: 'blur(8px)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4
+                gap: 3
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
                 <rect x="3" y="3" width="7" height="7" rx="1"/>
                 <rect x="14" y="3" width="7" height="7" rx="1"/>
                 <rect x="3" y="14" width="7" height="7" rx="1"/>
@@ -280,17 +300,22 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
                 top: 12,
                 left: 12,
                 zIndex: 10,
-                background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%)',
+                background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.95) 0%, rgba(255, 179, 71, 0.95) 100%)',
                 color: '#fff',
-                borderRadius: 20,
-                padding: '4px 12px',
-                fontSize: 12,
-                fontWeight: 'bold',
-                backdropFilter: 'blur(8px)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                borderRadius: 10,
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 16,
+                fontWeight: 700,
+                boxShadow: '0 4px 16px rgba(255, 107, 53, 0.4)',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
+                letterSpacing: '-0.5px'
               }}
             >
-              NO.{rank + 1}
+              {rank + 1}
             </div>
           )}
 
@@ -313,15 +338,15 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
         </div>
 
         {/* 内容区域 */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           <Paragraph
             ellipsis={{ rows: 2 }}
             style={{
-              marginBottom: 12,
-              fontSize: 15,
-              lineHeight: '1.6',
-              minHeight: 48,
-              maxHeight: 48,
+              marginBottom: 10,
+              fontSize: 14,
+              lineHeight: '1.5',
+              minHeight: 42,
+              maxHeight: 42,
               overflow: 'hidden',
               color: '#262626',
               fontWeight: 400
@@ -331,48 +356,77 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
           </Paragraph>
 
           {/* 地址 */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            marginBottom: 12,
-            fontSize: 13,
-            color: '#8c8c8c',
-            minHeight: 24,
-            maxHeight: 24,
-            overflow: 'hidden',
-            padding: '6px 10px',
-            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 20%)',
-            borderRadius: 8,
-            border: '1px solid #e8e8e8'
-          }}>
-            <EnvironmentOutlined style={{ marginRight: 6, fontSize: 12, flexShrink: 0, color: '#667eea' }} />
+          <div
+            onClick={() => {
+              if (post.address) {
+                setShowMapModal(true);
+              }
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: 10,
+              fontSize: 12,
+              color: post.address ? '#ff6b35' : '#8c8c8c',
+              minHeight: 22,
+              maxHeight: 22,
+              overflow: 'hidden',
+              padding: '5px 8px',
+              background: post.address ? 'linear-gradient(135deg, rgba(255, 107, 53, 0.08) 0%, rgba(255, 179, 71, 0.05) 100%)' : 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 20%)',
+              borderRadius: 6,
+              border: post.address ? '1px solid rgba(255, 107, 53, 0.2)' : '1px solid #e8e8e8',
+              cursor: post.address ? 'pointer' : 'default',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (post.address) {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 107, 53, 0.15) 0%, rgba(255, 179, 71, 0.1) 100%)';
+                e.currentTarget.style.borderColor = 'rgba(255, 107, 53, 0.4)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (post.address) {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 107, 53, 0.08) 0%, rgba(255, 179, 71, 0.05) 100%)';
+                e.currentTarget.style.borderColor = 'rgba(255, 107, 53, 0.2)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }
+            }}
+          >
+            <EnvironmentOutlined style={{ marginRight: 5, fontSize: 11, flexShrink: 0, color: post.address ? '#ff6b35' : '#667eea' }} />
             <Text
               type="secondary"
-              style={{ fontSize: 13 }}
+              style={{ fontSize: 12, color: post.address ? '#ff6b35' : '#8c8c8c' }}
               ellipsis={{ tooltip: post.address }}
             >
               {post.address ? formatAddress(post.address) : '暂无地址'}
             </Text>
+            {post.address && (
+              <span style={{ marginLeft: 'auto', fontSize: 10, color: '#ff6b35', opacity: 0.7 }}>
+                查看地图 →
+              </span>
+            )}
           </div>
         </div>
 
         {/* 用户信息和互动 */}
         <div style={{
-          paddingTop: 12,
+          paddingTop: 10,
           borderTop: '1px solid #f0f0f0',
-          flexShrink: 0
+          flexShrink: 0,
+          marginTop: 'auto'
         }}>
           {/* 第一行：头像、用户名、关注按钮 */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
-            marginBottom: 12
+            gap: 8,
+            marginBottom: 10
           }}>
             <Avatar
-              src={post.user.avatar}
+              src={getAvatarUrl(post.user)}
               icon={<UserOutlined />}
-              size={36}
+              size={32}
               onClick={handleUserClick}
               style={{
                 cursor: 'pointer',
@@ -384,7 +438,7 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <Text
                 style={{
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: 600,
                   cursor: 'pointer',
                   color: '#262626',
@@ -403,10 +457,10 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
                 onClick={handleFollow}
                 loading={followLoading}
                 style={{
-                  padding: '4px 16px',
-                  height: 30,
-                  fontSize: 13,
-                  borderRadius: 15,
+                  padding: '3px 12px',
+                  height: 28,
+                  fontSize: 12,
+                  borderRadius: 14,
                   fontWeight: 500,
                   boxShadow: isFollowing ? 'none' : '0 2px 8px rgba(102, 126, 234, 0.3)'
                 }}
@@ -418,34 +472,36 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
 
           {/* 第二行：点赞、收藏、评论 */}
           <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 4,
-            padding: '8px 8px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 3,
+            padding: '6px 6px',
             background: 'linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%)',
-            borderRadius: 12,
-            flexWrap: 'nowrap',
-            overflow: 'hidden'
+            borderRadius: 10,
+            overflow: 'hidden',
+            height: '36px'
           }}>
             <div
               onClick={handleLike}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
+                justifyContent: 'center',
+                gap: 3,
                 cursor: 'pointer',
-                padding: '6px 8px',
-                borderRadius: 16,
+                padding: '4px 6px',
+                borderRadius: 8,
                 transition: 'all 0.3s ease',
                 background: liked ? 'rgba(255, 77, 79, 0.1)' : 'transparent',
                 color: liked ? '#ff4d4f' : '#8c8c8c',
-                flexShrink: 0
+                minWidth: 0,
+                height: '100%',
+                boxSizing: 'border-box'
               }}
             >
-              {liked ? <HeartFilled style={{ fontSize: 16, flexShrink: 0 }} /> : <HeartOutlined style={{ fontSize: 16, flexShrink: 0 }} />}
-              <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>
-                {likeCount > 0 ? likeCount : '点赞'}
+              {liked ? <HeartFilled style={{ fontSize: 14, flexShrink: 0 }} /> : <HeartOutlined style={{ fontSize: 14, flexShrink: 0 }} />}
+              <span style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {likeCount > 0 ? likeCount : '赞'}
               </span>
             </div>
             <div
@@ -453,38 +509,44 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
+                justifyContent: 'center',
+                gap: 3,
                 cursor: 'pointer',
-                padding: '6px 8px',
-                borderRadius: 16,
+                padding: '4px 6px',
+                borderRadius: 8,
                 transition: 'all 0.3s ease',
                 background: favorited ? 'rgba(250, 173, 20, 0.1)' : 'transparent',
                 color: favorited ? '#faad14' : '#8c8c8c',
-                flexShrink: 0
+                minWidth: 0,
+                height: '100%',
+                boxSizing: 'border-box'
               }}
             >
-              {favorited ? <StarFilled style={{ fontSize: 16, flexShrink: 0 }} /> : <StarOutlined style={{ fontSize: 16, flexShrink: 0 }} />}
-              <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>
-                {favoriteCount > 0 ? favoriteCount : '收藏'}
+              {favorited ? <StarFilled style={{ fontSize: 14, flexShrink: 0 }} /> : <StarOutlined style={{ fontSize: 14, flexShrink: 0 }} />}
+              <span style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {favoriteCount > 0 ? favoriteCount : '藏'}
               </span>
             </div>
             <div
-              onClick={() => navigate(`/post/${post.id}`)}
+              onClick={() => navigate(`/post/${post.id}`, { state: { from } })}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
+                justifyContent: 'center',
+                gap: 3,
                 cursor: 'pointer',
-                padding: '6px 8px',
-                borderRadius: 16,
+                padding: '4px 6px',
+                borderRadius: 8,
                 transition: 'all 0.3s ease',
                 color: '#8c8c8c',
-                flexShrink: 0
+                minWidth: 0,
+                height: '100%',
+                boxSizing: 'border-box'
               }}
             >
-              <CommentOutlined style={{ fontSize: 16, flexShrink: 0 }} />
-              <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>
-                {(post.commentCount ?? 0) > 0 ? post.commentCount : '评论'}
+              <CommentOutlined style={{ fontSize: 14, flexShrink: 0 }} />
+              <span style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {(post.commentCount ?? 0) > 0 ? post.commentCount : '评'}
               </span>
             </div>
           </div>
@@ -502,6 +564,13 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
         />
       )}
 
+      {/* 地图弹窗 */}
+      <MapModal
+        visible={showMapModal}
+        onClose={() => setShowMapModal(false)}
+        address={post.address || ''}
+      />
+
       {/* 私信弹窗 */}
       {showChatModal && (
         <ChatModal
@@ -512,10 +581,6 @@ export default function PostCard({ post, onUpdate, showRank, rank }: Props) {
       )}
 
       <style>{`
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-        }
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

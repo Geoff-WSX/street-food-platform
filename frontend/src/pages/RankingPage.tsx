@@ -298,40 +298,20 @@ export default function RankingPage() {
   // 过滤和排序后的动态
   const filteredPosts = sortPosts(posts.filter(filterByLocation));
 
-  // 获取排名前三的样式
-  const getRankStyle = (index: number) => {
-    if (index === 0) {
-      return {
-        badge: '🥇',
-        bg: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
-        shadow: '0 8px 24px rgba(255, 215, 0, 0.4)'
-      };
-    } else if (index === 1) {
-      return {
-        badge: '🥈',
-        bg: 'linear-gradient(135deg, #E8E8E8 0%, #BDBDBD 100%)',
-        shadow: '0 8px 24px rgba(192, 192, 192, 0.4)'
-      };
-    } else if (index === 2) {
-      return {
-        badge: '🥉',
-        bg: 'linear-gradient(135deg, #E6A17D 0%, #CD7F32 100%)',
-        shadow: '0 8px 24px rgba(205, 127, 50, 0.4)'
-      };
-    }
-    return null;
-  };
-
   if (loading) {
     return (
-      <div style={{ padding: '24px 0 80px', background: 'linear-gradient(180deg, #fff8e6 0%, #ffffff 100%)', minHeight: '60vh' }}>
-        <div style={{ marginBottom: 32, textAlign: 'center' }}>
-          <Title level={2} style={{ margin: 0, fontSize: 32, fontWeight: 700, background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            🏆 美食风云榜
-          </Title>
-          <Text type="secondary" style={{ fontSize: 15 }}>加载精彩榜单中...</Text>
+      <div style={{ padding: '16px 0 80px', background: 'linear-gradient(180deg, #fff8f0 0%, #ffe8d6 50%, #ffffff 100%)', minHeight: '60vh' }}>
+        <div style={{ marginBottom: 24, textAlign: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 8 }}>
+            <CrownOutlined style={{ fontSize: 32, color: '#FFD700', animation: 'crownBounce 2s ease-in-out infinite' }} />
+            <Title level={2} style={{ margin: 0, fontSize: 28, fontWeight: 700, background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+              🏆 美食风云榜
+            </Title>
+            <CrownOutlined style={{ fontSize: 32, color: '#FFD700', animation: 'crownBounce 2s ease-in-out infinite 0.5s' }} />
+          </div>
+          <Text type="secondary" style={{ fontSize: 14 }}>加载精彩榜单中...</Text>
         </div>
-        <Row gutter={[16, 16]}>
+        <Row gutter={[14, 14]}>
           {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <PostSkeleton key={i} />)}
         </Row>
       </div>
@@ -339,17 +319,17 @@ export default function RankingPage() {
   }
 
   return (
-    <div style={{ padding: '24px 0 80px', background: 'linear-gradient(180deg, #fff8e6 0%, #ffffff 100%)', minHeight: '80vh', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ padding: '16px 0 80px', background: 'linear-gradient(180deg, #fff8f0 0%, #ffe8d6 50%, #ffffff 100%)', minHeight: '80vh', position: 'relative', overflow: 'hidden' }}>
       {/* 美食背景 */}
-      <FoodBackground count={20} minSize={24} maxSize={48} />
+      <FoodBackground count={15} minSize={20} maxSize={40} />
 
       {/* 页面标题 */}
-      <div style={{ marginBottom: 32, textAlign: 'center', position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 12 }}>
-          <CrownOutlined style={{ fontSize: 40, color: '#FFD700', animation: 'crownBounce 2s ease-in-out infinite' }} />
+      <div style={{ marginBottom: 24, textAlign: 'center', position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 10 }}>
+          <CrownOutlined style={{ fontSize: 36, color: '#FFD700', animation: 'crownBounce 2s ease-in-out infinite' }} />
           <Title level={1} style={{
             margin: 0,
-            fontSize: 42,
+            fontSize: 36,
             fontWeight: 800,
             background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF6B6B 100%)',
             WebkitBackgroundClip: 'text',
@@ -358,44 +338,44 @@ export default function RankingPage() {
           }}>
             🏆 美食风云榜
           </Title>
-          <CrownOutlined style={{ fontSize: 40, color: '#FFD700', animation: 'crownBounce 2s ease-in-out infinite 0.5s' }} />
+          <CrownOutlined style={{ fontSize: 36, color: '#FFD700', animation: 'crownBounce 2s ease-in-out infinite 0.5s' }} />
         </div>
-        <Text type="secondary" style={{ fontSize: 16, color: '#8c8c8c' }}>
-          🔥 发现最受欢迎的街边美食，按点赞收藏综合排名
+        <Text type="secondary" style={{ fontSize: 14, color: '#8c8c8c' }}>
+          🔥 发现最受欢迎的街边美食
         </Text>
       </div>
 
       {/* 筛选条件 */}
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px', position: 'relative', zIndex: 1 }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 20px', position: 'relative', zIndex: 1 }}>
         <Card
           style={{
-            marginBottom: 24,
-            borderRadius: 20,
-            border: '1px solid rgba(255, 215, 0, 0.2)',
-            boxShadow: '0 4px 20px rgba(255, 215, 0, 0.1)',
+            marginBottom: 20,
+            borderRadius: 16,
+            border: '1px solid rgba(255, 215, 0, 0.15)',
+            boxShadow: '0 3px 16px rgba(255, 215, 0, 0.08)',
             background: 'linear-gradient(135deg, #ffffff 0%, #fffcf5 100%)'
           }}
-          bodyStyle={{ padding: '20px 24px' }}
+          bodyStyle={{ padding: '16px 20px' }}
         >
           {/* 第一行：地区筛选 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
-              padding: '8px 16px',
-              background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 165, 0, 0.1) 100%)',
-              borderRadius: 12
+              gap: 6,
+              padding: '6px 12px',
+              background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 165, 0, 0.08) 100%)',
+              borderRadius: 10
             }}>
-              <EnvironmentOutlined style={{ color: '#FFA500', fontSize: 16 }} />
-              <Text strong style={{ fontSize: 15, color: '#D48806' }}>地区筛选</Text>
+              <EnvironmentOutlined style={{ color: '#FFA500', fontSize: 14 }} />
+              <Text strong style={{ fontSize: 13, color: '#D48806' }}>地区</Text>
             </div>
             <TreeSelect
               value={selectedLocation}
               onChange={setSelectedLocation}
               treeData={LOCATION_DATA}
-              placeholder="选择地区发现美食"
-              style={{ width: 240 }}
+              placeholder="选择地区"
+              style={{ width: 180 }}
               size="large"
               allowClear
               showSearch
@@ -406,12 +386,12 @@ export default function RankingPage() {
                 closable
                 onClose={() => setSelectedLocation('')}
                 style={{
-                  borderRadius: 16,
-                  padding: '6px 14px',
-                  fontSize: 14,
-                  background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 165, 0, 0.1) 100%)',
+                  borderRadius: 12,
+                  padding: '4px 10px',
+                  fontSize: 12,
+                  background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 165, 0, 0.08) 100%)',
                   color: '#D48806',
-                  border: '1px solid rgba(255, 215, 0, 0.3)'
+                  border: '1px solid rgba(255, 215, 0, 0.25)'
                 }}
               >
                 📍 {selectedLocation.split('-').pop()}
@@ -420,28 +400,30 @@ export default function RankingPage() {
           </div>
 
           {/* 第二行：排序方式和统计 */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
-                padding: '8px 16px',
-                background: 'linear-gradient(135deg, rgba(255, 77, 79, 0.1) 0%, rgba(255, 77, 79, 0.05) 100%)',
-                borderRadius: 12,
+                gap: 6,
+                padding: '6px 12px',
+                background: 'linear-gradient(135deg, rgba(255, 77, 79, 0.08) 0%, rgba(255, 77, 79, 0.04) 100%)',
+                borderRadius: 10,
               }}>
-                <StarFilled style={{ color: '#ff4d4f' }} />
-                <Text strong style={{ fontSize: 15, color: '#262626' }}>排序方式</Text>
+                <StarFilled style={{ color: '#ff4d4f', fontSize: 14 }} />
+                <Text strong style={{ fontSize: 13, color: '#262626' }}>排序</Text>
               </div>
-              <Space size={8}>
+              <Space size={6}>
                 {SORT_OPTIONS.map(option => (
                   <Button
                     key={option.value}
                     type={sortBy === option.value ? 'primary' : 'default'}
                     onClick={() => setSortBy(option.value)}
+                    size={sortBy === option.value ? 'middle' : 'small'}
                     style={{
-                      borderRadius: 20,
+                      borderRadius: 18,
                       fontWeight: 500,
+                      fontSize: 13,
                       ...(sortBy === option.value ? {
                         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         border: 'none'
@@ -457,17 +439,17 @@ export default function RankingPage() {
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
-              padding: '10px 20px',
-              background: 'linear-gradient(135deg, rgba(255, 77, 79, 0.1) 0%, rgba(255, 77, 79, 0.05) 100%)',
-              borderRadius: 16,
-              border: '1px solid rgba(255, 77, 79, 0.2)'
+              gap: 8,
+              padding: '6px 14px',
+              background: 'linear-gradient(135deg, rgba(255, 77, 79, 0.08) 0%, rgba(255, 77, 79, 0.04) 100%)',
+              borderRadius: 12,
+              border: '1px solid rgba(255, 77, 79, 0.15)'
             }}>
-              <FireOutlined style={{ color: '#ff4d4f', fontSize: 20 }} />
-              <Text strong style={{ fontSize: 18, color: '#ff4d4f' }}>
+              <FireOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />
+              <Text strong style={{ fontSize: 15, color: '#ff4d4f' }}>
                 {filteredPosts.length}
               </Text>
-              <Text style={{ fontSize: 14, color: '#8c8c8c' }}>条美食动态</Text>
+              <Text style={{ fontSize: 12, color: '#8c8c8c' }}>条动态</Text>
             </div>
           </div>
         </Card>
@@ -475,23 +457,23 @@ export default function RankingPage() {
 
       {/* 空状态 */}
       {filteredPosts.length === 0 ? (
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px', position: 'relative', zIndex: 1 }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 20px', position: 'relative', zIndex: 1 }}>
           <Card style={{
             textAlign: 'center',
-            padding: 80,
-            borderRadius: 20,
-            border: '2px dashed rgba(255, 215, 0, 0.3)',
+            padding: 60,
+            borderRadius: 16,
+            border: '2px dashed rgba(255, 215, 0, 0.25)',
             background: 'linear-gradient(135deg, #ffffff 0%, #fffcf5 100%)'
           }}>
             <Empty
-              imageStyle={{ height: 120 }}
+              imageStyle={{ height: 100 }}
               description={
-                <Space direction="vertical" style={{ gap: 16 }}>
-                  <div style={{ fontSize: 72 }}>🏆</div>
-                  <Text style={{ fontSize: 20, color: '#595959', fontWeight: 500 }}>
+                <Space direction="vertical" style={{ gap: 12 }}>
+                  <div style={{ fontSize: 56 }}>🏆</div>
+                  <Text style={{ fontSize: 16, color: '#595959', fontWeight: 500 }}>
                     {selectedLocation ? `${selectedLocation.split('-').pop()}暂无美食动态` : '暂无美食动态'}
                   </Text>
-                  <Text type="secondary" style={{ fontSize: 16 }}>
+                  <Text type="secondary" style={{ fontSize: 14 }}>
                     {selectedLocation ? '🔄 试试切换其他地区' : '✨ 成为第一个分享美食的人吧！'}
                   </Text>
                   {selectedLocation && (
@@ -500,10 +482,8 @@ export default function RankingPage() {
                       size="large"
                       onClick={() => setSelectedLocation('')}
                       style={{
-                        borderRadius: 24,
-                        paddingLeft: 32,
-                        paddingRight: 32,
-                        height: 44,
+                        borderRadius: 20,
+                        height: 40,
                         fontWeight: 500,
                         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         border: 'none'
@@ -518,79 +498,33 @@ export default function RankingPage() {
           </Card>
         </div>
       ) : (
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px', position: 'relative', zIndex: 1 }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 20px', position: 'relative', zIndex: 1 }}>
           {/* 美食榜列表 */}
-          <Row gutter={[20, 20]}>
-            {filteredPosts.map((post, index) => {
-              const rankStyle = getRankStyle(index);
-              return (
-                <Col key={post.id} xs={24} sm={12} md={8} lg={6} style={{ display: 'flex', animation: `fadeInUp 0.5s ease ${index * 0.05}s both` }}>
-                  <div style={{ width: '100%', display: 'flex', position: 'relative' }}>
-                    {/* 前三名徽章 */}
-                    {rankStyle && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: -10,
-                          left: 10,
-                          zIndex: 10,
-                          width: 44,
-                          height: 44,
-                          borderRadius: '50%',
-                          background: rankStyle.bg,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 22,
-                          boxShadow: rankStyle.shadow,
-                          fontWeight: 'bold',
-                          border: '3px solid #fff',
-                          animation: 'medalGlow 2s ease-in-out infinite'
-                        }}
-                      >
-                        {rankStyle.badge}
-                      </div>
-                    )}
-                    {/* 排名标识 */}
-                    {!rankStyle && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: 12,
-                          left: 12,
-                          zIndex: 10,
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          color: '#fff',
-                          borderRadius: 8,
-                          padding: '6px 12px',
-                          fontSize: 14,
-                          fontWeight: 'bold',
-                          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)'
-                        }}
-                      >
-                        #{index + 1}
-                      </div>
-                    )}
-                    <PostCard post={post} onUpdate={handleUpdate} />
+          <Row gutter={[18, 18]}>
+            {filteredPosts.map((post, index) => (
+              <Col key={post.id} xs={24} sm={12} md={8} lg={6} style={{ display: 'flex', animation: `fadeInUp 0.5s ease ${index * 0.05}s both` }}>
+                <div style={{ width: '100%', display: 'flex', position: 'relative', height: 480 }}>
+                  <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                    <PostCard post={post} from="/ranking" onUpdate={handleUpdate} showRank rank={index} />
                   </div>
-                </Col>
-              );
-            })}
+                </div>
+              </Col>
+            ))}
           </Row>
 
           {/* 提示 */}
           <div style={{
             textAlign: 'center',
-            marginTop: 48,
-            padding: '24px 0',
-            background: 'linear-gradient(to right, transparent, rgba(255, 215, 0, 0.1), transparent)'
+            marginTop: 36,
+            padding: '16px 0',
+            background: 'linear-gradient(to right, transparent, rgba(255, 215, 0, 0.08), transparent)'
           }}>
-            <Space size={12}>
-              <div style={{ width: 60, height: 1, background: 'linear-gradient(to right, transparent, #FFD700, transparent)' }} />
-              <Text style={{ fontSize: 15, color: '#8c8c8c' }}>
-                ✨ 以上是按 <Text strong style={{ color: '#FFA500' }}>{SORT_OPTIONS.find(s => s.value === sortBy)?.label}</Text> 的结果
+            <Space size={10}>
+              <div style={{ width: 50, height: 1, background: 'linear-gradient(to right, transparent, #FFD700, transparent)' }} />
+              <Text style={{ fontSize: 13, color: '#8c8c8c' }}>
+                按 <Text strong style={{ color: '#FFA500' }}>{SORT_OPTIONS.find(s => s.value === sortBy)?.label}</Text> 排名
               </Text>
-              <div style={{ width: 60, height: 1, background: 'linear-gradient(to right, transparent, #FFD700, transparent)' }} />
+              <div style={{ width: 50, height: 1, background: 'linear-gradient(to right, transparent, #FFD700, transparent)' }} />
             </Space>
           </div>
         </div>

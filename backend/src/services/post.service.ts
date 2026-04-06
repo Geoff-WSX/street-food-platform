@@ -2,6 +2,18 @@ import prisma from '../config/database';
 import { CreatePostRequest, UpdatePostRequest } from '../types';
 
 /**
+ * 处理用户头像 - 优先使用 avatarData
+ */
+const processUserAvatar = (user: any) => {
+  if (!user) return user;
+  const avatar = user.avatarData || user.avatar;
+  return {
+    ...user,
+    avatar,
+  };
+};
+
+/**
  * 敏感词库 - 文字审查
  */
 const SENSITIVE_WORDS = [
@@ -96,13 +108,14 @@ export const createPost = async (userId: number, data: CreatePostRequest) => {
     },
     include: {
       user: {
-        select: { id: true, username: true, avatar: true },
+        select: { id: true, username: true, avatar: true, avatarData: true },
       },
     },
   });
 
   return {
     ...post,
+    user: processUserAvatar(post.user),
     images: parseImages(post.images),
     likeCount: typeof post.likeCount === 'number' ? post.likeCount : 0,
     favoriteCount: typeof post.favoriteCount === 'number' ? post.favoriteCount : 0,
@@ -123,7 +136,7 @@ export const getPosts = async (page: number = 1, pageSize: number = 10, userId?:
       orderBy: { createdAt: 'desc' },
       include: {
         user: {
-          select: { id: true, username: true, avatar: true },
+          select: { id: true, username: true, avatar: true, avatarData: true },
         },
       },
     }),
@@ -132,6 +145,7 @@ export const getPosts = async (page: number = 1, pageSize: number = 10, userId?:
 
   let postData = posts.map((p: any) => ({
     ...p,
+    user: processUserAvatar(p.user),
     images: parseImages(p.images),
     likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
     favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
@@ -180,7 +194,7 @@ export const getPostById = async (postId: number, userId?: number) => {
     where: { id: postId },
     include: {
       user: {
-        select: { id: true, username: true, avatar: true },
+        select: { id: true, username: true, avatar: true, avatarData: true },
       },
     },
   });
@@ -203,6 +217,7 @@ export const getPostById = async (postId: number, userId?: number) => {
 
   return {
     ...post,
+    user: processUserAvatar(post.user),
     images: parseImages(post.images),
     likeCount: typeof post.likeCount === 'number' ? post.likeCount : 0,
     favoriteCount: typeof post.favoriteCount === 'number' ? post.favoriteCount : 0,
@@ -235,7 +250,7 @@ export const getUserPosts = async (
       orderBy: { createdAt: 'desc' },
       include: {
         user: {
-          select: { id: true, username: true, avatar: true },
+          select: { id: true, username: true, avatar: true, avatarData: true },
         },
       },
     }),
@@ -244,6 +259,7 @@ export const getUserPosts = async (
 
   let postData = posts.map((p: any) => ({
     ...p,
+    user: processUserAvatar(p.user),
     images: parseImages(p.images),
     likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
     favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
@@ -313,13 +329,14 @@ export const updatePost = async (
     },
     include: {
       user: {
-        select: { id: true, username: true, avatar: true },
+        select: { id: true, username: true, avatar: true, avatarData: true },
       },
     },
   });
 
   return {
     ...updated,
+    user: processUserAvatar(updated.user),
     images: parseImages(updated.images),
     likeCount: typeof updated.likeCount === 'number' ? updated.likeCount : 0,
     favoriteCount: typeof updated.favoriteCount === 'number' ? updated.favoriteCount : 0,
@@ -429,7 +446,7 @@ export const getUserFavorites = async (
       include: {
         post: {
           include: {
-            user: { select: { id: true, username: true, avatar: true } },
+            user: { select: { id: true, username: true, avatar: true, avatarData: true } },
           },
         },
       },
@@ -439,6 +456,7 @@ export const getUserFavorites = async (
 
   const posts = favorites.map((f: any) => ({
     ...f.post,
+    user: processUserAvatar(f.post.user),
     images: parseImages(f.post.images),
     likeCount: typeof f.post.likeCount === 'number' ? f.post.likeCount : 0,
     favoriteCount: typeof f.post.favoriteCount === 'number' ? f.post.favoriteCount : 0,
@@ -484,7 +502,7 @@ export const getUserLikes = async (
       include: {
         post: {
           include: {
-            user: { select: { id: true, username: true, avatar: true } },
+            user: { select: { id: true, username: true, avatar: true, avatarData: true } },
           },
         },
       },
@@ -494,6 +512,7 @@ export const getUserLikes = async (
 
   const posts = likes.map((l: any) => ({
     ...l.post,
+    user: processUserAvatar(l.post.user),
     images: parseImages(l.post.images),
     likeCount: typeof l.post.likeCount === 'number' ? l.post.likeCount : 0,
     favoriteCount: typeof l.post.favoriteCount === 'number' ? l.post.favoriteCount : 0,
@@ -562,7 +581,7 @@ export const getRandomPosts = async (
     where: { id: { in: selectedIds } },
     include: {
       user: {
-        select: { id: true, username: true, avatar: true },
+        select: { id: true, username: true, avatar: true, avatarData: true },
       },
     },
     orderBy: { createdAt: 'desc' },
@@ -570,6 +589,7 @@ export const getRandomPosts = async (
 
   let postData = posts.map((p: any) => ({
     ...p,
+    user: processUserAvatar(p.user),
     images: parseImages(p.images),
     likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
     favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
