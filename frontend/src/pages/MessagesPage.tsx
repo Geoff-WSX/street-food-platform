@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, List, Avatar, Typography, Tag, Empty, Badge, Space, Skeleton, Modal, message, Button } from 'antd';
-import { UserOutlined, MailOutlined, DeleteOutlined } from '@ant-design/icons';
-import { getConversations, deleteConversation, type Conversation } from '../api/message';
+import { UserOutlined, MailOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { getConversations, deleteConversation, markAsRead, type Conversation } from '../api/message';
 import ChatModal from '../components/ChatModal';
 import { useAuthStore } from '../store/auth';
 import { useMessageStore } from '../store/message';
@@ -88,6 +88,36 @@ export default function MessagesPage() {
     });
   };
 
+  // 一键清除所有未读消息
+  const handleMarkAllAsRead = async () => {
+    const hasUnread = conversations.some(c => c.unreadCount > 0);
+    if (!hasUnread) {
+      void message.info('暂无未读消息');
+      return;
+    }
+
+    Modal.confirm({
+      title: '标记所有消息为已读',
+      content: '确定要将所有对话的未读消息标记为已读吗？',
+      okText: '确认',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          // 遍历所有有未读消息的对话，标记为已读
+          const unreadConversations = conversations.filter(c => c.unreadCount > 0);
+          await Promise.all(
+            unreadConversations.map(conv => markAsRead(conv.otherUser.id))
+          );
+          void message.success('已将所有消息标记为已读');
+          clearUnread();
+          loadConversations();
+        } catch (error: unknown) {
+          void message.error(getErrorMessage(error));
+        }
+      },
+    });
+  };
+
   if (!isLoggedIn) {
     return null;
   }
@@ -122,9 +152,21 @@ export default function MessagesPage() {
               私信消息
             </Title>
           </div>
-          <Text type="secondary" style={{ fontSize: 15 }}>
-            💬 与其他美食爱好者交流互动
-          </Text>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+            <Text type="secondary" style={{ fontSize: 15 }}>
+              💬 与其他美食爱好者交流互动
+            </Text>
+            {!loading && conversations.some(c => c.unreadCount > 0) && (
+              <Button
+                type="link"
+                icon={<CheckCircleOutlined />}
+                onClick={handleMarkAllAsRead}
+                style={{ padding: 0, fontSize: 14 }}
+              >
+                全部已读
+              </Button>
+            )}
+          </div>
         </div>
 
         <Card

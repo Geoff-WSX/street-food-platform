@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Modal, Input, Button, message, Avatar, Typography, Space, Empty, Spin, Tag, Dropdown, type MenuProps } from 'antd';
 import { SendOutlined, UserOutlined, ArrowLeftOutlined, WarningOutlined, MoreOutlined, StopOutlined, DeleteOutlined } from '@ant-design/icons';
-import { getMessages, sendMessage, checkCanSendMessage, markAsRead, deleteMessage, blockUser, type Message } from '../api/message';
+import { getMessages, sendMessage, checkCanSendMessage, markAsRead, deleteMessage, blockUser, getConversations, type Message } from '../api/message';
 import { useAuthStore } from '../store/auth';
 import { getErrorMessage } from '../utils/error';
 import { useMessageStore } from '../store/message';
@@ -32,6 +32,22 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
   const loadMessages = async () => {
     if (!visible || !isLoggedIn || !otherUser.id) return;
     setLoading(true);
+
+    // 立即标记消息为已读并减少未读计数
+    try {
+      // 先标记为已读，立即清除未读提示
+      await markAsRead(otherUser.id);
+
+      // 获取当前对话的未读消息数并减少全局计数
+      const conversations = await getConversations();
+      const currentConv = conversations.find(c => c.otherUser.id === otherUser.id);
+      if (currentConv && currentConv.unreadCount > 0) {
+        decrementUnread(currentConv.unreadCount);
+      }
+    } catch {
+      // 忽略标记已读的错误，继续加载消息
+    }
+
     try {
       const [msgs, checkResult] = await Promise.all([
         getMessages(otherUser.id),
@@ -44,15 +60,6 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
       if (!checkResult.canSend && checkResult.reason === '你已被对方拉黑') {
         setIsBlocked(true);
       }
-
-      // 计算并减少未读消息数
-      const unreadMessages = msgs.filter((msg) => msg.senderId !== currentUser?.id && !msg.readAt);
-      if (unreadMessages.length > 0) {
-        decrementUnread(unreadMessages.length);
-      }
-
-      // 标记消息为已读
-      await markAsRead(otherUser.id);
     } catch (error: unknown) {
       void message.error(getErrorMessage(error));
     } finally {

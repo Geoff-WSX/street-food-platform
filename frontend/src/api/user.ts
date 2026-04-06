@@ -16,6 +16,10 @@ export const updateAvatar = (formData: FormData) =>
 export const changePassword = (data: { currentPassword: string; newPassword: string }) =>
   api.put('/users/me/password', { oldPassword: data.currentPassword, newPassword: data.newPassword }).then((r) => r.data);
 
-// 更新私信开关
-export const updateMessageSettings = (allowMessage: boolean) =>
-  api.put<ApiResponse<User>>('/users/me/settings', { allowMessage }).then((r) => r.data.data);
+// 更新私信设置
+export const updateMessageSettings = (allowMessage: boolean, followOnlyMessage?: boolean) =>
+  api.put<ApiResponse<User>>('/users/me/settings', { allowMessage, ...(followOnlyMessage !== undefined && { followOnlyMessage }) }).then((r) => r.data.data);
+
+// 更新隐私设置
+export const updatePrivacySettings = (data: { hideFollowing?: boolean; hideFollowers?: boolean; hidePosts?: boolean; hideFavorites?: boolean }) =>
+  api.put<ApiResponse<User>>('/users/me/privacy', data).then((r) => r.data.data);

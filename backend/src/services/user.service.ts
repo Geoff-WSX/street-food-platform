@@ -17,6 +17,12 @@ export const getUserById = async (userId: number, currentUserId?: number) => {
       avatarData: true,
       bio: true,
       role: true,
+      allowMessage: true,
+      followOnlyMessage: true,
+      hideFollowing: true,
+      hideFollowers: true,
+      hidePosts: true,
+      hideFavorites: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -109,6 +115,12 @@ export const updateProfile = async (
       avatarData: true,
       bio: true,
       role: true,
+      allowMessage: true,
+      followOnlyMessage: true,
+      hideFollowing: true,
+      hideFollowers: true,
+      hidePosts: true,
+      hideFavorites: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -204,12 +216,17 @@ export const changePassword = async (
  */
 export const updateSettings = async (
   userId: number,
-  data: { allowMessage?: boolean }
+  data: { allowMessage?: boolean; followOnlyMessage?: boolean; hideFollowing?: boolean; hideFollowers?: boolean; hidePosts?: boolean; hideFavorites?: boolean }
 ) => {
   const user = await prisma.user.update({
     where: { id: userId },
     data: {
       ...(data.allowMessage !== undefined && { allowMessage: data.allowMessage }),
+      ...(data.followOnlyMessage !== undefined && { followOnlyMessage: data.followOnlyMessage }),
+      ...(data.hideFollowing !== undefined && { hideFollowing: data.hideFollowing }),
+      ...(data.hideFollowers !== undefined && { hideFollowers: data.hideFollowers }),
+      ...(data.hidePosts !== undefined && { hidePosts: data.hidePosts }),
+      ...(data.hideFavorites !== undefined && { hideFavorites: data.hideFavorites }),
     },
     select: {
       id: true,
@@ -219,6 +236,11 @@ export const updateSettings = async (
       avatarData: true,
       bio: true,
       allowMessage: true,
+      followOnlyMessage: true,
+      hideFollowing: true,
+      hideFollowers: true,
+      hidePosts: true,
+      hideFavorites: true,
       createdAt: true,
       updatedAt: true,
     },

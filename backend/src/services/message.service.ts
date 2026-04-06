@@ -8,25 +8,38 @@ const getOrCreateConversation = async (userId1: number, userId2: number) => {
   // 确保 userId1 < userId2 以保持一致性
   const [uid1, uid2] = userId1 < userId2 ? [userId1, userId2] : [userId2, userId1];
 
-  let conversation = await prisma.conversation.findUnique({
-    where: {
-      userId1_userId2: {
+  try {
+    // 使用 upsert 来避免并发创建时的竞态条件
+    return await prisma.conversation.upsert({
+      where: {
+        userId1_userId2: {
+          userId1: uid1,
+          userId2: uid2,
+        },
+      },
+      create: {
         userId1: uid1,
         userId2: uid2,
       },
-    },
-  });
-
-  if (!conversation) {
-    conversation = await prisma.conversation.create({
-      data: {
-        userId1: uid1,
-        userId2: uid2,
+      update: {}, // 如果已存在则不更新
+    });
+  } catch (error: any) {
+    // 如果 upsert 失败（极少情况），尝试再次查询
+    const conversation = await prisma.conversation.findUnique({
+      where: {
+        userId1_userId2: {
+          userId1: uid1,
+          userId2: uid2,
+        },
       },
     });
-  }
 
-  return conversation;
+    if (conversation) {
+      return conversation;
+    }
+
+    throw error;
+  }
 };
 
 /**
@@ -57,12 +70,17 @@ export const checkCanSendMessage = async (senderId: number, receiverId: number) 
     select: { allowMessage: true, followOnlyMessage: true },
   });
 
-  if (!receiver || !receiver.allowMessage) {
+  if (!receiver) {
+    return { canSend: false, reason: '用户不存在' };
+  }
+
+  // 使用 ?? 操作符处理 NULL 值，默认为 true
+  if (receiver.allowMessage === false) {
     return { canSend: false, reason: '对方未开启私信功能' };
   }
 
   // 检查对方是否设置了仅关注可私信
-  if (receiver.followOnlyMessage) {
+  if (receiver.followOnlyMessage === true) {
     const followRelation = await prisma.follow.findFirst({
       where: {
         followerId: senderId,

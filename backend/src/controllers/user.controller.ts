@@ -92,11 +92,30 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
 // 更新用户设置
 export const updateSettings = async (req: AuthRequest, res: Response) => {
   try {
-    const { allowMessage } = req.body;
-    const user = await userService.updateSettings(req.user!.userId, { allowMessage });
+    const { allowMessage, followOnlyMessage } = req.body;
+    const settings: { allowMessage?: boolean; followOnlyMessage?: boolean } = {};
+    if (allowMessage !== undefined) settings.allowMessage = allowMessage;
+    if (followOnlyMessage !== undefined) settings.followOnlyMessage = followOnlyMessage;
+    const user = await userService.updateSettings(req.user!.userId, settings);
     return successResponse(res, user, '设置更新成功');
   } catch (error: any) {
     return errorResponse(res, error.message, 'UPDATE_SETTINGS_FAILED');
+  }
+};
+
+// 更新隐私设置
+export const updatePrivacySettings = async (req: AuthRequest, res: Response) => {
+  try {
+    const { hideFollowing, hideFollowers, hidePosts, hideFavorites } = req.body;
+    const settings: { hideFollowing?: boolean; hideFollowers?: boolean; hidePosts?: boolean; hideFavorites?: boolean } = {};
+    if (hideFollowing !== undefined) settings.hideFollowing = hideFollowing;
+    if (hideFollowers !== undefined) settings.hideFollowers = hideFollowers;
+    if (hidePosts !== undefined) settings.hidePosts = hidePosts;
+    if (hideFavorites !== undefined) settings.hideFavorites = hideFavorites;
+    const user = await userService.updateSettings(req.user!.userId, settings);
+    return successResponse(res, user, '隐私设置更新成功');
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'UPDATE_PRIVACY_SETTINGS_FAILED');
   }
 };
 

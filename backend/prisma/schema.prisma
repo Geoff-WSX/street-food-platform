@@ -218,6 +218,11 @@ model User {
   role              String         @default("user") @db.VarChar(20)
   wechatOpenId      String?        @unique @db.VarChar(100)
   wechatUnionId     String?        @unique @db.VarChar(100)
+  // 隐私设置
+  hideFollowing     Boolean        @default(false)
+  hideFollowers     Boolean        @default(false)
+  hidePosts         Boolean        @default(false)
+  hideFavorites     Boolean        @default(false)
   adminLogs         AdminLog[]
   blockedBy         Block[]        @relation("Block_blocked")
   blocking          Block[]        @relation("Block_blocker")

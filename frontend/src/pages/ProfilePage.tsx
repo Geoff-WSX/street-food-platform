@@ -4,12 +4,13 @@ import {
   Avatar, Typography, Row, Col, Button, Form, Input,
   Upload, Spin, Empty, message, Modal, Divider, Card, Space, Tag, Select, Switch, List, Popconfirm
 } from 'antd';
-import { UserOutlined, EditOutlined, CameraOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined } from '@ant-design/icons';
-import { getUserById, updateProfile, updateAvatar, changePassword, updateMessageSettings } from '../api/user';
+import { UserOutlined, EditOutlined, CameraOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined, TeamOutlined, FileTextOutlined, StarOutlined } from '@ant-design/icons';
+import { getUserById, updateProfile, updateAvatar, changePassword, updateMessageSettings, updatePrivacySettings } from '../api/user';
 import { getUserPosts, getUserFavorites } from '../api/post';
 import { getBlockedList, unblockUser } from '../api/block';
-import { getFollowing, getFollowers, followUser, unfollowUser, checkFollowStatus } from '../api/follow';
+import { getFollowing, getFollowers, followUser, unfollowUser } from '../api/follow';
 import { useAuthStore } from '../store/auth';
+import { useFollowStore } from '../store/follow';
 import PostCard from '../components/PostCard';
 import ChatModal from '../components/ChatModal';
 import ReportModal from '../components/ReportModal';
@@ -38,6 +39,9 @@ export default function ProfilePage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isLoggedIn, user: me, updateUser, logout } = useAuthStore();
+  const followStatus = useFollowStore((s) => s.followStatus);
+  const setFollowStatus = useFollowStore((s) => s.setFollowStatus);
+  const checkAndCacheStatus = useFollowStore((s) => s.checkAndCacheStatus);
   const viewUserId = searchParams.get('userId') ? Number(searchParams.get('userId')) : me?.id;
   const isOwner = !searchParams.get('userId') || Number(searchParams.get('userId')) === me?.id;
 
@@ -53,12 +57,16 @@ export default function ProfilePage() {
   const [selectedCity, setSelectedCity] = useState<string>('');
   const [activeTab, setActiveTab] = useState('posts');
   const [allowMessage, setAllowMessage] = useState(true);
+  const [followOnlyMessage, setFollowOnlyMessage] = useState(false);
+  const [hideFollowing, setHideFollowing] = useState(false);
+  const [hideFollowers, setHideFollowers] = useState(false);
+  const [hidePosts, setHidePosts] = useState(false);
+  const [hideFavorites, setHideFavorites] = useState(false);
   const [blockedUsers, setBlockedUsers] = useState<User[]>([]);
   const [blockedLoading, setBlockedLoading] = useState(false);
   const [following, setFollowing] = useState<User[]>([]);
   const [followers, setFollowers] = useState<User[]>([]);
   const [followLoading, setFollowLoading] = useState(false);
-  const [followingStatus, setFollowingStatus] = useState<Record<number, boolean>>({});
   const [chatUser, setChatUser] = useState<User | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -70,6 +78,11 @@ export default function ProfilePage() {
       const u = await getUserById(viewUserId);
       setProfileUser(u);
       setAllowMessage(u.allowMessage ?? true);
+      setFollowOnlyMessage(u.followOnlyMessage ?? false);
+      setHideFollowing(u.hideFollowing ?? false);
+      setHideFollowers(u.hideFollowers ?? false);
+      setHidePosts(u.hidePosts ?? false);
+      setHideFavorites(u.hideFavorites ?? false);
       const postsData = await getUserPosts(viewUserId, { pageSize: 50 });
       setMyPosts(postsData.data);
 
@@ -81,20 +94,17 @@ export default function ProfilePage() {
       setFollowing(followingData);
       setFollowers(followersData);
 
-      // 检查关注状态
+      // 检查关注状态并缓存到全局store
       if (isLoggedIn && me) {
-        const statusMap: Record<number, boolean> = {};
         await Promise.all(
           [...followingData, ...followersData].map(async (user) => {
             try {
-              const status = await checkFollowStatus(user.id);
-              statusMap[user.id] = status.isFollowing;
+              await checkAndCacheStatus(user.id);
             } catch {
-              statusMap[user.id] = false;
+              // 忽略错误
             }
           })
         );
-        setFollowingStatus(statusMap);
       }
 
       if (isOwner && isLoggedIn) {
@@ -150,17 +160,6 @@ export default function ProfilePage() {
     navigate('/');
   };
 
-  const handleMessageSettingChange = async (checked: boolean) => {
-    try {
-      const updated = await updateMessageSettings(checked);
-      setAllowMessage(checked);
-      updateUser(updated);
-      void message.success(checked ? '已开启私信功能' : '已关闭私信功能');
-    } catch {
-      void message.error('设置失败');
-    }
-  };
-
   const handleUnblock = async (userId: number) => {
     try {
       await unblockUser(userId);
@@ -189,10 +188,14 @@ export default function ProfilePage() {
     setFollowLoading(true);
     try {
       await followUser(userId);
-      setFollowingStatus(prev => ({ ...prev, [userId]: true }));
+      setFollowStatus(userId, true);
       void message.success('关注成功');
-    } catch {
-      void message.error('操作失败');
+    } catch (error: any) {
+      // If there's an error, refresh the actual follow status from server
+      void checkAndCacheStatus(userId);
+      // Show specific error message if available
+      const errorMessage = error?.response?.data?.error || error?.message || '操作失败';
+      void message.error(errorMessage);
     } finally {
       setFollowLoading(false);
     }
@@ -206,14 +209,18 @@ export default function ProfilePage() {
     setFollowLoading(true);
     try {
       await unfollowUser(userId);
-      setFollowingStatus(prev => ({ ...prev, [userId]: false }));
+      setFollowStatus(userId, false);
       // 如果在关注列表中，从列表中移除
       setFollowing(prev => prev.filter(u => u.id !== userId));
       // 如果在粉丝列表中，移除该用户
       setFollowers(prev => prev.filter(u => u.id !== userId));
       void message.success('已取消关注');
-    } catch {
-      void message.error('操作失败');
+    } catch (error: any) {
+      // If there's an error, refresh the actual follow status from server
+      void checkAndCacheStatus(userId);
+      // Show specific error message if available
+      const errorMessage = error?.response?.data?.error || error?.message || '操作失败';
+      void message.error(errorMessage);
     } finally {
       setFollowLoading(false);
     }
@@ -261,7 +268,7 @@ export default function ProfilePage() {
             </Text>
             {isLoggedIn && me && user.id !== me.id && (
               <Space size={6}>
-                {followingStatus[user.id] ? (
+                {followStatus[user.id] ? (
                   <Button
                     icon={<CheckOutlined />}
                     onClick={() => handleUnfollowUser(user.id)}
@@ -356,7 +363,8 @@ export default function ProfilePage() {
   );
 
   const tabItems = [
-    {
+    // 动态标签页 - 只有所有者或未隐藏动态时显示
+    ...(isOwner || !profileUser?.hidePosts ? [{
       key: 'posts',
       label: `动态 ${myPosts.length > 0 ? `(${myPosts.length})` : ''}`,
       children: (
@@ -386,15 +394,22 @@ export default function ProfilePage() {
               </Space>
             </Card>
           )}
-          <PostGrid posts={filteredPosts} />
+          {!isOwner && profileUser?.hidePosts ? (
+            <Empty description="该用户已隐藏动态" style={{ padding: '32px 0' }} />
+          ) : (
+            <PostGrid posts={filteredPosts} />
+          )}
         </>
       )
-    },
-    {
+    }] : []),
+    // 关注标签页 - 只有所有者或未隐藏关注时显示
+    ...(isOwner || !profileUser?.hideFollowing ? [{
       key: 'following',
       label: `关注 ${following.length > 0 ? `(${following.length})` : ''}`,
       children: (
-        following.length === 0 ? (
+        !isOwner && profileUser?.hideFollowing ? (
+          <Empty description="该用户已隐藏关注列表" style={{ padding: '32px 0' }} />
+        ) : following.length === 0 ? (
           <Empty description="暂无关注" style={{ padding: '32px 0' }} />
         ) : (
           <List
@@ -403,12 +418,15 @@ export default function ProfilePage() {
           />
         )
       )
-    },
-    {
+    }] : []),
+    // 粉丝标签页 - 只有所有者或未隐藏粉丝时显示
+    ...(isOwner || !profileUser?.hideFollowers ? [{
       key: 'followers',
       label: `粉丝 ${followers.length > 0 ? `(${followers.length})` : ''}`,
       children: (
-        followers.length === 0 ? (
+        !isOwner && profileUser?.hideFollowers ? (
+          <Empty description="该用户已隐藏粉丝列表" style={{ padding: '32px 0' }} />
+        ) : followers.length === 0 ? (
           <Empty description="暂无粉丝" style={{ padding: '32px 0' }} />
         ) : (
           <List
@@ -417,7 +435,8 @@ export default function ProfilePage() {
           />
         )
       )
-    },
+    }] : []),
+    // 收藏标签页 - 只有所有者可见
     ...(isOwner ? [{
       key: 'favorites',
       label: `收藏 ${myFavorites.length > 0 ? `(${myFavorites.length})` : ''}`,
@@ -457,7 +476,7 @@ export default function ProfilePage() {
         <Space direction="vertical" style={{ width: '100%' }} size={12}>
           {/* 私信设置 */}
           <Card title="私信设置" size="small" style={{ borderRadius: 8 }}>
-            <Space direction="vertical" style={{ width: '100%' }} size={6}>
+            <Space direction="vertical" style={{ width: '100%' }} size={12}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Space size={8}>
                   <MessageOutlined style={{ fontSize: 14 }} />
@@ -465,14 +484,150 @@ export default function ProfilePage() {
                 </Space>
                 <Switch
                   checked={allowMessage}
-                  onChange={handleMessageSettingChange}
+                  onChange={async (checked) => {
+                    setAllowMessage(checked);
+                    try {
+                      const updated = await updateMessageSettings(checked, followOnlyMessage);
+                      updateUser(updated);
+                      void message.success(checked ? '已开启私信功能' : '已关闭私信功能');
+                    } catch {
+                      void message.error('设置失败，请重试');
+                      setAllowMessage(!checked); // 恢复原状态
+                    }
+                  }}
                   checkedChildren="开"
                   unCheckedChildren="关"
+                  loading={false}
                 />
               </div>
               <Text type="secondary" style={{ fontSize: 11 }}>
                 关闭后，其他用户无法给你发送私信
               </Text>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                <Space size={8}>
+                  <UserOutlined style={{ fontSize: 14 }} />
+                  <Text style={{ fontSize: 14 }}>仅允许关注我的人发送私信</Text>
+                </Space>
+                <Switch
+                  checked={followOnlyMessage}
+                  onChange={async (checked) => {
+                    setFollowOnlyMessage(checked);
+                    try {
+                      const updated = await updateMessageSettings(allowMessage, checked);
+                      updateUser(updated);
+                      void message.success(checked ? '已开启仅关注可私信' : '已关闭仅关注可私信');
+                    } catch {
+                      void message.error('设置失败，请重试');
+                      setFollowOnlyMessage(!checked); // 恢复原状态
+                    }
+                  }}
+                  checkedChildren="开"
+                  unCheckedChildren="关"
+                  loading={false}
+                  disabled={!allowMessage}
+                />
+              </div>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                开启后，只有关注你的用户才能给你发送私信
+              </Text>
+            </Space>
+          </Card>
+
+          {/* 隐私设置 */}
+          <Card title="隐私设置" size="small" style={{ borderRadius: 8 }}>
+            <Space direction="vertical" style={{ width: '100%' }} size={12}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Space size={8}>
+                  <TeamOutlined style={{ fontSize: 14 }} />
+                  <Text style={{ fontSize: 14 }}>隐藏我的关注列表</Text>
+                </Space>
+                <Switch
+                  checked={hideFollowing}
+                  onChange={async (checked) => {
+                    setHideFollowing(checked);
+                    try {
+                      const updated = await updatePrivacySettings({ hideFollowing: checked });
+                      updateUser(updated);
+                      void message.success(checked ? '已隐藏关注列表' : '已显示关注列表');
+                    } catch {
+                      void message.error('设置失败，请重试');
+                      setHideFollowing(!checked);
+                    }
+                  }}
+                  checkedChildren="开"
+                  unCheckedChildren="关"
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Space size={8}>
+                  <TeamOutlined style={{ fontSize: 14 }} />
+                  <Text style={{ fontSize: 14 }}>隐藏我的粉丝列表</Text>
+                </Space>
+                <Switch
+                  checked={hideFollowers}
+                  onChange={async (checked) => {
+                    setHideFollowers(checked);
+                    try {
+                      const updated = await updatePrivacySettings({ hideFollowers: checked });
+                      updateUser(updated);
+                      void message.success(checked ? '已隐藏粉丝列表' : '已显示粉丝列表');
+                    } catch {
+                      void message.error('设置失败，请重试');
+                      setHideFollowers(!checked);
+                    }
+                  }}
+                  checkedChildren="开"
+                  unCheckedChildren="关"
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Space size={8}>
+                  <FileTextOutlined style={{ fontSize: 14 }} />
+                  <Text style={{ fontSize: 14 }}>隐藏我的动态</Text>
+                </Space>
+                <Switch
+                  checked={hidePosts}
+                  onChange={async (checked) => {
+                    setHidePosts(checked);
+                    try {
+                      const updated = await updatePrivacySettings({ hidePosts: checked });
+                      updateUser(updated);
+                      void message.success(checked ? '已隐藏动态' : '已显示动态');
+                    } catch {
+                      void message.error('设置失败，请重试');
+                      setHidePosts(!checked);
+                    }
+                  }}
+                  checkedChildren="开"
+                  unCheckedChildren="关"
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Space size={8}>
+                  <StarOutlined style={{ fontSize: 14 }} />
+                  <Text style={{ fontSize: 14 }}>隐藏我的收藏</Text>
+                </Space>
+                <Switch
+                  checked={hideFavorites}
+                  onChange={async (checked) => {
+                    setHideFavorites(checked);
+                    try {
+                      const updated = await updatePrivacySettings({ hideFavorites: checked });
+                      updateUser(updated);
+                      void message.success(checked ? '已隐藏收藏' : '已显示收藏');
+                    } catch {
+                      void message.error('设置失败，请重试');
+                      setHideFavorites(!checked);
+                    }
+                  }}
+                  checkedChildren="开"
+                  unCheckedChildren="关"
+                />
+              </div>
             </Space>
           </Card>
 
@@ -548,20 +703,26 @@ export default function ProfilePage() {
           boxShadow: '0 6px 24px rgba(102, 126, 234, 0.1)',
           border: '1px solid rgba(102, 126, 234, 0.08)',
           background: 'linear-gradient(135deg, #ffffff 0%, #f8f6ff 100%)',
-          overflow: 'hidden'
+          overflow: 'visible',
+          position: 'relative'
         }}
+        bodyStyle={{ paddingTop: 0, paddingBottom: 16, paddingLeft: 24, paddingRight: 24 }}
       >
         {/* 顶部装饰条 */}
         <div style={{
-          height: 60,
+          height: 80,
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
           position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
-          borderRadius: '16px 16px 0 0'
+          borderRadius: '16px 16px 0 0',
+          zIndex: 0,
+          marginTop: -1,
+          marginLeft: -1,
+          marginRight: -1
         }} />
-        <Row gutter={[24, 20]} align="middle" style={{ paddingTop: 15 }}>
+        <Row gutter={[24, 20]} align="middle" style={{ paddingTop: 45, position: 'relative', zIndex: 1 }}>
           <Col flex="none" style={{ zIndex: 1 }}>
             <div style={{ position: 'relative' }}>
               <Avatar

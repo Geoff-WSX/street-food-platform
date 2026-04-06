@@ -29,6 +29,9 @@ router.put('/me/password', authenticate, userController.changePassword);
 // PUT /api/users/me/settings - 更新用户设置
 router.put('/me/settings', authenticate, userController.updateSettings);
 
+// PUT /api/users/me/privacy - 更新隐私设置
+router.put('/me/privacy', authenticate, userController.updatePrivacySettings);
+
 // POST /api/users/:id/follow - 关注用户
 router.post('/:id/follow', authenticate, userController.followUser);
 

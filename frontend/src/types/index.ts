@@ -8,6 +8,11 @@ export interface User {
   role?: string;
   createdAt: string;
   allowMessage?: boolean;
+  followOnlyMessage?: boolean;
+  hideFollowing?: boolean;
+  hideFollowers?: boolean;
+  hidePosts?: boolean;
+  hideFavorites?: boolean;
 }
 
 export interface Post {

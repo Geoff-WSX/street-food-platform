@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Avatar, Typography, message, Popconfirm } from 'antd';
 import { HeartOutlined, HeartFilled, StarOutlined, StarFilled, EnvironmentOutlined, UserOutlined, PlusOutlined, CheckOutlined, MessageOutlined, StopOutlined, CommentOutlined } from '@ant-design/icons';
 import { toggleLike, toggleFavorite } from '../api/post';
-import { followUser, unfollowUser, checkFollowStatus } from '../api/follow';
+import { followUser, unfollowUser } from '../api/follow';
 import { blockUser } from '../api/block';
 import { useAuthStore } from '../store/auth';
+import { useFollowStore } from '../store/follow';
 import ChatModal from './ChatModal';
 import MapModal from './MapModal';
 import type { Post } from '../types';
@@ -24,14 +25,19 @@ interface Props {
 export default function PostCard({ post, onUpdate, showRank, rank, from = '/' }: Props) {
   const navigate = useNavigate();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const followStatus = useFollowStore((s) => s.followStatus);
+  const setFollowStatus = useFollowStore((s) => s.setFollowStatus);
+  const checkAndCacheStatus = useFollowStore((s) => s.checkAndCacheStatus);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+
+  // Get follow status from global store
+  const isFollowing = followStatus[post.user.id] ?? false;
 
   // 处理 images 格式：确保是数组
   const processedImages = useMemo(() => {
@@ -58,20 +64,12 @@ export default function PostCard({ post, onUpdate, showRank, rank, from = '/' }:
   const favoriteCount = typeof post.favoriteCount === 'number' ? post.favoriteCount :
                         typeof post.favoriteCount === 'string' ? parseInt(post.favoriteCount, 10) || 0 : 0;
 
-  const checkFollow = useCallback(async () => {
-    if (isLoggedIn && post.user.id) {
-      try {
-        const result = await checkFollowStatus(post.user.id);
-        setIsFollowing(result.isFollowing);
-      } catch {
-      // 忽略错误
-    }
-    }
-  }, [isLoggedIn, post.user.id]);
-
+  // Check follow status when component mounts or user logs in
   useEffect(() => {
-    checkFollow();
-  }, [checkFollow]);
+    if (isLoggedIn && post.user.id) {
+      void checkAndCacheStatus(post.user.id);
+    }
+  }, [isLoggedIn, post.user.id, checkAndCacheStatus]);
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -114,15 +112,19 @@ export default function PostCard({ post, onUpdate, showRank, rank, from = '/' }:
     try {
       if (isFollowing) {
         await unfollowUser(post.user.id);
-        setIsFollowing(false);
+        setFollowStatus(post.user.id, false);
         void message.success('已取消关注');
       } else {
         await followUser(post.user.id);
-        setIsFollowing(true);
+        setFollowStatus(post.user.id, true);
         void message.success('关注成功');
       }
-    } catch {
-      void message.error('操作失败');
+    } catch (error: any) {
+      // If there's an error, refresh the actual follow status from server
+      void checkAndCacheStatus(post.user.id);
+      // Show specific error message if available
+      const errorMessage = error?.response?.data?.error || error?.message || '操作失败';
+      void message.error(errorMessage);
     } finally {
       setFollowLoading(false);
     }
@@ -559,7 +561,6 @@ export default function PostCard({ post, onUpdate, showRank, rank, from = '/' }:
           user={post.user}
           visible={showUserModal}
           onClose={() => setShowUserModal(false)}
-          onFollowChange={(following) => setIsFollowing(following)}
           onOpenChat={() => setShowChatModal(true)}
         />
       )}
@@ -591,33 +592,29 @@ export default function PostCard({ post, onUpdate, showRank, rank, from = '/' }:
 }
 
 // 用户信息弹窗组件
-function UserModal({ user, visible, onClose, onFollowChange, onOpenChat }: {
+function UserModal({ user, visible, onClose, onOpenChat }: {
   user: { id: number; username: string; avatar?: string; bio?: string };
   visible: boolean;
   onClose: () => void;
-  onFollowChange: (following: boolean) => void;
   onOpenChat: () => void;
 }) {
   const navigate = useNavigate();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const currentUser = useAuthStore((s) => s.user);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const followStatus = useFollowStore((s) => s.followStatus);
+  const setFollowStatus = useFollowStore((s) => s.setFollowStatus);
+  const checkAndCacheStatus = useFollowStore((s) => s.checkAndCacheStatus);
   const [followLoading, setFollowLoading] = useState(false);
 
-  const checkFollow = useCallback(async () => {
-    try {
-      const result = await checkFollowStatus(user.id);
-      setIsFollowing(result.isFollowing);
-    } catch {
-      // 忽略错误
-    }
-  }, [user.id]);
+  // Get follow status from global store
+  const isFollowing = followStatus[user.id] ?? false;
 
+  // Check follow status when modal becomes visible
   useEffect(() => {
     if (visible && isLoggedIn) {
-      checkFollow();
+      void checkAndCacheStatus(user.id);
     }
-  }, [visible, isLoggedIn, checkFollow]);
+  }, [visible, isLoggedIn, user.id, checkAndCacheStatus]);
 
   const handleFollow = async () => {
     if (!isLoggedIn) {
@@ -628,16 +625,19 @@ function UserModal({ user, visible, onClose, onFollowChange, onOpenChat }: {
     try {
       if (isFollowing) {
         await unfollowUser(user.id);
-        setIsFollowing(false);
+        setFollowStatus(user.id, false);
         void message.success('已取消关注');
       } else {
         await followUser(user.id);
-        setIsFollowing(true);
+        setFollowStatus(user.id, true);
         void message.success('关注成功');
       }
-      onFollowChange(isFollowing);
-    } catch {
-      void message.error('操作失败');
+    } catch (error: any) {
+      // If there's an error, refresh the actual follow status from server
+      void checkAndCacheStatus(user.id);
+      // Show specific error message if available
+      const errorMessage = error?.response?.data?.error || error?.message || '操作失败';
+      void message.error(errorMessage);
     } finally {
       setFollowLoading(false);
     }
@@ -694,6 +694,7 @@ function UserModal({ user, visible, onClose, onFollowChange, onOpenChat }: {
           animation: 'slideUp 0.3s ease'
         }}
         onClick={(e) => e.stopPropagation()}
+        bodyStyle={{ padding: 0 }}
       >
         {/* 头部背景 */}
         <div style={{
@@ -709,7 +710,8 @@ function UserModal({ user, visible, onClose, onFollowChange, onOpenChat }: {
               top: 16,
               right: 16,
               color: '#fff',
-              fontSize: 18
+              fontSize: 18,
+              zIndex: 1
             }}
           >
             ✕
@@ -717,9 +719,16 @@ function UserModal({ user, visible, onClose, onFollowChange, onOpenChat }: {
         </div>
 
         {/* 用户头像和信息 */}
-        <div style={{ textAlign: 'center', marginBottom: 24, marginTop: -50 }}>
+        <div style={{
+          textAlign: 'center',
+          marginBottom: 20,
+          marginTop: -50,
+          position: 'relative',
+          zIndex: 2,
+          padding: '0 16px'
+        }}>
           <Avatar
-            src={user.avatar}
+            src={getAvatarUrl(user)}
             icon={<UserOutlined />}
             size={90}
             style={{
@@ -728,10 +737,20 @@ function UserModal({ user, visible, onClose, onFollowChange, onOpenChat }: {
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
             }}
           />
-          <Typography.Title level={4} style={{ margin: '0 0 8px 0', fontSize: 20 }}>
+          <Typography.Title level={4} style={{ margin: '0 0 4px 0', fontSize: 20, lineHeight: 1.3 }}>
             {user.username}
           </Typography.Title>
-          <Text type="secondary" style={{ fontSize: 14, display: 'block', marginBottom: 4 }}>
+          <Text
+            type="secondary"
+            style={{
+              fontSize: 13,
+              display: 'block',
+              maxWidth: 320,
+              margin: '0 auto 12px',
+              lineHeight: 1.4
+            }}
+            ellipsis={{ tooltip: user.bio }}
+          >
             {user.bio || '这个人很懒，什么都没写 ✨'}
           </Text>
         </div>
@@ -739,7 +758,7 @@ function UserModal({ user, visible, onClose, onFollowChange, onOpenChat }: {
         <div style={{ padding: '0 24px 24px' }}>
           {isLoggedIn && user.id !== currentUser?.id && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-              <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ display: 'flex', gap: 10 }}>
                 <Button
                   type={isFollowing ? 'default' : 'primary'}
                   size="large"
@@ -748,7 +767,7 @@ function UserModal({ user, visible, onClose, onFollowChange, onOpenChat }: {
                   loading={followLoading}
                   style={{
                     flex: 1,
-                    height: 44,
+                    height: 42,
                     borderRadius: 12,
                     fontWeight: 500,
                     boxShadow: isFollowing ? 'none' : '0 4px 12px rgba(102, 126, 234, 0.3)'
@@ -762,7 +781,7 @@ function UserModal({ user, visible, onClose, onFollowChange, onOpenChat }: {
                   onClick={handleMessage}
                   style={{
                     flex: 1,
-                    height: 44,
+                    height: 42,
                     borderRadius: 12,
                     fontWeight: 500
                   }}
@@ -783,7 +802,7 @@ function UserModal({ user, visible, onClose, onFollowChange, onOpenChat }: {
                   icon={<StopOutlined />}
                   block
                   style={{
-                    height: 40,
+                    height: 38,
                     borderRadius: 10
                   }}
                 >
@@ -802,7 +821,7 @@ function UserModal({ user, visible, onClose, onFollowChange, onOpenChat }: {
             }}
             block
             style={{
-              height: 44,
+              height: 42,
               borderRadius: 12,
               fontWeight: 500,
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',

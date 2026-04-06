@@ -45,6 +45,7 @@ export const search = async (req: AuthRequest, res: Response) => {
             id: true,
             username: true,
             avatar: true,
+            avatarData: true,
             bio: true,
             role: true,
             _count: {
@@ -101,6 +102,7 @@ export const search = async (req: AuthRequest, res: Response) => {
                 id: true,
                 username: true,
                 avatar: true,
+                avatarData: true,
               },
             },
           },
@@ -176,6 +178,7 @@ export const searchUsers = async (req: Request, res: Response) => {
         id: true,
         username: true,
         avatar: true,
+        avatarData: true,
         bio: true,
         _count: {
           select: { followers: true, posts: true },
@@ -232,6 +235,7 @@ export const searchPosts = async (req: Request, res: Response) => {
               id: true,
               username: true,
               avatar: true,
+              avatarData: true,
             },
           },
         },

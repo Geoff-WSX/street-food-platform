@@ -3,7 +3,7 @@ import { Modal, Input, Tabs, List, Avatar, Empty, Spin, Tag, Space, Typography, 
 import { SearchOutlined, UserOutlined, FileTextOutlined, EnvironmentOutlined, HeartOutlined, StarOutlined, TeamOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { search, searchSuggestions, type SearchResult, type SearchSuggestion } from '../api/search';
-import { parseImages } from '../utils/images';
+import { parseImages, getAvatarUrl } from '../utils/images';
 import type { Post, User } from '../types';
 import './SearchModal.css';
 
@@ -189,7 +189,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
             onClick={() => handleUserClick(user)}
           >
             <List.Item.Meta
-              avatar={<Avatar src={user.avatar} icon={<UserOutlined />} size={48} />}
+              avatar={<Avatar src={getAvatarUrl(user)} icon={<UserOutlined />} size={48} />}
               title={
                 <Space>
                   <Text strong>{user.username}</Text>
@@ -304,7 +304,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                 description={
                   <div>
                     <Space size={8}>
-                      <Avatar src={post.user?.avatar} size="small" icon={<UserOutlined />} />
+                      <Avatar src={post.user ? getAvatarUrl(post.user) : undefined} size="small" icon={<UserOutlined />} />
                       <Text type="secondary" style={{ fontSize: 12 }}>{post.user?.username}</Text>
                     </Space>
                     <div style={{ marginTop: 4, display: 'flex', gap: 12 }}>
