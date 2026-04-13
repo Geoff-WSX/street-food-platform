@@ -44,6 +44,7 @@ export function UserProfileModal({ user, visible, onClose, onOpenChat }: UserPro
       void checkAndCacheStatus(user.id);
       void checkFriendshipStatus();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, isLoggedIn, user.id, checkAndCacheStatus]);
 
   const checkFriendshipStatus = async () => {

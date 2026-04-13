@@ -1,11 +1,12 @@
 import { prisma } from './prisma';
+import type { PrismaClient } from '@prisma/client';
 
 /**
  * 在事务中执行测试
  * 如果测试失败，自动回滚
  */
 export async function runInTransaction<T>(
-  callback: (tx: typeof prisma) => Promise<T>
+  callback: (tx: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>) => Promise<T>
 ): Promise<T> {
   return await prisma.$transaction(async (tx) => {
     return await callback(tx);

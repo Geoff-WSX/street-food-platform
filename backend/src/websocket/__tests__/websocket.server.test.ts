@@ -100,8 +100,8 @@ describe('WebSocket Server', () => {
           // 验证客户端已存储
           const client = getClient(1);
           expect(client).toBeDefined();
-          expect(client.userId).toBe(1);
-          expect(client.username).toBe('user1');
+          expect(client?.userId).toBe(1);
+          expect(client?.username).toBe('user1');
 
           ws.close();
         }
@@ -375,7 +375,7 @@ describe('WebSocket Server', () => {
         const message = JSON.parse(data.toString());
         if (message.type === 'connected') {
           // 模拟网络错误
-          ws._socket.destroy();
+          (ws as any)._socket.destroy();
         }
       });
 

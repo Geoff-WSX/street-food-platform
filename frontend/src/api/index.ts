@@ -10,10 +10,7 @@ const api = axios.create({
 });
 
 // 请求ID映射，用于匹配响应
-const pendingRequests = new Map<string, { url: string; startTime: number; cancelSource?: axios.CancelTokenSource }>();
-
-// 防抖配置：同一请求在 300ms 内只允许一个（只取消新请求，保留旧请求）
-const DEBOUNCE_WINDOW = 300;
+const pendingRequests = new Map<string, { url: string; startTime: number; cancelSource?: any }>();
 
 // 请求拦截器
 api.interceptors.request.use((config) => {
@@ -97,7 +94,7 @@ setInterval(() => {
 // 导出取消所有请求的方法（用于组件卸载时清理）
 export const cancelAllPendingRequests = () => {
   console.log('🛑 取消所有待处理请求...');
-  for (const [id, req] of pendingRequests) {
+  for (const [, req] of pendingRequests) {
     req.cancelSource?.cancel('组件卸载，请求已取消');
   }
   pendingRequests.clear();

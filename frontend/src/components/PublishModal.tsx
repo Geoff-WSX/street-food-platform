@@ -205,20 +205,21 @@ export default function PublishModal({ open, onClose }: Props) {
           console.error('获取地址失败:', err);
           void message.error({ content: '获取地址失败，请手动输入', key: 'location', duration: 2 });
         }
-      } catch (error: any) {
+      } catch (error) {
+        const geolocationError = error as GeolocationPositionError;
         let errorMsg = '获取位置失败';
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
+        switch (geolocationError.code) {
+          case GeolocationPositionError.PERMISSION_DENIED:
             errorMsg = '定位权限被拒绝，请在浏览器设置中允许定位';
             break;
-          case error.POSITION_UNAVAILABLE:
+          case GeolocationPositionError.POSITION_UNAVAILABLE:
             errorMsg = '无法获取位置信息，请检查网络和GPS是否开启';
             break;
-          case error.TIMEOUT:
+          case GeolocationPositionError.TIMEOUT:
             errorMsg = '定位超时，请确保在空旷处重试';
             break;
           default:
-            errorMsg = `定位失败：${error.message || '未知错误'}`;
+            errorMsg = `定位失败：${geolocationError.message || '未知错误'}`;
         }
         void message.error({ content: errorMsg, key: 'location', duration: 4 });
       } finally {

@@ -149,9 +149,10 @@ export default function PostCard({ post, onUpdate, showRank, rank, from = '/' }:
         setFollowStatus(post.user.id, true);
         void message.success('关注成功');
       }
-    } catch (error: any) {
+    } catch (error) {
       void checkAndCacheStatus(post.user.id);
-      const errorMessage = error?.response?.data?.error || error?.message || '操作失败';
+      const axiosError = error as { response?: { data?: { error?: string } }; message?: string };
+      const errorMessage = axiosError?.response?.data?.error || axiosError?.message || '操作失败';
       void message.error(errorMessage);
     } finally {
       setFollowLoading(false);

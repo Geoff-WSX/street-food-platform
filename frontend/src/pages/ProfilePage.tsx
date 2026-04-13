@@ -50,8 +50,8 @@ export default function ProfilePage() {
 
   // 使用 useMemo 确保在 URL 参数变化时重新计算
   // 修复：如果 userId 是用户名而不是数字ID，Number() 会返回 NaN，此时应使用当前登录用户的 ID
+  const userIdParam = searchParams.get('userId');
   const viewUserId = React.useMemo(() => {
-    const userIdParam = searchParams.get('userId');
     console.log('🔍 viewUserId 计算:', { userIdParam, meId: me?.id });
     if (userIdParam) {
       const parsed = Number(userIdParam);
@@ -64,11 +64,11 @@ export default function ProfilePage() {
     }
     console.log('🔍 viewUserId 返回 me.id:', me?.id);
     return me?.id;
-  }, [searchParams.get('userId'), me?.id]);
+  }, [userIdParam, me?.id]);
 
   const isOwner = React.useMemo(() => {
-    return !searchParams.get('userId') || Number(searchParams.get('userId')) === me?.id;
-  }, [searchParams.get('userId'), me?.id]);
+    return !userIdParam || Number(userIdParam) === me?.id;
+  }, [userIdParam, me?.id]);
 
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [myPosts, setMyPosts] = useState<Post[]>([]);
@@ -704,7 +704,7 @@ export default function ProfilePage() {
             <List
               dataSource={friends}
               renderItem={(friend) => {
-                const friendUser: User = friend.user || friend;
+                const friendUser: User = friend.user || (friend as unknown as User);
                 const friendId = friend.userId || friend.id;
                 return (
                   <List.Item

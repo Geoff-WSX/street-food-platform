@@ -1,5 +1,5 @@
 import { Rate } from 'antd';
-import type { RateProps } from 'antd';
+import type { RateProps } from 'antd/es/rate';
 
 interface RatingStarsProps extends Omit<RateProps, 'count'> {
   value?: number;

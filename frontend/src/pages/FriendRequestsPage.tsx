@@ -32,6 +32,7 @@ export default function FriendRequestsPage() {
       return;
     }
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn, navigate]);
 
   const loadData = async () => {

@@ -303,7 +303,7 @@ describe('WebSocket Stress Tests', () => {
 
           // 随机模拟一些连接错误
           if (Math.random() < 0.3) {
-            ws._socket.destroy();
+            (ws as any)._socket.destroy();
             errorCount++;
           } else if (connectedCount === connectionCount) {
             // 所有连接处理完成
@@ -394,7 +394,7 @@ describe('WebSocket Stress Tests', () => {
       function cleanup() {
         // 关闭所有剩余连接
         const onlineUsers = require('../index').getOnlineUsers();
-        onlineUsers.forEach(user => {
+        onlineUsers.forEach((user: { userId: number }) => {
           const client = require('../index').getClient(user.userId);
           if (client) {
             client.ws.close();

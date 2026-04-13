@@ -425,8 +425,10 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       closable={false}
       styles={{
         mask: { backgroundColor: 'rgba(0, 0, 0, 0.45)' },
-        content: { background: 'var(--bg-primary)' },
-        body: { padding: 0, background: 'var(--bg-primary)' },
+      }}
+      style={{
+        background: 'var(--bg-primary)',
+        padding: 0,
       }}
     >
       {/* 搜索框 */}

@@ -11,7 +11,7 @@ afterEach(() => {
 })
 
 // Mock IntersectionObserver
-global.IntersectionObserver = class IntersectionObserver {
+globalThis.IntersectionObserver = class IntersectionObserver {
   constructor() {}
   disconnect() {}
   observe() {}
@@ -22,7 +22,7 @@ global.IntersectionObserver = class IntersectionObserver {
 } as any
 
 // Mock ResizeObserver
-global.ResizeObserver = class ResizeObserver {
+globalThis.ResizeObserver = class ResizeObserver {
   constructor() {}
   disconnect() {}
   observe() {}
@@ -49,9 +49,9 @@ window.scrollTo = () => {}
 
 // Mock localStorage
 const localStorageMock = {
-  getItem: (key: string) => null,
-  setItem: (key: string, value: string) => {},
-  removeItem: (key: string) => {},
+  getItem: (_key: string) => null,
+  setItem: (_key: string, _value: string) => {},
+  removeItem: (_key: string) => {},
   clear: () => {},
 }
-global.localStorage = localStorageMock as any
+globalThis.localStorage = localStorageMock as Storage

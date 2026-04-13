@@ -324,7 +324,7 @@ describe('WebSocket Integration Tests', () => {
           if (reconnectAttempts === 1) {
             // 模拟网络中断
             setTimeout(() => {
-              ws._socket.destroy();
+              (ws as any)._socket.destroy();
             }, 100);
           } else if (reconnectAttempts >= maxAttempts) {
             ws.close();
@@ -360,14 +360,14 @@ describe('WebSocket Integration Tests', () => {
   });
 
   describe('Message Persistence', () => {
-    test('应该在数据库中持久化通知', async (done) => {
+    test('应该在数据库中持久化通知', (done) => {
       const mockNotification = {
         id: 1,
         userId: 1,
-        type: 'COMMENT',
+        type: NotificationType.COMMENT,
         actorId: 2,
         entityId: 456,
-        entityType: 'post',
+        entityType: EntityType.POST,
         createdAt: new Date(),
         isRead: false,
         actor: {
@@ -382,16 +382,16 @@ describe('WebSocket Integration Tests', () => {
 
       const ws = new WebSocket(`ws://localhost:${(httpServer.address() as any).port}/ws?token=${testTokens.user1}`);
 
-      ws.on('message', async (data) => {
+      ws.on('message', (data) => {
         const message = JSON.parse(data.toString());
 
         if (message.type === 'connected') {
-          await notificationFunctions.pushNotification({
-            type: 'COMMENT',
+          void notificationFunctions.pushNotification({
+            type: NotificationType.COMMENT,
             actorId: 2,
             targetUserId: 1,
             entityId: 456,
-            entityType: 'post',
+            entityType: EntityType.POST,
           });
         } else if (message.type === 'notification') {
           // 验证通知已持久化到数据库
@@ -400,10 +400,10 @@ describe('WebSocket Integration Tests', () => {
             expect.objectContaining({
               data: expect.objectContaining({
                 userId: 1,
-                type: 'COMMENT',
+                type: NotificationType.COMMENT,
                 actorId: 2,
                 entityId: 456,
-                entityType: 'post',
+                entityType: EntityType.POST,
               }),
             })
           );

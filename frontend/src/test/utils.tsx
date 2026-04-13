@@ -1,7 +1,8 @@
-import { render, RenderOptions } from '@testing-library/react'
+import { render, type RenderOptions } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
+import { vi } from 'vitest'
 
 // Test wrappers
 interface TestProvidersProps {

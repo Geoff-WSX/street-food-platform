@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { Button, Space, Collapse, Divider, Tag } from 'antd';
+import { Button, Space, Collapse, Divider, Tag, Typography, TreeSelect, type TreeSelectProps } from 'antd';
 import { EnvironmentOutlined, FireOutlined, DownOutlined, FilterOutlined } from '@ant-design/icons';
-import { TreeSelect } from 'antd';
-import type { TreeSelectProps } from 'antd';
 
 const { Text } = Typography;
 

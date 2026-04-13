@@ -1,8 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { App as AntdApp, Layout, ConfigProvider, Spin, theme } from 'antd';
-import { lazy, Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState, useMemo, lazy } from 'react';
 import zhCN from 'antd/locale/zh_CN';
-import { useState, useMemo } from 'react';
 import Navbar from './components/Navbar';
 import AuthGuard from './components/AuthGuard';
 import FloatingAIButton from './components/FloatingAIButton';
@@ -14,7 +13,6 @@ import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import RankingPage from './pages/RankingPage';
 import MessagesPage from './pages/MessagesPage';
-import FriendsPage from './pages/FriendsPage';
 import FriendRequestsPage from './pages/FriendRequestsPage';
 import { useAuthStore } from './store/auth';
 import { useThemeStore, applyTheme, applyAccessibilitySettings } from './store/theme';

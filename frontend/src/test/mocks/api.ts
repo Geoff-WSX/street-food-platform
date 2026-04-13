@@ -2,13 +2,11 @@ import { vi } from 'vitest'
 import {
   mockPost,
   mockComment,
-  mockNotification,
   mockMessage,
   mockConversation,
   createMockPosts,
   createMockComments,
   createMockNotifications,
-  createMockResponse,
 } from '../utils'
 
 // Mock API functions

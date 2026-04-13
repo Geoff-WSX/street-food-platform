@@ -13,9 +13,8 @@ export const getUserPosts = (userId: number, params?: { page?: number; pageSize?
     .then((r) => {
       // 详细日志 - 打印前3条数据的结构
       const posts = r.data.data?.data || [];
-      const first3 = posts.slice(0, 3).map((p: any) => ({
+      const first3 = posts.slice(0, 3).map((p) => ({
         postId: p.id,
-        postUserId: p.userId,
         userId: p.user?.id,
         username: p.user?.username
       }));
