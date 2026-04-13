@@ -5,8 +5,76 @@
 
 .search-header {
   padding: 16px 16px 12px;
-  border-bottom: 1px solid #f0f0f0;
-  background: #fafafa;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+/* 搜索框输入框样式修复 - 针对所有 ant-input 变体 */
+.search-header .ant-input,
+.search-header .ant-input-lg {
+  background-color: var(--input-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Placeholder 样式 - 确保没有背景 - 最高优先级 */
+.search-header .ant-input::placeholder,
+.search-header .ant-input-lg::placeholder,
+.search-header input::placeholder,
+.search-header input.ant-input-lg::placeholder {
+  color: var(--text-tertiary) !important;
+  background: transparent !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+}
+
+.search-header .ant-input::-webkit-input-placeholder,
+.search-header .ant-input-lg::-webkit-input-placeholder,
+.search-header input::-webkit-input-placeholder,
+.search-header input.ant-input-lg::-webkit-input-placeholder {
+  color: var(--text-tertiary) !important;
+  background: transparent !important;
+  -webkit-background-clip: unset !important;
+}
+
+.search-header .ant-input::-moz-placeholder,
+.search-header .ant-input-lg::-moz-placeholder,
+.search-header input::-moz-placeholder,
+.search-header input.ant-input-lg::-moz-placeholder {
+  color: var(--text-tertiary) !important;
+  background: transparent !important;
+}
+
+.search-header .ant-input:-ms-input-placeholder,
+.search-header .ant-input-lg:-ms-input-placeholder,
+.search-header input:-ms-input-placeholder,
+.search-header input.ant-input-lg:-ms-input-placeholder {
+  color: var(--text-tertiary) !important;
+  background: transparent !important;
+}
+
+/* AutoComplete 下拉面板样式 */
+.search-header .ant-select-dropdown {
+  background-color: var(--dropdown-bg) !important;
+  border-color: var(--border-color) !important;
+}
+
+.search-header .ant-select-item {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+.search-header .ant-select-item-option:hover {
+  background-color: var(--hover-bg) !important;
+}
+
+.search-header .ant-select-item-option-selected {
+  background-color: var(--color-primary-bg) !important;
+}
+
+/* 搜索建议中的文字样式 */
+.search-header .ant-select-item-option-content {
+  color: var(--text-primary) !important;
 }
 
 .search-results {
@@ -23,10 +91,10 @@
   padding: 8px 16px;
   font-size: 12px;
   font-weight: 600;
-  color: #666;
-  background: #fafafa;
-  border-top: 1px solid #f0f0f0;
-  border-bottom: 1px solid #f0f0f0;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .search-result-item {
@@ -36,7 +104,7 @@
 }
 
 .search-result-item:hover {
-  background: #f5f5f5;
+  background: var(--hover-bg);
 }
 
 .search-result-item .ant-list-item-meta-title {
@@ -46,5 +114,5 @@
 .search-empty {
   text-align: center;
   padding: 60px 20px;
-  color: #999;
+  color: var(--text-tertiary);
 }

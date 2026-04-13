@@ -1,21 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
 import { Modal, Input, Button, message, Avatar, Typography, Space, Empty, Spin, Tag, Dropdown, type MenuProps } from 'antd';
-import { SendOutlined, UserOutlined, ArrowLeftOutlined, WarningOutlined, MoreOutlined, StopOutlined, DeleteOutlined } from '@ant-design/icons';
-import { getMessages, sendMessage, checkCanSendMessage, markAsRead, deleteMessage, blockUser, getConversations, type Message } from '../api/message';
+import { SendOutlined, UserOutlined, ArrowLeftOutlined, WarningOutlined, MoreOutlined, StopOutlined, DeleteOutlined, SearchOutlined, CloseOutlined } from '@ant-design/icons';
+import { getMessages, sendMessage, checkCanSendMessage, markAsRead, deleteMessage, recallMessage, blockUser, getConversations, searchMessages, type Message, type SearchResult } from '../api/message';
 import { useAuthStore } from '../store/auth';
 import { getErrorMessage } from '../utils/error';
 import { useMessageStore } from '../store/message';
+import { getAvatarUrl } from '../utils/images';
 import ReportModal from './ReportModal';
+import { useNavigate } from 'react-router-dom';
 
 const { Text } = Typography;
 
 interface Props {
   visible: boolean;
   onClose: () => void;
-  otherUser: { id: number; username: string; avatar?: string };
+  otherUser: { id: number; username: string; avatar?: string; avatarData?: string; bio?: string };
 }
 
 export default function ChatModal({ visible, onClose, otherUser }: Props) {
+  const navigate = useNavigate();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const currentUser = useAuthStore((s) => s.user);
   const { decrementUnread } = useMessageStore();
@@ -26,27 +29,24 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
   const [canSend, setCanSend] = useState<{ canSend: boolean; reason?: string; isInitial?: boolean } | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [searchMode, setSearchMode] = useState(false);
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 加载消息
   const loadMessages = async () => {
     if (!visible || !isLoggedIn || !otherUser.id) return;
     setLoading(true);
 
-    // 立即标记消息为已读并减少未读计数
     try {
-      // 先标记为已读，立即清除未读提示
       await markAsRead(otherUser.id);
-
-      // 获取当前对话的未读消息数并减少全局计数
       const conversations = await getConversations();
       const currentConv = conversations.find(c => c.otherUser.id === otherUser.id);
       if (currentConv && currentConv.unreadCount > 0) {
         decrementUnread(currentConv.unreadCount);
       }
-    } catch {
-      // 忽略标记已读的错误，继续加载消息
-    }
+    } catch { /* ignore */ }
 
     try {
       const [msgs, checkResult] = await Promise.all([
@@ -55,8 +55,6 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
       ]);
       setMessages(msgs);
       setCanSend(checkResult);
-
-      // 检查是否被屏蔽
       if (!checkResult.canSend && checkResult.reason === '你已被对方拉黑') {
         setIsBlocked(true);
       }
@@ -67,36 +65,30 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
     }
   };
 
-  // 滚动到底部
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   useEffect(() => {
     loadMessages();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, otherUser.id]);
 
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSend = async () => {
-    if (!inputValue.trim()) return;
-
-    if (!canSend?.canSend) {
-      void message.warning(canSend?.reason || '无法发送消息');
+    if (!inputValue.trim() || !canSend?.canSend) {
+      if (!canSend?.canSend) void message.warning(canSend?.reason || '无法发送消息');
       return;
     }
 
+    const content = inputValue.trim();
     setSending(true);
+    setInputValue('');
+
     try {
-      const newMessage = await sendMessage(otherUser.id, inputValue.trim());
-      setMessages((prev) => [...prev, newMessage]);
-      setInputValue('');
-      // 重新检查是否可以继续发送
-      const checkResult = await checkCanSendMessage(otherUser.id);
-      setCanSend(checkResult);
+      await sendMessage(otherUser.id, content);
+      const msgs = await getMessages(otherUser.id);
+      setMessages(msgs);
+      setCanSend(await checkCanSendMessage(otherUser.id));
     } catch (error: unknown) {
       void message.error(getErrorMessage(error));
     } finally {
@@ -106,195 +98,194 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
 
   const isMe = (msg: Message) => msg.senderId === currentUser?.id;
 
-  // 删除消息
+  const handleSearch = async () => {
+    if (!searchKeyword.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    try {
+      const results = await searchMessages(searchKeyword.trim(), otherUser.id);
+      setSearchResults(results);
+    } catch (error: unknown) {
+      void message.error(getErrorMessage(error));
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const toggleSearchMode = () => {
+    setSearchMode(!searchMode);
+    setSearchKeyword('');
+    setSearchResults([]);
+  };
+
   const handleDeleteMessage = async (messageId: number) => {
     try {
       await deleteMessage(messageId);
-      setMessages((prev) => prev.filter((m) => m.id !== messageId));
-      void message.success('删除成功');
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      void message.success('已删除');
     } catch (error: unknown) {
       void message.error(getErrorMessage(error));
     }
   };
 
-  // 屏蔽用户
+  const handleRecallMessage = async (messageId: number) => {
+    try {
+      await recallMessage(messageId);
+      const msgs = await getMessages(otherUser.id);
+      setMessages(msgs);
+      void message.success('已撤回');
+    } catch (error: unknown) {
+      void message.error(getErrorMessage(error));
+    }
+  };
+
   const handleBlockUser = async () => {
     try {
       await blockUser(otherUser.id);
       setIsBlocked(true);
-      setCanSend({ canSend: false, reason: '已屏蔽该用户' });
-      void message.success('屏蔽成功');
+      setCanSend({ canSend: false, reason: '已屏蔽' });
+      void message.success('已屏蔽该用户');
       onClose();
     } catch (error: unknown) {
       void message.error(getErrorMessage(error));
     }
   };
 
-  // 更多操作菜单
-  const moreMenuItems: MenuProps['items'] = [
-    {
-      key: 'block',
-      icon: <StopOutlined />,
-      label: '屏蔽用户',
-      onClick: () => {
-        Modal.confirm({
-          title: '确认屏蔽',
-          content: `屏蔽后，该用户将无法向你发送消息。确定要屏蔽 ${otherUser.username} 吗？`,
-          okText: '确认屏蔽',
-          okType: 'danger',
-          cancelText: '取消',
-          onOk: handleBlockUser,
-        });
-      },
-      danger: true,
-    },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'report',
-      icon: <WarningOutlined />,
-      label: '举报用户',
-      onClick: () => setReportModalOpen(true),
-      danger: true,
-    },
+  const menuItems: MenuProps['items'] = [
+    { key: 'block', icon: <StopOutlined />, label: '屏蔽用户', danger: true, onClick: () => {
+      Modal.confirm({ title: '屏蔽用户', content: `确定屏蔽 ${otherUser.username}？屏蔽后将无法互相发送消息。`, okText: '确定', okType: 'danger', cancelText: '取消', onOk: handleBlockUser });
+    }},
+    { type: 'divider' },
+    { key: 'report', icon: <WarningOutlined />, label: '举报', danger: true, onClick: () => setReportModalOpen(true) },
   ];
 
-  // 消息长按菜单
-  const getMessageMenuItems = (msg: Message): MenuProps['items'] => {
-    if (!isMe(msg)) return [];
-
-    return [
-      {
-        key: 'delete',
-        icon: <DeleteOutlined />,
-        label: '删除消息',
-        onClick: () => handleDeleteMessage(msg.id),
-        danger: true,
-      },
-    ];
+  const getMsgMenu = (msg: Message): MenuProps['items'] => {
+    if (msg.recalled) return [];
+    const menuItems: MenuProps['items'] = [];
+    const twoMinutesAgo = Date.now() - 2 * 60 * 1000;
+    if (isMe(msg) && new Date(msg.createdAt).getTime() > twoMinutesAgo) {
+      menuItems.push({ key: 'recall', icon: <DeleteOutlined />, label: '撤回', onClick: () => handleRecallMessage(msg.id) });
+    }
+    if (isMe(msg)) {
+      menuItems.push({ key: 'delete', icon: <DeleteOutlined />, label: '删除', danger: true, onClick: () => handleDeleteMessage(msg.id) });
+    }
+    return menuItems;
   };
 
   return (
     <Modal
       open={visible}
       onCancel={onClose}
-      closeIcon={<ArrowLeftOutlined />}
+      closeIcon={<ArrowLeftOutlined style={{ fontSize: 16 }} />}
       title={null}
       footer={null}
-      width={500}
-      style={{ top: 20 }}
-      bodyStyle={{ padding: 0, height: 600, display: 'flex', flexDirection: 'column' }}
+      width={420}
+      style={{ top: 24 }}
+      styles={{
+        body: { padding: 0, height: 560, display: 'flex', flexDirection: 'column' },
+        wrapper: { borderRadius: 16, overflow: 'hidden' },
+      }}
     >
-      {/* 头部 */}
-      <div style={{
-        padding: '16px 24px',
-        borderBottom: '1px solid #f0f0f0',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12
-      }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
         <Avatar
-          src={otherUser.avatar}
+          src={getAvatarUrl(otherUser)}
           icon={<UserOutlined />}
           size={40}
+          style={{ cursor: 'pointer' }}
+          onClick={() => { onClose(); navigate(`/profile?userId=${otherUser.id}`); }}
         />
-        <div style={{ flex: 1 }}>
-          <Text strong style={{ fontSize: 16 }}>{otherUser.username}</Text>
-          {canSend && !canSend.canSend && (
-            <Tag color="warning" style={{ marginLeft: 8, fontSize: 12 }}>
-              {canSend.reason}
-            </Tag>
-          )}
-          {isBlocked && (
-            <Tag color="red" style={{ marginLeft: 8, fontSize: 12 }}>
-              已屏蔽
-            </Tag>
-          )}
+        <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => { onClose(); navigate(`/profile?userId=${otherUser.id}`); }}>
+          <Text strong style={{ fontSize: 15 }}>{otherUser.username}</Text>
+          {isBlocked && <Tag color="red" style={{ marginLeft: 8, fontSize: 11 }}>已屏蔽</Tag>}
+          {canSend && !canSend.canSend && !isBlocked && <Tag color="orange" style={{ marginLeft: 8, fontSize: 11 }}>{canSend.reason}</Tag>}
         </div>
-        <Dropdown menu={{ items: moreMenuItems }} placement="bottomRight" trigger={['click']}>
-          <Button icon={<MoreOutlined />} shape="circle" type="text" />
-        </Dropdown>
+        <Button icon={searchMode ? <CloseOutlined /> : <SearchOutlined />} type="text" onClick={toggleSearchMode} />
+        <Dropdown menu={{ items: menuItems }} trigger={['click']}><Button icon={<MoreOutlined />} type="text" /></Dropdown>
       </div>
 
-      {/* 消息列表 */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: '16px 24px',
-        backgroundColor: '#fafafa'
-      }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 40 }}>
-            <Spin />
-          </div>
-        ) : messages.length === 0 ? (
-          <Empty
-            description={
-              <div>
-                <div>暂无消息</div>
-                {canSend?.isInitial && (
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    你可以发送第一条消息
-                  </Text>
-                )}
-              </div>
-            }
-            style={{ marginTop: 60 }}
+      {/* Search Bar */}
+      {searchMode && (
+        <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
+          <Input.Search
+            value={searchKeyword}
+            onChange={(e) => setSearchKeyword(e.target.value)}
+            placeholder="搜索聊天记录..."
+            onSearch={handleSearch}
+            loading={searching}
+            enterButton
+            allowClear
           />
+        </div>
+      )}
+
+      {/* Messages */}
+      <div style={{ flex: 1, overflow: 'auto', padding: 16, background: 'var(--bg-secondary)' }}>
+        {searchMode ? (
+          searchResults.length === 0 ? (
+            searchKeyword ? (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<Text type="secondary">未找到相关消息</Text>} style={{ marginTop: 60 }} />
+            ) : (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<Text type="secondary">输入关键词搜索</Text>} style={{ marginTop: 60 }} />
+            )
+          ) : (
+            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>找到 {searchResults.length} 条相关消息</Text>
+              {searchResults.map(result => {
+                const mine = result.senderId === currentUser?.id;
+                return (
+                  <div key={result.id} style={{
+                    padding: 10,
+                    background: 'var(--card-bg)',
+                    borderRadius: 8,
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>{mine ? '我' : result.otherUser.username}</Text>
+                      <Text type="secondary" style={{ fontSize: 11 }}>{new Date(result.createdAt).toLocaleString('zh-CN')}</Text>
+                    </div>
+                    <div style={{ fontSize: 14 }} dangerouslySetInnerHTML={{ __html: result.content.replace(new RegExp(`(${searchKeyword})`, 'gi'), '<mark style="background:#ff6b35;color:#fff;padding:0 2px;border-radius:2px">$1</mark>') }} />
+                  </div>
+                );
+              })}
+            </Space>
+          )
+        ) : loading ? (
+          <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
+        ) : messages.length === 0 ? (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<Text type="secondary">暂无消息</Text>} style={{ marginTop: 60 }} />
         ) : (
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            {messages.map((msg) => {
-              const menuItems = getMessageMenuItems(msg);
+            {messages.map(msg => {
+              const mine = isMe(msg);
+              const isRecalled = msg.recalled;
               return (
-                <Dropdown
-                  key={msg.id}
-                  menu={{ items: menuItems || undefined }}
-                  trigger={isMe(msg) ? ['contextMenu'] : []}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: isMe(msg) ? 'flex-end' : 'flex-start',
-                      cursor: isMe(msg) ? 'pointer' : 'default',
-                    }}
-                  >
+                <Dropdown key={msg.id} menu={{ items: getMsgMenu(msg) }} trigger={mine && !isRecalled ? ['contextMenu'] : []}>
+                  <div style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start', gap: 8, alignItems: 'flex-end' }}>
+                    {!mine && !isRecalled && <Avatar src={getAvatarUrl(otherUser)} icon={<UserOutlined />} size={32} />}
+                    {isRecalled && <div style={{ width: 32 }} />}
                     <div style={{
                       maxWidth: '70%',
                       padding: '10px 14px',
-                      borderRadius: 12,
-                      backgroundColor: isMe(msg) ? '#1890ff' : '#fff',
-                      color: isMe(msg) ? '#fff' : '#333',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                      position: 'relative',
+                      borderRadius: mine ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                      background: isRecalled ? 'var(--bg-tertiary)' : mine ? '#ff6b35' : 'var(--card-bg)',
+                      color: isRecalled ? 'var(--text-tertiary)' : mine ? '#fff' : 'var(--text-primary)',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
                     }}>
-                      <div style={{ fontSize: 14, wordBreak: 'break-word' }}>
-                        {msg.content}
+                      <div style={{ fontSize: 14, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                        {isRecalled ? '消息已撤回' : msg.content}
                       </div>
-                      <div style={{
-                        fontSize: 11,
-                        opacity: 0.7,
-                        marginTop: 4,
-                        textAlign: 'right'
-                      }}>
-                        {new Date(msg.createdAt).toLocaleTimeString('zh-CN', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </div>
-                      {isMe(msg) && (
-                        <div style={{
-                          position: 'absolute',
-                          top: -5,
-                          right: -5,
-                          fontSize: 10,
-                          color: '#999',
-                          opacity: 0.5,
-                        }}>
-                          •••
+                      {!isRecalled && (
+                        <div style={{ fontSize: 10, opacity: 0.7, marginTop: 4, textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
+                          <span>{new Date(msg.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
+                          {mine && <span style={{ color: msg.readAt ? '#e6f7ff' : 'rgba(255,255,255,0.7)' }}>{msg.readAt ? '已读' : '送达'}</span>}
                         </div>
                       )}
                     </div>
+                    {mine && !isRecalled && <Avatar src={getAvatarUrl(currentUser)} icon={<UserOutlined />} size={32} />}
+                    {!mine && <div style={{ width: 32 }} />}
                   </div>
                 </Dropdown>
               );
@@ -304,72 +295,34 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
         )}
       </div>
 
-      {/* 输入框 */}
-      <div style={{
-        padding: '12px 16px',
-        borderTop: '1px solid #f0f0f0',
-        display: 'flex',
-        gap: 8,
-        alignItems: 'flex-end'
-      }}>
-        <div style={{ flex: 1 }}>
-          <Input.TextArea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onPressEnter={(e) => {
-              if (!e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder={
-              isBlocked
-                ? '已屏蔽该用户'
-                : canSend?.isInitial
-                ? `发送第一条消息给${otherUser.username}...`
-                : canSend?.canSend
-                ? '输入消息...'
-                : canSend?.reason || '输入消息...'
-            }
-            autoSize={{ minRows: 1, maxRows: 4 }}
-            disabled={isBlocked || !canSend?.canSend}
-            style={{ borderRadius: 20 }}
-          />
-          {canSend && !canSend.canSend && !isBlocked && (
-            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
-              {canSend.reason}
-            </Text>
-          )}
-        </div>
+      {/* Input */}
+      <div style={{ padding: 12, borderTop: '1px solid var(--border-color)', background: 'var(--card-bg)', display: 'flex', gap: 8 }}>
+        <Input.TextArea
+          value={inputValue}
+          onChange={e => setInputValue(e.target.value)}
+          onPressEnter={e => { if (!e.shiftKey) { e.preventDefault(); handleSend(); }}}
+          placeholder={isBlocked ? '已屏蔽' : canSend?.canSend ? '输入消息...' : canSend?.reason || '无法发送'}
+          autoSize={{ minRows: 1, maxRows: 3 }}
+          disabled={isBlocked || !canSend?.canSend}
+          style={{ borderRadius: 20, resize: 'none' }}
+        />
         <Button
           type="primary"
           icon={<SendOutlined />}
           onClick={handleSend}
           loading={sending}
           disabled={!inputValue.trim() || !canSend?.canSend || isBlocked}
-          style={{
-            borderRadius: '50%',
-            width: 40,
-            height: 40,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
+          style={{ borderRadius: 20, width: 40, height: 40, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ff6b35', border: 'none' }}
         />
       </div>
 
-      {/* 举报弹窗 */}
       <ReportModal
         open={reportModalOpen}
         onClose={() => setReportModalOpen(false)}
         reportedUserId={otherUser.id}
         reportedUsername={otherUser.username}
-        chatRecords={messages.map((msg, index) => ({
-          id: index, // 添加必需的 id 字段
-          senderId: msg.senderId,
-          senderUsername: isMe(msg) ? currentUser?.username || '我' : otherUser.username,
-          content: msg.content,
-          createdAt: msg.createdAt,
+        chatRecords={messages.map((msg, i) => ({
+          id: i, senderId: msg.senderId, senderUsername: isMe(msg) ? currentUser?.username || '我' : otherUser.username, content: msg.content, createdAt: msg.createdAt,
         }))}
       />
     </Modal>

@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
-import prisma from '../config/database';
+import prisma from '../services/db/prisma';
 import { successResponse, errorResponse } from '../utils/response';
 import OpenAI from 'openai';
 import { execSync, exec } from 'child_process';
@@ -668,7 +668,7 @@ async function searchPosts(params: { keyword?: string; location?: string; limit?
       commentCount: true,
       createdAt: true,
       user: {
-        select: { username: true, avatar: true },
+        select: { username: true, avatar: true, avatarData: true },
       },
     },
   });
@@ -712,7 +712,7 @@ async function getComments(params: { postId?: number; userId?: number; limit?: n
       content: true,
       createdAt: true,
       user: {
-        select: { username: true, avatar: true },
+        select: { username: true, avatar: true, avatarData: true },
       },
       post: {
         select: { id: true, content: true },

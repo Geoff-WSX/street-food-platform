@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import prisma from '../config/database';
+import prisma from '../services/db/prisma';
 import { UpdateProfileRequest, ChangePasswordRequest } from '../types';
 import { isValidUsername } from '../utils/validator';
 

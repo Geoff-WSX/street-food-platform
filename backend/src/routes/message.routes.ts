@@ -15,6 +15,9 @@ router.get('/unread', authenticate, messageController.getUnreadCount);
 // GET /api/messages/blocked/list - 获取已屏蔽用户列表 (必须放在 /:userId 之前)
 router.get('/blocked/list', authenticate, messageController.getBlockedUsers);
 
+// GET /api/messages/search - 搜索消息
+router.get('/search', authenticate, messageController.searchMessages);
+
 // GET /api/messages/:userId - 获取与指定用户的消息
 router.get('/:userId', authenticate, messageController.getMessages);
 

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { successResponse, errorResponse } from '../utils/response';
 import { pinyin } from 'pinyin-pro';
-import prisma from '../config/database';
+import prisma from '../services/db/prisma';
 
 // 缓存搜索建议（5分钟更新一次）
 let suggestionsCache: any[] = [];

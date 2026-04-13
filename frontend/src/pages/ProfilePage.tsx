@@ -1,19 +1,24 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Avatar, Typography, Row, Col, Button, Form, Input,
-  Upload, Spin, Empty, message, Modal, Divider, Card, Space, Tag, Select, Switch, List, Popconfirm
+  Upload, Spin, Empty, message, Modal, Card, Space, Tag, Select, Switch, List, Popconfirm
 } from 'antd';
-import { UserOutlined, EditOutlined, CameraOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined, TeamOutlined, FileTextOutlined, StarOutlined } from '@ant-design/icons';
+import { UserOutlined, EditOutlined, CameraOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined, TeamOutlined, FileTextOutlined, StarOutlined, PlusOutlined, SearchOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getUserById, updateProfile, updateAvatar, changePassword, updateMessageSettings, updatePrivacySettings } from '../api/user';
 import { getUserPosts, getUserFavorites } from '../api/post';
-import { getBlockedList, unblockUser } from '../api/block';
+import { cancelAllPendingRequests } from '../api/index';
+import { getBlockedList, unblockUser, blockUser } from '../api/block';
 import { getFollowing, getFollowers, followUser, unfollowUser } from '../api/follow';
+import { sendFriendRequest, checkFriendship } from '../api/friend';
 import { useAuthStore } from '../store/auth';
 import { useFollowStore } from '../store/follow';
+import { useFriendStore } from '../store/friend';
 import PostCard from '../components/PostCard';
 import ChatModal from '../components/ChatModal';
 import ReportModal from '../components/ReportModal';
+import { PageLayout } from '../components/layout';
+import { StatBadge } from '../components/common/StatBadge';
 import type { User, Post } from '../types';
 import { getAvatarUrl } from '../utils/images';
 
@@ -42,11 +47,32 @@ export default function ProfilePage() {
   const followStatus = useFollowStore((s) => s.followStatus);
   const setFollowStatus = useFollowStore((s) => s.setFollowStatus);
   const checkAndCacheStatus = useFollowStore((s) => s.checkAndCacheStatus);
-  const viewUserId = searchParams.get('userId') ? Number(searchParams.get('userId')) : me?.id;
-  const isOwner = !searchParams.get('userId') || Number(searchParams.get('userId')) === me?.id;
+
+  // 使用 useMemo 确保在 URL 参数变化时重新计算
+  // 修复：如果 userId 是用户名而不是数字ID，Number() 会返回 NaN，此时应使用当前登录用户的 ID
+  const viewUserId = React.useMemo(() => {
+    const userIdParam = searchParams.get('userId');
+    console.log('🔍 viewUserId 计算:', { userIdParam, meId: me?.id });
+    if (userIdParam) {
+      const parsed = Number(userIdParam);
+      // Only use the parsed number if it's not NaN (handles cases where username is passed instead of ID)
+      if (!isNaN(parsed)) {
+        console.log('🔍 viewUserId 返回 URL param:', parsed);
+        return parsed;
+      }
+      console.warn('ProfilePage: userId param was not a valid number, falling back to current user ID', userIdParam);
+    }
+    console.log('🔍 viewUserId 返回 me.id:', me?.id);
+    return me?.id;
+  }, [searchParams.get('userId'), me?.id]);
+
+  const isOwner = React.useMemo(() => {
+    return !searchParams.get('userId') || Number(searchParams.get('userId')) === me?.id;
+  }, [searchParams.get('userId'), me?.id]);
 
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [myPosts, setMyPosts] = useState<Post[]>([]);
+  const [myPostsTotal, setMyPostsTotal] = useState(0);
   const [myFavorites, setMyFavorites] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -55,7 +81,7 @@ export default function ProfilePage() {
   const [editForm] = Form.useForm();
   const [pwdForm] = Form.useForm();
   const [selectedCity, setSelectedCity] = useState<string>('');
-  const [activeTab, setActiveTab] = useState('posts');
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'posts');
   const [allowMessage, setAllowMessage] = useState(true);
   const [followOnlyMessage, setFollowOnlyMessage] = useState(false);
   const [hideFollowing, setHideFollowing] = useState(false);
@@ -70,12 +96,48 @@ export default function ProfilePage() {
   const [chatUser, setChatUser] = useState<User | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [isFriend, setIsFriend] = useState(false);
+  const [friendLoading, setFriendLoading] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [friendSearch, setFriendSearch] = useState('');
+
+  // 好友 store
+  const {
+    friends,
+    friendCount,
+    loading: friendsLoading,
+    fetchFriends,
+    removeFriend
+  } = useFriendStore();
+
+  // 用于追踪当前请求ID的 ref（不会触发重新渲染）
+  const currentRequestIdRef = React.useRef<number>(0);
 
   const fetchData = useCallback(async () => {
+    // 递增请求ID，之前的请求将被忽略
+    currentRequestIdRef.current += 1;
+    const requestId = currentRequestIdRef.current;
+
+    console.log('🔍 ProfilePage fetchData called:', {
+      viewUserId,
+      isOwner,
+      isLoggedIn,
+      meId: me?.id,
+      searchParamsUserId: searchParams.get('userId'),
+      requestId
+    });
     if (!viewUserId) { navigate('/login'); return; }
     setLoading(true);
     try {
       const u = await getUserById(viewUserId);
+
+      // 检查请求是否过期（如果用户切换了，这个请求应该被忽略）
+      if (requestId !== currentRequestIdRef.current) {
+        console.log('⚠️ 忽略过期的用户数据响应:', requestId, '当前请求ID:', currentRequestIdRef.current);
+        return;
+      }
+
+      console.log('🔍 ProfilePage: fetched user', { userId: viewUserId, username: u.username, isOwner, requestId });
       setProfileUser(u);
       setAllowMessage(u.allowMessage ?? true);
       setFollowOnlyMessage(u.followOnlyMessage ?? false);
@@ -83,14 +145,62 @@ export default function ProfilePage() {
       setHideFollowers(u.hideFollowers ?? false);
       setHidePosts(u.hidePosts ?? false);
       setHideFavorites(u.hideFavorites ?? false);
+
+      // 检查请求是否过期
+      if (requestId !== currentRequestIdRef.current) {
+        console.log('⚠️ 忽略过期的动态请求:', requestId, '当前请求ID:', currentRequestIdRef.current);
+        return;
+      }
+
       const postsData = await getUserPosts(viewUserId, { pageSize: 50 });
-      setMyPosts(postsData.data);
+
+      // 再次检查请求是否过期
+      if (requestId !== currentRequestIdRef.current) {
+        console.log('⚠️ 忽略过期的动态响应:', requestId, '当前请求ID:', currentRequestIdRef.current);
+        return;
+      }
+
+      // 防御性验证：过滤出只属于目标用户的动态
+      const validPosts = postsData.data.filter(p => p.user?.id === viewUserId);
+      const invalidCount = postsData.data.length - validPosts.length;
+      if (invalidCount > 0) {
+        console.warn('⚠️ 过滤了', invalidCount, '条不属于用户', viewUserId, '的动态, requestId:', requestId);
+      }
+
+      // 详细打印前5条动态的用户信息
+      const first5Posts = postsData.data.slice(0, 5);
+      first5Posts.forEach((p, i) => {
+        console.log('🔍 postsData.data[' + i + ']:', { postId: p.id, userId: p.user?.id, username: p.user?.username, requestId });
+      });
+
+      const postUserIds = validPosts.slice(0, 5).map(p => p.user?.id);
+      console.log('🔍 用户主页动态查询:', {
+        viewUserId,
+        username: u.username,
+        postsReturned: validPosts.length,
+        totalInResponse: postsData.pagination?.total,
+        first5PostUserIds: postUserIds,
+        isOwner,
+        invalidCount,
+        postsDataLength: postsData.data.length,
+        requestId
+      });
+      setMyPosts(validPosts);
+      // 使用过滤后的实际数量，而不是 API 返回的 total
+      setMyPostsTotal(validPosts.length);
 
       // 获取关注和粉丝列表
       const [followingData, followersData] = await Promise.all([
         getFollowing(viewUserId),
         getFollowers(viewUserId)
       ]);
+
+      // 检查请求是否过期
+      if (requestId !== currentRequestIdRef.current) {
+        console.log('⚠️ 忽略过期的关注/粉丝响应:', requestId, '当前请求ID:', currentRequestIdRef.current);
+        return;
+      }
+
       setFollowing(followingData);
       setFollowers(followersData);
 
@@ -107,6 +217,18 @@ export default function ProfilePage() {
         );
       }
 
+      // 检查好友状态
+      if (isLoggedIn && me && !isOwner) {
+        try {
+          const res = await checkFriendship(viewUserId);
+          setIsFriend(!!res?.isFriend);
+        } catch { setIsFriend(false); }
+        // 检查是否被拉黑
+        const blocked = await getBlockedList();
+        const blockedByMe = blocked.some((b: User) => b.id === viewUserId);
+        setIsBlocked(blockedByMe);
+      }
+
       if (isOwner && isLoggedIn) {
         const favData = await getUserFavorites({ pageSize: 50 });
         setMyFavorites(favData.data);
@@ -115,11 +237,42 @@ export default function ProfilePage() {
         setBlockedUsers(blocked);
       }
     } finally {
-      setLoading(false);
+      // 只有当前最新的请求才更新 loading 状态
+      if (requestId === currentRequestIdRef.current) {
+        setLoading(false);
+      }
     }
-  }, [viewUserId, isOwner, isLoggedIn, navigate, me]);
+  }, [viewUserId, isOwner, isLoggedIn, navigate, me, checkAndCacheStatus, searchParams]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+    // 组件卸载时取消所有进行中的请求
+    return () => {
+      cancelAllPendingRequests();
+    };
+  }, [fetchData]);
+
+  // 当 viewUserId 变化时清除旧的动态数据
+  useEffect(() => {
+    // 清除之前的 posts 数据，防止闪现旧用户的数据
+    setMyPosts([]);
+    setMyPostsTotal(0);
+  }, [viewUserId]);
+
+  // 当 URL 参数中的 tab 变化时更新 activeTab
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && tab !== activeTab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  // 当查看自己的主页时，加载好友列表
+  useEffect(() => {
+    if (isOwner && isLoggedIn) {
+      fetchFriends({ pageSize: 100 });
+    }
+  }, [isOwner, isLoggedIn, fetchFriends]);
 
   const handleEditProfile = async (values: { username: string; bio?: string }) => {
     setEditLoading(true);
@@ -235,81 +388,156 @@ export default function ProfilePage() {
     setShowChatModal(true);
   };
 
+  const handleAddFriend = async () => {
+    if (!isLoggedIn || !profileUser) return;
+    setFriendLoading(true);
+    try {
+      const response = await sendFriendRequest(profileUser.id);
+
+      // 检查是否自动接受（双方互发好友请求）
+      if (response?.autoAccepted) {
+        const successMsg = response?.message || '对方也向你发送了好友请求，你们已成为好友！';
+        void message.success(successMsg);
+        setIsFriend(true); // 直接设为好友
+        // 刷新好友列表
+        const { fetchFriends } = useFriendStore.getState();
+        fetchFriends({ pageSize: 100 });
+      } else {
+        void message.success('好友请求已发送');
+        setIsFriend(false); // 等待确认
+      }
+    } catch (error: any) {
+      const errMsg = error?.response?.data?.error || error?.message || '发送失败';
+      void message.error(errMsg);
+    } finally {
+      setFriendLoading(false);
+    }
+  };
+
+  const handleBlockUser = async () => {
+    if (!isLoggedIn || !profileUser) return;
+    try {
+      await blockUser(profileUser.id);
+      setIsBlocked(true);
+      void message.success('已拉黑该用户');
+    } catch (error: any) {
+      const errMsg = error?.response?.data?.error || error?.message || '操作失败';
+      void message.error(errMsg);
+    }
+  };
+
+  const handleSearchFriends = () => {
+    fetchFriends({ search: friendSearch || undefined, pageSize: 100 });
+  };
+
+  const handleRemoveFriend = async (friendId: number) => {
+    try {
+      await removeFriend(friendId);
+      void message.success('已删除好友');
+    } catch {
+      void message.error('删除失败');
+    }
+  };
+
+  // 检查是否互关
+  const isMutualFollow = (userId: number) => {
+    return following.some(u => u.id === userId) && followers.some(u => u.id === userId);
+  };
+
   // 渲染用户列表项
-  const renderUserItem = (user: User) => (
-    <List.Item
-      key={user.id}
-      style={{
-        padding: '10px 12px',
-        borderRadius: 8,
-        marginBottom: 6,
-        backgroundColor: '#fafafa',
-        border: '1px solid #f0f0f0'
-      }}
-    >
-      <List.Item.Meta
-        avatar={
-          <Avatar
-            src={getAvatarUrl(user)}
-            icon={<UserOutlined />}
-            size={40}
-            style={{ cursor: 'pointer' }}
-            onClick={() => navigate(`/profile?userId=${user.id}`)}
-          />
-        }
-        title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text
-              strong
-              style={{ fontSize: 14, cursor: 'pointer' }}
+  const renderUserItem = (user: User, listType?: 'following' | 'followers' | 'friends') => {
+    // 检查是否互关
+    const mutual = isMutualFollow(user.id);
+    // 检查是否已关注
+    const isFollowing = listType === 'following' || followStatus[user.id];
+
+    return (
+      <List.Item
+        key={user.id}
+        className="food-user-list"
+        style={{
+          padding: '10px 12px',
+          borderRadius: 10,
+          marginBottom: 6,
+          backgroundColor: 'linear-gradient(135deg, rgba(255, 248, 240, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)',
+          border: '1px solid rgba(255, 107, 53, 0.1)'
+        }}
+      >
+        <List.Item.Meta
+          avatar={
+            <Avatar
+              src={getAvatarUrl(user)}
+              icon={<UserOutlined />}
+              size={40}
+              style={{ cursor: 'pointer', border: '2px solid #fff', boxShadow: '0 2px 8px rgba(255, 107, 53, 0.2)' }}
               onClick={() => navigate(`/profile?userId=${user.id}`)}
-            >
-              {user.username}
+            />
+          }
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text
+                strong
+                style={{ fontSize: 14, cursor: 'pointer' }}
+                onClick={() => navigate(`/profile?userId=${user.id}`)}
+              >
+                {user.username}
+              </Text>
+              {isLoggedIn && me && user.id !== me.id && (
+                <Space size={6}>
+                  {/* 互关显示互关，已关注显示已关注，未关注显示关注 */}
+                  {mutual ? (
+                    <Button
+                      icon={<TeamOutlined />}
+                      onClick={() => handleUnfollowUser(user.id)}
+                      loading={followLoading}
+                      size="small"
+                      style={{ borderRadius: 14, height: 28, fontSize: 12, background: 'linear-gradient(135deg, #f759ab 0%, #ff9c6e 100%)', border: 'none', color: '#fff' }}
+                    >
+                      互关
+                    </Button>
+                  ) : isFollowing ? (
+                    <Button
+                      icon={<CheckOutlined />}
+                      onClick={() => handleUnfollowUser(user.id)}
+                      loading={followLoading}
+                      size="small"
+                      style={{ borderRadius: 14, height: 28, fontSize: 12 }}
+                    >
+                      已关注
+                    </Button>
+                  ) : (
+                    <Button
+                      type="primary"
+                      icon={<UserAddOutlined />}
+                      onClick={() => handleFollowUser(user.id)}
+                      loading={followLoading}
+                      size="small"
+                      style={{ borderRadius: 14, height: 28, fontSize: 12, background: 'linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%)', border: 'none' }}
+                    >
+                      关注
+                    </Button>
+                  )}
+                  <Button
+                    icon={<MessageIcon />}
+                    onClick={() => handleOpenChat(user)}
+                    size="small"
+                    style={{ borderRadius: 14, height: 28, fontSize: 12 }}
+                  >
+                    私信
+                  </Button>
+                </Space>
+              )}
+            </div>
+          }
+          description={
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {user.bio || '这个人很懒，什么都没写'}
             </Text>
-            {isLoggedIn && me && user.id !== me.id && (
-              <Space size={6}>
-                {followStatus[user.id] ? (
-                  <Button
-                    icon={<CheckOutlined />}
-                    onClick={() => handleUnfollowUser(user.id)}
-                    loading={followLoading}
-                    size="small"
-                    style={{ borderRadius: 14, height: 28, fontSize: 12 }}
-                  >
-                    已关注
-                  </Button>
-                ) : (
-                  <Button
-                    type="primary"
-                    icon={<UserAddOutlined />}
-                    onClick={() => handleFollowUser(user.id)}
-                    loading={followLoading}
-                    size="small"
-                    style={{ borderRadius: 14, height: 28, fontSize: 12 }}
-                  >
-                    关注
-                  </Button>
-                )}
-                <Button
-                  icon={<MessageIcon />}
-                  onClick={() => handleOpenChat(user)}
-                  size="small"
-                  style={{ borderRadius: 14, height: 28, fontSize: 12 }}
-                >
-                  私信
-                </Button>
-              </Space>
-            )}
-          </div>
-        }
-        description={
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {user.bio || '这个人很懒，什么都没写'}
-          </Text>
-        }
-      />
-    </List.Item>
-  );
+          }
+        />
+      </List.Item>
+    );
+  };
 
   if (!isLoggedIn && !viewUserId) {
     navigate('/login');
@@ -318,7 +546,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', background: 'linear-gradient(180deg, #faf8ff 0%, #ffffff 100%)' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <Space direction="vertical" style={{ gap: 16, textAlign: 'center' }}>
           <Spin size="large" />
           <Text type="secondary" style={{ fontSize: 15 }}>加载个人主页中...</Text>
@@ -414,7 +642,7 @@ export default function ProfilePage() {
         ) : (
           <List
             dataSource={following}
-            renderItem={(user) => renderUserItem(user)}
+            renderItem={(user) => renderUserItem(user, 'following')}
           />
         )
       )
@@ -431,13 +659,119 @@ export default function ProfilePage() {
         ) : (
           <List
             dataSource={followers}
-            renderItem={(user) => renderUserItem(user)}
+            renderItem={(user) => renderUserItem(user, 'followers')}
           />
         )
       )
     }] : []),
-    // 收藏标签页 - 只有所有者可见
+    // 好友标签页 - 只有所有者可见
     ...(isOwner ? [{
+      key: 'friends',
+      label: `好友 ${friendCount > 0 ? `(${friendCount})` : ''}`,
+      children: (
+        <>
+          <Card size="small" style={{ marginBottom: 12, borderRadius: 8 }}>
+            <Space.Compact style={{ width: '100%' }}>
+              <Input
+                placeholder="搜索好友..."
+                prefix={<SearchOutlined />}
+                value={friendSearch}
+                onChange={(e) => setFriendSearch(e.target.value)}
+                onPressEnter={handleSearchFriends}
+                size="small"
+              />
+              <Button type="primary" onClick={handleSearchFriends} size="small">
+                搜索
+              </Button>
+            </Space.Compact>
+          </Card>
+          {friendsLoading ? (
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <Spin size="large" />
+            </div>
+          ) : friends.length === 0 ? (
+            <Empty
+              description={friendSearch ? '没有找到匹配的好友' : '暂无好友'}
+              style={{ padding: '32px 0' }}
+            >
+              {!friendSearch && (
+                <Button type="primary" onClick={() => navigate('/')}>
+                  发现好友
+                </Button>
+              )}
+            </Empty>
+          ) : (
+            <List
+              dataSource={friends}
+              renderItem={(friend) => {
+                const friendUser: User = friend.user || friend;
+                const friendId = friend.userId || friend.id;
+                return (
+                  <List.Item
+                    key={friendId}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      marginBottom: 6,
+                      backgroundColor: 'linear-gradient(135deg, rgba(255, 248, 240, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)',
+                      border: '1px solid rgba(255, 107, 53, 0.1)'
+                    }}
+                    actions={[
+                      <Button
+                        key="chat"
+                        icon={<MessageIcon />}
+                        onClick={() => handleOpenChat(friendUser)}
+                        size="small"
+                        style={{ borderRadius: 14, height: 28, fontSize: 12 }}
+                      >
+                        私信
+                      </Button>,
+                      <Popconfirm
+                        key="delete"
+                        title="确定要删除该好友吗？"
+                        onConfirm={() => handleRemoveFriend(friendId)}
+                        okText="确定"
+                        cancelText="取消"
+                      >
+                        <Button danger icon={<DeleteOutlined />} size="small" style={{ borderRadius: 14, height: 28, fontSize: 12 }}>
+                          删除
+                        </Button>
+                      </Popconfirm>
+                    ]}
+                  >
+                    <List.Item.Meta
+                      avatar={
+                        <Avatar
+                          src={getAvatarUrl(friendUser)}
+                          icon={<UserOutlined />}
+                          size={40}
+                          style={{ cursor: 'pointer', border: '2px solid #fff', boxShadow: '0 2px 8px rgba(255, 107, 53, 0.2)' }}
+                          onClick={() => navigate(`/profile?userId=${friendId}`)}
+                        />
+                      }
+                      title={
+                        <Text
+                          strong
+                          style={{ fontSize: 14, cursor: 'pointer' }}
+                          onClick={() => navigate(`/profile?userId=${friendId}`)}
+                        >
+                          {friendUser.username}
+                        </Text>
+                      }
+                      description={
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {friendUser.bio || '这个人很懒，什么都没写'}
+                        </Text>
+                      }
+                    />
+                  </List.Item>
+                );
+              }}
+            />
+          )}
+        </>
+      )
+    }, {
       key: 'favorites',
       label: `收藏 ${myFavorites.length > 0 ? `(${myFavorites.length})` : ''}`,
       children: (
@@ -694,236 +1028,205 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '16px 0 80px', background: 'linear-gradient(180deg, #faf8ff 0%, #ffffff 100%)', minHeight: '80vh' }}>
+    <PageLayout className="page-content" maxWidth={900}>
       {/* 用户信息卡片 */}
       <Card
-        style={{
-          borderRadius: 16,
-          marginBottom: 20,
-          boxShadow: '0 6px 24px rgba(102, 126, 234, 0.1)',
-          border: '1px solid rgba(102, 126, 234, 0.08)',
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8f6ff 100%)',
-          overflow: 'visible',
-          position: 'relative'
-        }}
-        bodyStyle={{ paddingTop: 0, paddingBottom: 16, paddingLeft: 24, paddingRight: 24 }}
+        className="profile-header"
+        style={{ marginBottom: 20 }}
+        bodyStyle={{ padding: 0 }}
       >
         {/* 顶部装饰条 */}
-        <div style={{
-          height: 80,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          borderRadius: '16px 16px 0 0',
-          zIndex: 0,
-          marginTop: -1,
-          marginLeft: -1,
-          marginRight: -1
-        }} />
-        <Row gutter={[24, 20]} align="middle" style={{ paddingTop: 45, position: 'relative', zIndex: 1 }}>
-          <Col flex="none" style={{ zIndex: 1 }}>
-            <div style={{ position: 'relative' }}>
-              <Avatar
-                size={100}
-                src={getAvatarUrl(profileUser)}
-                icon={<UserOutlined />}
-                style={{
-                  border: '4px solid #fff',
-                  boxShadow: '0 6px 20px rgba(0,0,0,0.1)'
+        <div className="profile-header-banner" />
+
+        <div className="profile-avatar-section">
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <Avatar
+              size={90}
+              src={getAvatarUrl(profileUser)}
+              icon={<UserOutlined />}
+              style={{
+                border: '4px solid #fff',
+                boxShadow: '0 6px 20px rgba(0,0,0,0.15)'
+              }}
+            />
+            {isOwner && (
+              <Upload
+                accept="image/*"
+                showUploadList={false}
+                beforeUpload={(file) => { void handleAvatarChange(file); return false; }}
+              >
+                <Button
+                  icon={<CameraOutlined />}
+                  size="small"
+                  shape="circle"
+                  style={{
+                    position: 'absolute',
+                    bottom: 2,
+                    right: 2,
+                    boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
+                    background: 'linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%)',
+                    border: '2px solid #fff',
+                    color: '#fff'
+                  }}
+                />
+              </Upload>
+            )}
+          </div>
+
+          <Title level={4} style={{ margin: '12px 0 4px 0', fontSize: 20 }}>
+            <span className="food-gradient-title">
+              {profileUser.username}
+            </span>
+          </Title>
+
+          <Paragraph
+            ellipsis={{ rows: 2 }}
+            style={{ marginBottom: 12, fontSize: 13, color: '#595959', maxWidth: 320, lineHeight: '1.4' }}
+          >
+            {profileUser.bio || '这个人很懒，什么都没写 ✨'}
+          </Paragraph>
+
+          {/* 统计徽章 */}
+          <div className="profile-stats-row">
+            <StatBadge type="posts" count={myPostsTotal} onClick={() => setActiveTab('posts')} />
+            <StatBadge type="following" count={following.length} onClick={() => setActiveTab('following')} />
+            <StatBadge type="followers" count={followers.length} onClick={() => setActiveTab('followers')} />
+            {isOwner && <StatBadge type="friends" count={friendCount} onClick={() => setActiveTab('friends')} />}
+            {isOwner && <StatBadge type="favorites" count={myFavorites.length} onClick={() => setActiveTab('favorites')} />}
+          </div>
+
+          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
+            📅 {new Date(profileUser.createdAt).toLocaleDateString('zh-CN')} 加入
+          </Text>
+
+          {/* 操作按钮 */}
+          {!isOwner && profileUser && (
+            <Space size={8} style={{ marginTop: 16 }} wrap>
+              {/* 好友按钮 */}
+              {isBlocked ? (
+                <Button icon={<StopOutlined />} disabled style={{ borderRadius: 18, height: 36 }}>
+                  已拉黑
+                </Button>
+              ) : isFriend ? (
+                <Button icon={<CheckOutlined />} disabled style={{ borderRadius: 18, height: 36, background: '#f6ffed', borderColor: '#b7eb8f', color: '#52c41a' }}>
+                  已是好友
+                </Button>
+              ) : (
+                <Button
+                  type="primary"
+                  icon={<UserAddOutlined />}
+                  onClick={handleAddFriend}
+                  loading={friendLoading}
+                  style={{
+                    borderRadius: 18,
+                    height: 36,
+                    background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
+                    border: 'none',
+                    boxShadow: '0 4px 12px rgba(82, 196, 26, 0.3)'
+                  }}
+                >
+                  添加好友
+                </Button>
+              )}
+              {/* 私信按钮 */}
+              {!isBlocked && (
+                <Button
+                  icon={<MessageOutlined />}
+                  onClick={() => handleOpenChat(profileUser)}
+                  style={{
+                    borderRadius: 18,
+                    height: 36,
+                    fontWeight: 500,
+                    background: 'linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%)',
+                    border: 'none',
+                    color: '#fff',
+                    boxShadow: '0 4px 12px rgba(255, 107, 53, 0.3)'
+                  }}
+                >
+                  私信
+                </Button>
+              )}
+              {/* 关注按钮 */}
+              {!isBlocked && (
+                <Button
+                  icon={followStatus[profileUser.id] ? <CheckOutlined /> : <PlusOutlined />}
+                  onClick={() => followStatus[profileUser.id] ? handleUnfollowUser(profileUser.id) : handleFollowUser(profileUser.id)}
+                  style={{
+                    borderRadius: 18,
+                    height: 36,
+                    fontWeight: 500
+                  }}
+                >
+                  {followStatus[profileUser.id] ? '已关注' : '关注'}
+                </Button>
+              )}
+              {/* 拉黑按钮 */}
+              {!isBlocked && (
+                <Popconfirm
+                  title="确定要拉黑该用户吗？"
+                  description="拉黑后该用户无法给你发送私信"
+                  onConfirm={handleBlockUser}
+                  okText="确定"
+                  cancelText="取消"
+                >
+                  <Button danger icon={<StopOutlined />} style={{ borderRadius: 18, height: 36 }}>
+                    拉黑
+                  </Button>
+                </Popconfirm>
+              )}
+              {/* 举报按钮 */}
+              <Button
+                icon={<WarningOutlined />}
+                onClick={() => setReportModalOpen(true)}
+                style={{ borderRadius: 18, height: 36 }}
+              >
+                举报
+              </Button>
+            </Space>
+          )}
+
+          {isOwner && (
+            <Space size={8} style={{ marginTop: 16 }}>
+              <Button
+                icon={<EditOutlined />}
+                onClick={() => {
+                  editForm.setFieldsValue({ username: profileUser.username, bio: profileUser.bio });
+                  setEditModalOpen(true);
                 }}
-              />
-              {isOwner && (
-                <Upload
-                  accept="image/*"
-                  showUploadList={false}
-                  beforeUpload={(file) => { void handleAvatarChange(file); return false; }}
-                >
-                  <Button
-                    icon={<CameraOutlined />}
-                    size="small"
-                    shape="circle"
-                    style={{
-                      position: 'absolute',
-                      bottom: 2,
-                      right: 2,
-                      boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      border: '2px solid #fff',
-                      color: '#fff'
-                    }}
-                  />
-                </Upload>
-              )}
-            </div>
-          </Col>
-          <Col flex="auto" style={{ zIndex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <Title level={2} style={{ marginBottom: 8, marginTop: 0, fontSize: 24, fontWeight: 700 }}>
-                  <span style={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text'
-                  }}>
-                    {profileUser.username}
-                  </span>
-                </Title>
-                <Paragraph
-                  ellipsis={{ rows: 2 }}
-                  style={{ marginBottom: 12, fontSize: 14, color: '#595959', maxWidth: 400, lineHeight: '1.5' }}
-                >
-                  {profileUser.bio || '这个人很懒，什么都没写 😊'}
-                </Paragraph>
-                <Space split={<Divider type="vertical" style={{ margin: '0 6px' }} />} size="small">
-                  <div
-                    style={{
-                      cursor: 'pointer',
-                      padding: '6px 12px',
-                      borderRadius: 16,
-                      background: 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(24, 144, 255, 0.04) 100%)',
-                      border: '1px solid rgba(24, 144, 255, 0.15)',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onClick={() => setActiveTab('posts')}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(24, 144, 255, 0.12) 0%, rgba(24, 144, 255, 0.08) 100%)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(24, 144, 255, 0.04) 100%)'}
-                  >
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      动态 <Text strong style={{ color: '#1890ff', fontSize: 14 }}> {myPosts.length}</Text>
-                    </Text>
-                  </div>
-                  <div
-                    style={{
-                      cursor: 'pointer',
-                      padding: '6px 12px',
-                      borderRadius: 16,
-                      background: 'linear-gradient(135deg, rgba(82, 196, 26, 0.08) 0%, rgba(82, 196, 26, 0.04) 100%)',
-                      border: '1px solid rgba(82, 196, 26, 0.15)',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onClick={() => setActiveTab('following')}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(82, 196, 26, 0.12) 0%, rgba(82, 196, 26, 0.08) 100%)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(82, 196, 26, 0.08) 0%, rgba(82, 196, 26, 0.04) 100%)'}
-                  >
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      关注 <Text strong style={{ color: '#52c41a', fontSize: 14 }}> {following.length}</Text>
-                    </Text>
-                  </div>
-                  <div
-                    style={{
-                      cursor: 'pointer',
-                      padding: '6px 12px',
-                      borderRadius: 16,
-                      background: 'linear-gradient(135deg, rgba(250, 173, 20, 0.08) 0%, rgba(250, 173, 20, 0.04) 100%)',
-                      border: '1px solid rgba(250, 173, 20, 0.15)',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onClick={() => setActiveTab('followers')}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(250, 173, 20, 0.12) 0%, rgba(250, 173, 20, 0.08) 100%)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(250, 173, 20, 0.08) 0%, rgba(250, 173, 20, 0.04) 100%)'}
-                  >
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      粉丝 <Text strong style={{ color: '#faad14', fontSize: 14 }}> {followers.length}</Text>
-                    </Text>
-                  </div>
-                  {isOwner && (
-                    <div
-                      style={{
-                        cursor: 'pointer',
-                        padding: '6px 12px',
-                        borderRadius: 16,
-                        background: 'linear-gradient(135deg, rgba(114, 46, 209, 0.08) 0%, rgba(114, 46, 209, 0.04) 100%)',
-                        border: '1px solid rgba(114, 46, 209, 0.15)',
-                        transition: 'all 0.3s ease'
-                      }}
-                      onClick={() => setActiveTab('favorites')}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(114, 46, 209, 0.12) 0%, rgba(114, 46, 209, 0.08) 100%)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(114, 46, 209, 0.08) 0%, rgba(114, 46, 209, 0.04) 100%)'}
-                    >
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        收藏 <Text strong style={{ color: '#722ed1', fontSize: 14 }}> {myFavorites.length}</Text>
-                      </Text>
-                    </div>
-                  )}
-                  <Text type="secondary" style={{ fontSize: 12, color: '#8c8c8c' }}>
-                    📅 {new Date(profileUser.createdAt).toLocaleDateString('zh-CN')} 加入
-                  </Text>
-                </Space>
-              </div>
-              {!isOwner && profileUser && (
-                <Space size={8}>
-                  <Button
-                    icon={<MessageOutlined />}
-                    onClick={() => handleOpenChat(profileUser)}
-                    style={{
-                      borderRadius: 18,
-                      height: 36,
-                      paddingLeft: 16,
-                      paddingRight: 16,
-                      fontWeight: 500,
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      border: 'none',
-                      color: '#fff'
-                    }}
-                  >
-                    私信
-                  </Button>
-                  <Button
-                    icon={<WarningOutlined />}
-                    danger
-                    onClick={() => setReportModalOpen(true)}
-                    style={{ borderRadius: 18, height: 36 }}
-                  >
-                    举报
-                  </Button>
-                </Space>
-              )}
-              {isOwner && (
-                <Space size={8}>
-                  <Button
-                    icon={<EditOutlined />}
-                    onClick={() => {
-                      editForm.setFieldsValue({ username: profileUser.username, bio: profileUser.bio });
-                      setEditModalOpen(true);
-                    }}
-                    style={{
-                      borderRadius: 18,
-                      height: 36,
-                      fontWeight: 500
-                    }}
-                  >
-                    编辑资料
-                  </Button>
-                  <Button
-                    onClick={() => setPwdModalOpen(true)}
-                    style={{ borderRadius: 18, height: 36 }}
-                  >
-                    修改密码
-                  </Button>
-                  <Button
-                    icon={<LogoutOutlined />}
-                    onClick={handleLogout}
-                    danger
-                    style={{ borderRadius: 18, height: 36 }}
-                  >
-                    退出登录
-                  </Button>
-                </Space>
-              )}
-            </div>
-          </Col>
-        </Row>
+                style={{
+                  borderRadius: 18,
+                  height: 36,
+                  fontWeight: 500
+                }}
+              >
+                编辑资料
+              </Button>
+              <Button
+                onClick={() => setPwdModalOpen(true)}
+                style={{ borderRadius: 18, height: 36 }}
+              >
+                修改密码
+              </Button>
+              <Button
+                icon={<LogoutOutlined />}
+                onClick={handleLogout}
+                danger
+                style={{ borderRadius: 18, height: 36 }}
+              >
+                退出登录
+              </Button>
+            </Space>
+          )}
+        </div>
       </Card>
 
       {/* 标签页 */}
       <Card
+        className="food-tabs"
         style={{
-          borderRadius: 12,
-          boxShadow: '0 3px 16px rgba(0,0,0,0.06)',
-          border: '1px solid #f0f0f0'
+          borderRadius: 14,
+          boxShadow: '0 4px 16px rgba(255, 107, 53, 0.08)',
+          border: '1px solid rgba(255, 107, 53, 0.1)'
         }}
         tabList={tabItems.map(item => ({ key: item.key, tab: item.label }))}
         activeTabKey={activeTab}
@@ -996,6 +1299,6 @@ export default function ProfilePage() {
           reportedUsername={profileUser.username}
         />
       )}
-    </div>
+    </PageLayout>
   );
 }

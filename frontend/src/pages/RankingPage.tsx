@@ -300,7 +300,7 @@ export default function RankingPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: '16px 0 80px', background: 'linear-gradient(180deg, #fff8f0 0%, #ffe8d6 50%, #ffffff 100%)', minHeight: '60vh' }}>
+      <div style={{ padding: '16px 0 80px', minHeight: '60vh' }}>
         <div style={{ marginBottom: 24, textAlign: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 8 }}>
             <CrownOutlined style={{ fontSize: 32, color: '#FFD700', animation: 'crownBounce 2s ease-in-out infinite' }} />
@@ -319,7 +319,7 @@ export default function RankingPage() {
   }
 
   return (
-    <div style={{ padding: '16px 0 80px', background: 'linear-gradient(180deg, #fff8f0 0%, #ffe8d6 50%, #ffffff 100%)', minHeight: '80vh', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ padding: '16px 0 80px', minHeight: '80vh', position: 'relative', overflow: 'hidden' }}>
       {/* 美食背景 */}
       <FoodBackground count={15} minSize={20} maxSize={40} />
 
@@ -353,7 +353,6 @@ export default function RankingPage() {
             borderRadius: 16,
             border: '1px solid rgba(255, 215, 0, 0.15)',
             boxShadow: '0 3px 16px rgba(255, 215, 0, 0.08)',
-            background: 'linear-gradient(135deg, #ffffff 0%, #fffcf5 100%)'
           }}
           bodyStyle={{ padding: '16px 20px' }}
         >
@@ -463,7 +462,6 @@ export default function RankingPage() {
             padding: 60,
             borderRadius: 16,
             border: '2px dashed rgba(255, 215, 0, 0.25)',
-            background: 'linear-gradient(135deg, #ffffff 0%, #fffcf5 100%)'
           }}>
             <Empty
               imageStyle={{ height: 100 }}

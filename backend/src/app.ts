@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import postRoutes from './routes/post.routes';
 import followRoutes from './routes/follow.routes';
+import friendRoutes from './routes/friend.routes';
 import blockRoutes from './routes/block.routes';
 import messageRoutes from './routes/message.routes';
 import adminRoutes from './routes/admin.routes';
@@ -18,8 +19,24 @@ import commentRoutes from './routes/comment.routes';
 import notificationRoutes from './routes/notification.routes';
 import searchRoutes from './routes/search.routes';
 import uploadRoutes from './routes/upload.routes';
+import tagRoutes from './routes/tag.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { initWebSocket } from './websocket';
+
+// ========== 安全中间件导入 ==========
+import {
+  applySecurityMiddleware,
+  apiLimiter,
+  authLimiter,
+  loginLimiter,
+  uploadLimiter,
+  aiLimiter,
+  searchLimiter,
+  corsOptions,
+  adminIpWhitelist
+} from './middleware/security';
+import { sanitizeBody } from './middleware/validation';
+import { checkBlacklist } from './utils/jwtBlacklist';
 
 dotenv.config();
 
@@ -27,32 +44,74 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const httpServer = createServer(app);
 
-// 中间件
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true,
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ========== 应用安全中间件 ==========
+applySecurityMiddleware(app);
+
+// CORS 配置（使用安全的 CORS 选项）
+app.use(cors(corsOptions));
+
+// 请求体解析和清理
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// 请求体清理（防止注入攻击）
+app.use(sanitizeBody);
 
 // 静态文件（上传的图片）
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// 路由
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/posts', postRoutes);
-app.use('/api/follows', followRoutes);
-app.use('/api/blocks', blockRoutes);
-app.use('/api/messages', messageRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/admin', adminLogRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api', commentRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/search', searchRoutes);
-app.use('/upload', uploadRoutes);
+// 静态文件（上传的图片）
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// ========== 路由（应用限流和安全检查）==========
+
+// 认证路由（严格限流 + 登录限制）
+app.use('/api/auth', loginLimiter, authLimiter, authRoutes);
+
+// 用户路由（通用限流 + 黑名单检查）
+app.use('/api/users', apiLimiter, checkBlacklist, userRoutes);
+
+// 动态路由（通用限流 + 黑名单检查）
+app.use('/api/posts', apiLimiter, checkBlacklist, postRoutes);
+
+// 关注路由（通用限流 + 黑名单检查）
+app.use('/api/follows', apiLimiter, checkBlacklist, followRoutes);
+
+// 好友路由（通用限流 + 黑名单检查）
+app.use('/api/friends', apiLimiter, checkBlacklist, friendRoutes);
+
+// 拉黑路由（通用限流 + 黑名单检查）
+app.use('/api/blocks', apiLimiter, checkBlacklist, blockRoutes);
+
+// 消息路由（通用限流 + 黑名单检查）
+app.use('/api/messages', apiLimiter, checkBlacklist, messageRoutes);
+
+// 管理路由（通用限流 + 黑名单检查 + IP 白名单）
+app.use('/api/admin', apiLimiter, checkBlacklist, adminIpWhitelist, adminRoutes);
+
+// 管理日志路由（通用限流 + 黑名单检查 + IP 白名单）
+app.use('/api/admin', apiLimiter, checkBlacklist, adminIpWhitelist, adminLogRoutes);
+
+// 举报路由（通用限流 + 黑名单检查）
+app.use('/api/reports', apiLimiter, checkBlacklist, reportRoutes);
+
+// AI 助手路由（AI 限流 + 黑名单检查）
+app.use('/api/ai', aiLimiter, checkBlacklist, aiRoutes);
+
+// 评论路由（通用限流 + 黑名单检查）
+app.use('/api', apiLimiter, checkBlacklist, commentRoutes);
+
+// 通知路由（通用限流 + 黑名单检查）
+app.use('/api/notifications', apiLimiter, checkBlacklist, notificationRoutes);
+
+// 搜索路由（搜索限流 + 黑名单检查）
+app.use('/api/search', searchLimiter, checkBlacklist, searchRoutes);
+
+// 标签路由（通用限流 + 黑名单检查）
+app.use('/api/tags', apiLimiter, checkBlacklist, tagRoutes);
+
+// 上传路由（上传限流 + 黑名单检查）
+app.use('/upload', uploadLimiter, checkBlacklist, uploadRoutes);
 
 // 健康检查
 app.get('/health', (req, res) => {

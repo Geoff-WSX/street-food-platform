@@ -1,0 +1,673 @@
+/* ==================== 日间模式 ==================== */
+:root,
+[data-theme="light"] {
+  /* 基础颜色 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #fafafa;
+  --bg-elevated: #ffffff;
+  --bg-overlay: rgba(0, 0, 0, 0.45);
+
+  /* 文字颜色 */
+  --text-primary: #262626;
+  --text-secondary: #595959;
+  --text-tertiary: #8c8c8c;
+  --text-quaternary: #bfbfbf;
+  --text-disabled: #d9d9d9;
+
+  /* 边框颜色 */
+  --border-color: #f0f0f0;
+  --border-color-secondary: #e8e8e8;
+
+  /* 品牌色 */
+  --color-primary: #ff6b35;
+  --color-primary-hover: #ff8c5a;
+  --color-primary-active: #e55a2b;
+  --color-primary-bg: rgba(255, 107, 53, 0.1);
+  --color-primary-bg-hover: rgba(255, 107, 53, 0.15);
+
+  /* 功能色 */
+  --color-success: #52c41a;
+  --color-warning: #faad14;
+  --color-error: #ff4d4f;
+  --color-info: #1890ff;
+
+  /* 阴影 */
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-3: 0 6px 24px rgba(0, 0, 0, 0.16);
+  --shadow-primary: 0 4px 16px rgba(255, 107, 53, 0.2);
+
+  /* 渐变 */
+  --gradient-primary: linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%);
+  --gradient-warm: linear-gradient(135deg, #ff6b35 0%, #ffb347 100%);
+  --gradient-bg: linear-gradient(135deg, #fff8f0 0%, #ffe8d6 100%);
+
+  /* 组件特定 */
+  --navbar-bg: rgba(255, 255, 255, 0.95);
+  --navbar-bg-scrolled: rgba(255, 255, 255, 0.98);
+  --navbar-border: rgba(255, 107, 53, 0.1);
+  --card-bg: #ffffff;
+  --card-bg-hover: #fafafa;
+  --input-bg: #ffffff;
+  --modal-bg: rgba(255, 255, 255, 0.98);
+  --dropdown-bg: rgba(255, 255, 255, 0.98);
+  --popover-bg: rgba(255, 255, 255, 0.98);
+  --hover-bg: #ebebeb;
+  --placeholder-bg: transparent;
+}
+
+/* ==================== 夜间模式 ==================== */
+[data-theme="dark"] {
+  /* 基础颜色 */
+  --bg-primary: #141414;
+  --bg-secondary: #1f1f1f;
+  --bg-tertiary: #262626;
+  --bg-elevated: #262626;
+  --bg-overlay: rgba(0, 0, 0, 0.65);
+
+  /* 文字颜色 */
+  --text-primary: #e6e6e6;
+  --text-secondary: #bfbfbf;
+  --text-tertiary: #8c8c8c;
+  --text-quaternary: #595959;
+  --text-disabled: #4d4d4d;
+
+  /* 边框颜色 */
+  --border-color: #3d3d3d;
+  --border-color-secondary: #2d2d2d;
+
+  /* 品牌色 */
+  --color-primary: #ff6b35;
+  --color-primary-hover: #ff8c5a;
+  --color-primary-active: #e55a2b;
+  --color-primary-bg: rgba(255, 107, 53, 0.15);
+  --color-primary-bg-hover: rgba(255, 107, 53, 0.25);
+
+  /* 功能色 */
+  --color-success: #52c41a;
+  --color-warning: #faad14;
+  --color-error: #ff4d4f;
+  --color-info: #1890ff;
+
+  /* 阴影 */
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-3: 0 6px 24px rgba(0, 0, 0, 0.5);
+  --shadow-primary: 0 4px 16px rgba(255, 107, 53, 0.3);
+
+  /* 渐变 */
+  --gradient-primary: linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%);
+  --gradient-warm: linear-gradient(135deg, #ff6b35 0%, #ffb347 100%);
+  --gradient-bg: linear-gradient(135deg, #1a1a1a 0%, #262626 100%);
+
+  /* 组件特定 */
+  --navbar-bg: rgba(20, 20, 20, 0.95);
+  --navbar-bg-scrolled: rgba(20, 20, 20, 0.98);
+  --navbar-border: rgba(255, 107, 53, 0.2);
+  --card-bg: #1f1f1f;
+  --card-bg-hover: #262626;
+  --input-bg: #262626;
+  --modal-bg: rgba(31, 31, 31, 0.98);
+  --dropdown-bg: rgba(31, 31, 31, 0.98);
+  --popover-bg: rgba(31, 31, 31, 0.98);
+  --hover-bg: #2a2a2a;
+  --placeholder-bg: transparent;
+}
+
+/* ==================== 全局样式 ==================== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ==================== 布局组件 ==================== */
+.page-content {
+  background-color: var(--bg-secondary);
+  min-height: 100vh;
+  transition: background-color 0.3s ease;
+}
+
+/* ==================== 导航栏 ==================== */
+.navbar-scrolled {
+  background-color: var(--navbar-bg-scrolled) !important;
+  box-shadow: var(--shadow-1);
+}
+
+/* ==================== 卡片组件 ==================== */
+.card-trendy,
+.ant-card,
+.ant-modal-content,
+.post-card-urban {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.card-trendy:hover,
+.post-card-urban:hover {
+  background-color: var(--card-bg-hover);
+}
+
+/* ==================== 文字样式 ==================== */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+}
+
+p, span, div {
+  color: var(--text-primary);
+}
+
+.ant-typography {
+  color: var(--text-primary);
+}
+
+.ant-typography-secondary {
+  color: var(--text-secondary) !important;
+}
+
+/* ==================== 按钮样式 ==================== */
+.btn-primary {
+  background: var(--gradient-primary);
+  border: none;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: var(--gradient-warm);
+  opacity: 0.9;
+}
+
+/* ==================== 输入框样式 ==================== */
+.ant-input,
+.ant-input-lg,
+.ant-input-number,
+.ant-select-selector,
+.ant-picker-input {
+  background-color: var(--input-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.ant-input::placeholder,
+.ant-input-lg::placeholder,
+.ant-input-number::placeholder {
+  color: var(--text-tertiary) !important;
+  background: transparent !important;
+}
+
+/* WebKit 浏览器的 placeholder 样式 */
+.ant-input::-webkit-input-placeholder,
+.ant-input-lg::-webkit-input-placeholder,
+.ant-input-number::-webkit-input-placeholder {
+  color: var(--text-tertiary) !important;
+  background: transparent !important;
+}
+
+/* Mozilla 浏览器的 placeholder 样式 */
+.ant-input::-moz-placeholder,
+.ant-input-lg::-moz-placeholder,
+.ant-input-number::-moz-placeholder {
+  color: var(--text-tertiary) !important;
+  background: transparent !important;
+}
+
+/* IE/Edge 的 placeholder 样式 */
+.ant-input:-ms-input-placeholder,
+.ant-input-lg:-ms-input-placeholder,
+.ant-input-number:-ms-input-placeholder {
+  color: var(--text-tertiary) !important;
+  background: transparent !important;
+}
+
+.ant-input:focus,
+.ant-input-number:focus,
+.ant-select-focused .ant-select-selector {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 2px var(--color-primary-bg) !important;
+}
+
+/* AutoComplete 下拉面板 */
+.ant-auto-complete-dropdown .ant-select-dropdown {
+  background-color: var(--dropdown-bg) !important;
+  border-color: var(--border-color) !important;
+}
+
+.ant-auto-complete-dropdown .ant-select-item {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+.ant-auto-complete-dropdown .ant-select-item-option {
+  background-color: transparent !important;
+}
+
+.ant-auto-complete-dropdown .ant-select-item-option:hover {
+  background-color: var(--hover-bg) !important;
+}
+
+.ant-auto-complete-dropdown .ant-select-item-option-selected {
+  background-color: var(--color-primary-bg) !important;
+}
+
+/* ==================== 下拉菜单 ==================== */
+.ant-dropdown-menu {
+  background-color: var(--dropdown-bg);
+  border-color: var(--border-color);
+}
+
+.ant-dropdown-menu-item {
+  color: var(--text-primary);
+}
+
+.ant-dropdown-menu-item:hover {
+  background-color: var(--color-primary-bg);
+}
+
+.ant-dropdown-menu-item-selected {
+  background-color: var(--color-primary-bg);
+}
+
+/* ==================== 模态框 ==================== */
+.ant-modal-content,
+.ant-modal-header,
+.ant-modal-body,
+.ant-modal-footer {
+  background-color: var(--modal-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.ant-modal-title {
+  color: var(--text-primary);
+}
+
+.ant-modal-close-x {
+  color: var(--text-secondary);
+}
+
+/* ==================== 气泡卡片 ==================== */
+.ant-popover-inner {
+  background-color: var(--popover-bg);
+  border-color: var(--border-color);
+}
+
+.ant-popover-arrow-content {
+  background-color: var(--popover-bg);
+  border-color: var(--border-color);
+}
+
+/* ==================== 标签页 ==================== */
+.ant-tabs-tab {
+  color: var(--text-secondary) !important;
+}
+
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--color-primary) !important;
+}
+
+.ant-tabs-ink-bar {
+  background: var(--gradient-primary);
+}
+
+/* ==================== 表格 ==================== */
+.ant-table {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.ant-table-thead > tr > th {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.ant-table-tbody > tr > td {
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.ant-table-tbody > tr:hover > td {
+  background-color: var(--color-primary-bg);
+}
+
+/* ==================== 列表 ==================== */
+.ant-list-item {
+  border-color: var(--border-color);
+}
+
+.ant-list-item-meta-title {
+  color: var(--text-primary);
+}
+
+.ant-list-item-meta-description {
+  color: var(--text-secondary);
+}
+
+/* ==================== 分割线 ==================== */
+.ant-divider {
+  border-color: var(--border-color);
+}
+
+/* ==================== 标签 ==================== */
+.ant-tag {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* ==================== 徽章 ==================== */
+.ant-badge-count {
+  background-color: var(--color-primary);
+  color: #ffffff;
+}
+
+/* ==================== 进度条 ==================== */
+.ant-progress-bg {
+  background: var(--gradient-primary);
+}
+
+/* ==================== 开关 ==================== */
+.ant-switch {
+  background-color: var(--text-tertiary);
+}
+
+.ant-switch-checked {
+  background-color: var(--color-primary);
+}
+
+/* ==================== 单选/复选框 ==================== */
+.ant-radio-wrapper,
+.ant-checkbox-wrapper {
+  color: var(--text-primary);
+}
+
+.ant-radio-checked .ant-radio-inner,
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* ==================== 滑块 ==================== */
+.ant-slider-rail {
+  background-color: var(--border-color);
+}
+
+.ant-slider-track {
+  background: var(--gradient-primary);
+}
+
+.ant-slider-handle {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* ==================== 日期选择器 ==================== */
+.ant-picker {
+  width: 100%;
+}
+
+.ant-picker-input {
+  background-color: var(--input-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.ant-picker-panel-container {
+  background-color: var(--card-bg);
+}
+
+.ant-picker-header {
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* ==================== 时间轴 ==================== */
+.ant-timeline-item-tail {
+  border-color: var(--border-color);
+}
+
+/* ==================== 通知 ==================== */
+.ant-notification-notice {
+  background-color: var(--modal-bg);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-2);
+}
+
+/* ==================== 提示 ==================== */
+.ant-tooltip-inner {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.ant-tooltip-arrow-content {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+/* ==================== 警告 ==================== */
+.ant-alert-success,
+.ant-alert-info,
+.ant-alert-warning,
+.ant-alert-error {
+  border-color: var(--border-color);
+}
+
+.ant-alert-success {
+  background-color: rgba(82, 196, 26, 0.1);
+}
+
+.ant-alert-info {
+  background-color: rgba(24, 144, 255, 0.1);
+}
+
+.ant-alert-warning {
+  background-color: rgba(250, 173, 20, 0.1);
+}
+
+.ant-alert-error {
+  background-color: rgba(255, 77, 79, 0.1);
+}
+
+/* ==================== 骨架屏 ==================== */
+.ant-skeleton {
+  background-color: var(--bg-tertiary);
+}
+
+.ant-skeleton-content {
+  background: linear-gradient(
+    90deg,
+    var(--bg-tertiary) 25%,
+    var(--bg-secondary) 50%,
+    var(--bg-tertiary) 75%
+  );
+}
+
+/* ==================== 空状态 ==================== */
+.ant-empty-description {
+  color: var(--text-secondary);
+}
+
+/* ==================== 统计数字 ==================== */
+.ant-statistic-title {
+  color: var(--text-secondary);
+}
+
+.ant-statistic-content {
+  color: var(--text-primary);
+}
+
+/* ==================== 食物主题适配 ==================== */
+.food-navbar {
+  background-color: var(--navbar-bg);
+  border-bottom-color: var(--navbar-border);
+  backdrop-filter: blur(10px);
+  transition: background-color 0.3s ease;
+}
+
+.food-navbar.scrolled {
+  background-color: var(--navbar-bg-scrolled);
+}
+
+.food-modal .ant-modal-content {
+  background-color: var(--modal-bg);
+  border-color: var(--navbar-border);
+}
+
+.food-dropdown .ant-dropdown-menu {
+  background-color: var(--dropdown-bg);
+  border-color: var(--navbar-border);
+}
+
+/* ==================== 食物卡片 ==================== */
+.post-card-urban {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-1);
+}
+
+.post-card-urban:hover {
+  box-shadow: var(--shadow-primary);
+  background-color: var(--card-bg-hover);
+}
+
+.post-content-text {
+  color: var(--text-primary);
+}
+
+.post-location {
+  color: var(--text-secondary);
+  background-color: var(--color-primary-bg);
+  border-color: var(--border-color);
+}
+
+/* ==================== 筛选栏 ==================== */
+.filter-bar,
+.food-filter-bar {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
+
+/* ==================== 统计徽章 ==================== */
+.food-stat-badge {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.food-stat-badge.posts {
+  background-color: rgba(24, 144, 255, 0.1);
+  border-color: rgba(24, 144, 255, 0.2);
+}
+
+.food-stat-badge.following {
+  background-color: rgba(82, 196, 26, 0.1);
+  border-color: rgba(82, 196, 26, 0.2);
+}
+
+.food-stat-badge.followers {
+  background-color: rgba(250, 173, 20, 0.1);
+  border-color: rgba(250, 173, 20, 0.2);
+}
+
+.food-stat-badge.favorites {
+  background-color: rgba(114, 46, 209, 0.1);
+  border-color: rgba(114, 46, 209, 0.2);
+}
+
+.food-stat-badge.friends {
+  background-color: rgba(19, 194, 194, 0.1);
+  border-color: rgba(19, 194, 194, 0.2);
+}
+
+/* ==================== 用户列表 ==================== */
+.food-user-list .ant-list-item {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+.food-user-list .ant-list-item:hover {
+  background-color: var(--color-primary-bg);
+  box-shadow: var(--shadow-1);
+}
+
+/* ==================== 个人主页 ==================== */
+.profile-header {
+  background-color: var(--card-bg);
+  box-shadow: var(--shadow-1);
+}
+
+.profile-header-banner {
+  background: var(--gradient-primary);
+}
+
+/* ==================== 设置卡片 ==================== */
+.food-settings-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
+
+.food-settings-row:hover {
+  background-color: var(--color-primary-bg);
+}
+
+/* ==================== 发布弹窗 ==================== */
+.food-publish-modal .ant-modal-content {
+  background-color: var(--modal-bg);
+}
+
+.food-ai-copy-preview {
+  background-color: var(--color-primary-bg);
+  border-color: var(--navbar-border);
+}
+
+/* ==================== 排名徽章 ==================== */
+.food-rank-badge.gold {
+  background: var(--gradient-warm);
+}
+
+.food-rank-badge.silver {
+  background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+}
+
+.food-rank-badge.bronze {
+  background: linear-gradient(135deg, #cd7f32 0%, #e8a85c 100%);
+}
+
+/* ==================== 悬浮按钮 ==================== */
+.food-float-button {
+  background: var(--gradient-primary);
+  box-shadow: var(--shadow-primary);
+}
+
+/* ==================== 渐变文字 ==================== */
+.food-gradient-title {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ==================== 滚动条 ==================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gradient-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gradient-warm);
+}

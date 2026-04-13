@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "darwin"]
 }
 
 datasource db {
@@ -31,16 +32,18 @@ model AdminLog {
 }
 
 model Block {
-  id         Int      @id @default(autoincrement())
-  blockerId  Int
-  blockedId  Int
+  id        Int      @id @default(autoincrement())
+  blockerId Int
+  blockedId Int
   createdAt DateTime @default(now())
-  blocked    User     @relation("Block_blocked", fields: [blockedId], references: [id], onDelete: Cascade)
-  blocker    User     @relation("Block_blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("Block_blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  blocker   User     @relation("Block_blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+
   @@unique([blockerId, blockedId])
   @@index([blockedId])
   @@map("blocks")
 }
+
 model CommentLike {
   id        Int      @id @default(autoincrement())
   userId    Int
@@ -48,10 +51,12 @@ model CommentLike {
   createdAt DateTime @default(now())
   comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, commentId])
   @@index([commentId])
   @@map("comment_likes")
 }
+
 model Comment {
   id            Int           @id @default(autoincrement())
   postId        Int
@@ -63,37 +68,47 @@ model Comment {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   commentLikes  CommentLike[]
+  mentions      Mention[]
   replies       Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   parent        Comment[]     @relation("CommentReplies")
   post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([createdAt])
   @@index([parentId])
   @@index([postId])
   @@index([userId])
   @@map("comments")
 }
+
 model Conversation {
   id        Int       @id @default(autoincrement())
   userId1   Int
   userId2   Int
   createdAt DateTime  @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime  @updatedAt
   messages  Message[]
+
   @@unique([userId1, userId2])
   @@map("conversations")
 }
+
 model Favorite {
   id        Int      @id @default(autoincrement())
   userId    Int
   postId    Int
+  isPinned Boolean  @default(false)
+  category  String?  @db.VarChar(50)
   createdAt DateTime @default(now())
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, postId])
   @@index([postId])
+  @@index([userId, isPinned])
   @@map("favorites")
 }
+
 model Follow {
   id          Int      @id @default(autoincrement())
   followerId  Int
@@ -101,11 +116,13 @@ model Follow {
   createdAt   DateTime @default(now())
   follower    User     @relation("Follow_follower", fields: [followerId], references: [id], onDelete: Cascade)
   following   User     @relation("Follow_following", fields: [followingId], references: [id], onDelete: Cascade)
+
   @@unique([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
   @@map("follows")
 }
+
 model Like {
   id        Int      @id @default(autoincrement())
   userId    Int
@@ -113,131 +130,221 @@ model Like {
   createdAt DateTime @default(now())
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, postId])
   @@index([postId])
   @@map("likes")
 }
+
 model Message {
   id             Int          @id @default(autoincrement())
   conversationId Int
   senderId       Int
   content        String       @db.Text
   readAt         DateTime?
+  createdAt      DateTime     @default(now())
   recalled       Boolean      @default(false)
   recalledAt     DateTime?
-  createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  users          User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
   @@index([conversationId])
   @@index([senderId])
   @@map("messages")
 }
+
 model Notification {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  type      String   @db.VarChar(50)
-  actorId   Int
-  entityId  Int
-  entityType String  @db.VarChar(50)
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  actor     User     @relation("Notification_actor", fields: [actorId], references: [id], onDelete: Cascade)
-  user      User     @relation("Notification_user", fields: [userId], references: [id], onDelete: Cascade)
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  type       String   @db.VarChar(50)
+  actorId    Int
+  entityId   Int
+  entityType String   @db.VarChar(50)
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  actor      User     @relation("Notification_actor", fields: [actorId], references: [id], onDelete: Cascade)
+  user       User     @relation("Notification_user", fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([actorId], map: "notifications_actorId_fkey")
-    @@index([userId, createdAt])
+  @@index([userId, createdAt])
   @@index([userId, isRead])
-    @@index([userId, type])
-    @@map("notifications")
+  @@index([userId, type])
+  @@map("notifications")
 }
+
 model Post {
-  id            Int       @id @default(autoincrement())
+  id            Int        @id @default(autoincrement())
   userId        Int
-  content       String      @db.Text
-  images        String      @db.Text
-  address       String?   @db.VarChar(255)
+  content       String     @db.Text
+  images        String     @db.Text
+  address       String?    @db.VarChar(255)
   latitude      Float?
   longitude     Float?
-  likeCount     Int       @default(0)
-  favoriteCount Int       @default(0)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  isPrivate     Boolean   @default(false)
-  commentCount  Int       @default(0)
+  likeCount     Int        @default(0)
+  favoriteCount Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  isPrivate     Boolean    @default(false)
+  commentCount  Int        @default(0)
   comments      Comment[]
+  tags          PostTag[]
+  mentions      Mention[]
   favorites     Favorite[]
   likes         Like[]
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([commentCount])
-    @@index([createdAt])
-    @@index([favoriteCount])
-    @@index([likeCount])
-    @@index([userId])
-    @@map("posts")
+  @@index([createdAt])
+  @@index([favoriteCount])
+  @@index([likeCount])
+  @@index([userId])
+  @@map("posts")
 }
+
+model Tag {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(50)
+  posts     PostTag[]
+  @@index([name])
+  @@map("tags")
+}
+
+model PostTag {
+  postId    Int
+  tagId     Int
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  @@unique([postId, tagId])
+  @@index([postId])
+  @@index([tagId])
+  @@map("post_tags")
+}
+
+model Mention {
+  id        Int      @id @default(autoincrement())
+  postId    Int?
+  commentId Int?
+  userId    Int
+  createdAt DateTime @default(now())
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([postId])
+  @@index([commentId])
+  @@index([userId])
+  @@map("mentions")
+}
+
 model Report {
-  id             Int       @id @default(autoincrement())
-  reporterId     Int
-  reportedId     Int
-  type           String    @db.VarChar(50)
-  description    String?   @db.Text
-  images         String?   @db.Text
-  chatRecords    String?   @db.Text
-  status         String    @default("pending") @db.VarChar(20)
-  adminNote      String?   @db.Text
-  createdAt      DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  reviewerId     Int?
-  reviewedAt     DateTime?
-  reviewerNote   String?   @db.Text
-  adminId        Int?
-  adminAt        DateTime?
-  admin          User?     @relation("Report_admin", fields: [adminId], references: [id])
-  reported       User      @relation("Report_reported", fields: [reportedId], references: [id], onDelete: Cascade)
-  reporter       User      @relation("Report_reporter", fields: [reporterId], references: [id], onDelete: Cascade)
-  reviewer       User?     @relation("Report_reviewer", fields: [reviewerId], references: [id])
+  id           Int       @id @default(autoincrement())
+  reporterId   Int
+  reportedId   Int
+  type         String    @db.VarChar(50)
+  description  String?   @db.Text
+  images       String?   @db.Text
+  chatRecords  String?   @db.Text
+  status       String    @default("pending") @db.VarChar(20)
+  adminNote    String?   @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  reviewerId   Int?
+  reviewedAt   DateTime?
+  reviewerNote String?   @db.Text
+  adminId      Int?
+  adminAt      DateTime?
+  admin        User?     @relation("Report_admin", fields: [adminId], references: [id])
+  reported     User      @relation("Report_reported", fields: [reportedId], references: [id], onDelete: Cascade)
+  reporter     User      @relation("Report_reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewer     User?     @relation("Report_reviewer", fields: [reviewerId], references: [id])
+
   @@index([adminId])
-    @@index([createdAt])
-    @@index([reportedId])
-    @@index([reporterId])
-    @@index([reviewerId])
-    @@index([status])
-    @@map("reports")
+  @@index([createdAt])
+  @@index([reportedId])
+  @@index([reporterId])
+  @@index([reviewerId])
+  @@index([status])
+  @@map("reports")
 }
+
 model User {
-  id                Int            @id @default(autoincrement())
-  username          String         @unique @db.VarChar(50)
-  email             String         @unique @db.VarChar(100)
-  password          String         @db.VarChar(255)
-  avatar            String?        @db.VarChar(500)
-  avatarData        String?        @db.LongText
-  bio               String?        @db.Text
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  allowMessage      Boolean        @default(true)
-  followOnlyMessage Boolean        @default(false)
-  isActive          Boolean        @default(true)
-  role              String         @default("user") @db.VarChar(20)
-  wechatOpenId      String?        @unique @db.VarChar(100)
-  wechatUnionId     String?        @unique @db.VarChar(100)
+  id                                                Int               @id @default(autoincrement())
+  username                                          String            @unique @db.VarChar(50)
+  email                                             String            @unique @db.VarChar(100)
+  password                                          String            @db.VarChar(255)
+  avatar                                            String?           @db.VarChar(500)
+  bio                                               String?           @db.Text
+  createdAt                                         DateTime          @default(now())
+  updatedAt                                         DateTime          @updatedAt
+  allowMessage                                      Boolean           @default(true)
+  isActive                                          Boolean           @default(true)
+  role                                              String            @default("user") @db.VarChar(20) // user, reviewer, admin, super_admin
+  wechatOpenId                                      String?           @unique @db.VarChar(100)
+  wechatUnionId                                     String?           @unique @db.VarChar(100)
+  followOnlyMessage                                 Boolean           @default(false)
+  avatarData                                        String?           @db.Text
   // 隐私设置
-  hideFollowing     Boolean        @default(false)
-  hideFollowers     Boolean        @default(false)
-  hidePosts         Boolean        @default(false)
-  hideFavorites     Boolean        @default(false)
-  adminLogs         AdminLog[]
-  blockedBy         Block[]        @relation("Block_blocked")
-  blocking          Block[]        @relation("Block_blocker")
-  commentLikes      CommentLike[]
-  comments          Comment[]
-  favorites         Favorite[]
-  followers         Follow[]       @relation("Follow_follower")
-  following         Follow[]       @relation("Follow_following")
-  likes             Like[]
-  notifications     Notification[] @relation("Notification_user")
-  notificationsAsActor Notification[] @relation("Notification_actor")
-  posts             Post[]
-  reportsAsAdmin    Report[]       @relation("Report_admin")
-  reportsAsReported Report[]       @relation("Report_reported")
-  reportsAsReporter Report[]       @relation("Report_reporter")
-  reportsAsReviewer Report[]       @relation("Report_reviewer")
+  hideFollowing                                     Boolean           @default(false)
+  hideFollowers                                     Boolean           @default(false)
+  hidePosts                                        Boolean           @default(false)
+  hideFavorites                                    Boolean           @default(false)
+  adminLogs                                         AdminLog[]
+  blockedBy                                         Block[]           @relation("Block_blocked")
+  blocking                                          Block[]           @relation("Block_blocker")
+  commentLikes                                      CommentLike[]
+  comments                                          Comment[]
+  favorites                                         Favorite[]
+  followers                                         Follow[]          @relation("Follow_follower")
+  following                                         Follow[]          @relation("Follow_following")
+  friend_requests_friend_requests_receiverIdTousers friend_requests[] @relation("friend_requests_receiverIdTousers")
+  friend_requests_friend_requests_senderIdTousers   friend_requests[] @relation("friend_requests_senderIdTousers")
+  friendships_friendships_userId1Tousers            friendships[]     @relation("friendships_userId1Tousers")
+  friendships_friendships_userId2Tousers            friendships[]     @relation("friendships_userId2Tousers")
+  likes                                             Like[]
+  messages                                          Message[]
+  notificationsAsActor                              Notification[]    @relation("Notification_actor")
+  notifications                                     Notification[]    @relation("Notification_user")
+  posts                                             Post[]
+  reportsAsAdmin                                    Report[]          @relation("Report_admin")
+  reportsAsReported                                 Report[]          @relation("Report_reported")
+  reportsAsReporter                                 Report[]          @relation("Report_reporter")
+  reportsAsReviewer                                 Report[]          @relation("Report_reviewer")
+  mentions                                          Mention[]
+
   @@map("users")
+}
+
+model friend_requests {
+  id                                      Int      @id @default(autoincrement())
+  senderId                                Int
+  receiverId                              Int
+  status                                  String   @default("pending") @db.VarChar(20)
+  message                                 String?  @db.VarChar(255)
+  createdAt                               DateTime @default(now())
+  updatedAt                               DateTime @updatedAt
+  users_friend_requests_receiverIdTousers User     @relation("friend_requests_receiverIdTousers", fields: [receiverId], references: [id], onDelete: Cascade)
+  users_friend_requests_senderIdTousers   User     @relation("friend_requests_senderIdTousers", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId])
+  @@index([senderId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("friend_requests")
+}
+
+model friendships {
+  id                               Int      @id @default(autoincrement())
+  userId1                          Int
+  userId2                          Int
+  createdAt                        DateTime @default(now())
+  updatedAt                        DateTime @updatedAt
+  users_friendships_userId1Tousers User     @relation("friendships_userId1Tousers", fields: [userId1], references: [id], onDelete: Cascade)
+  users_friendships_userId2Tousers User     @relation("friendships_userId2Tousers", fields: [userId2], references: [id], onDelete: Cascade)
+
+  @@unique([userId1, userId2])
+  @@index([userId1])
+  @@index([userId2])
+  @@index([createdAt])
+  @@map("friendships")
 }

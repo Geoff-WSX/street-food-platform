@@ -34,6 +34,7 @@ import {
 } from '../api/admin';
 import { useAuthStore } from '../store/auth';
 import { useNavigate } from 'react-router-dom';
+import { getAvatarUrl } from '../utils/images';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
@@ -451,7 +452,7 @@ export default function AdminPage() {
       render: (_: unknown, record: AdminUser) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Avatar
-            src={record.avatar}
+            src={getAvatarUrl(record)}
             icon={<UserOutlined />}
             size={44}
             style={{
@@ -1256,7 +1257,7 @@ export default function AdminPage() {
                         width: 150,
                         render: (_: unknown, record: AdminLog) => (
                           <Space>
-                            <Avatar src={record.admin?.avatar} icon={<UserOutlined />} size={24} />
+                            <Avatar src={getAvatarUrl(record.admin)} icon={<UserOutlined />} size={24} />
                             <Text style={{ fontSize: 13 }}>{record.admin?.username || '-'}</Text>
                           </Space>
                         ),
@@ -1361,7 +1362,7 @@ export default function AdminPage() {
               marginBottom: 24
             }}>
               <Avatar
-                src={selectedUser.avatar}
+                src={getAvatarUrl(selectedUser)}
                 icon={<UserOutlined />}
                 size={80}
                 style={{ marginBottom: 12 }}
@@ -1486,7 +1487,7 @@ export default function AdminPage() {
             {/* 时间线头部 */}
             <Card size="small" style={{ marginBottom: 16, borderRadius: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <Avatar src={selectedLog.admin?.avatar} icon={<UserOutlined />} size={48} />
+                <Avatar src={getAvatarUrl(selectedLog.admin)} icon={<UserOutlined />} size={48} />
                 <div>
                   <Text strong style={{ fontSize: 16 }}>{selectedLog.admin?.username || '未知'}</Text>
                   <div>

@@ -31,7 +31,7 @@
 ## 🛠️ 技术栈
 
 ### 前端
-- **框架**: React 18 + TypeScript
+- **框架**: React 19 + TypeScript
 - **构建**: Vite
 - **UI**: Ant Design
 - **路由**: React Router
@@ -42,7 +42,7 @@
 - **运行**: Node.js
 - **框架**: Express
 - **语言**: TypeScript
-- **数据库**: PostgreSQL
+- **数据库**: MySQL
 - **ORM**: Prisma
 - **认证**: JWT
 
@@ -81,7 +81,7 @@ street-food-platform/
 
 ### 环境要求
 - Node.js >= 18
-- PostgreSQL >= 14
+- MySQL >= 8.0
 - npm 或 yarn
 
 ### 安装依赖
@@ -102,7 +102,7 @@ npm install
 
 ```env
 # 数据库
-DATABASE_URL="postgresql://user:password@localhost:5432/street_food"
+DATABASE_URL="mysql://user:password@localhost:3306/street_food"
 
 # JWT
 JWT_SECRET="your-secret-key"

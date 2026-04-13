@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
-import prisma from '../config/database';
+import prisma from '../services/db/prisma';
 import { successResponse, errorResponse } from '../utils/response';
 
 /**
@@ -80,6 +80,7 @@ export const createReport = async (req: AuthRequest, res: Response) => {
             id: true,
             username: true,
             avatar: true,
+            avatarData: true,
           },
         },
         reported: {
@@ -87,6 +88,7 @@ export const createReport = async (req: AuthRequest, res: Response) => {
             id: true,
             username: true,
             avatar: true,
+            avatarData: true,
           },
         },
       },
@@ -132,6 +134,7 @@ export const getReports = async (req: AuthRequest, res: Response) => {
               username: true,
               email: true,
               avatar: true,
+              avatarData: true,
             },
           },
           reported: {
@@ -140,6 +143,7 @@ export const getReports = async (req: AuthRequest, res: Response) => {
               username: true,
               email: true,
               avatar: true,
+              avatarData: true,
               role: true,
               isActive: true,
             },
@@ -198,6 +202,7 @@ export const getMyReports = async (req: AuthRequest, res: Response) => {
             id: true,
             username: true,
             avatar: true,
+            avatarData: true,
           },
         },
       },
@@ -373,6 +378,7 @@ export const getReportDetail = async (req: AuthRequest, res: Response) => {
             username: true,
             email: true,
             avatar: true,
+            avatarData: true,
             bio: true,
             createdAt: true,
           },
@@ -383,6 +389,7 @@ export const getReportDetail = async (req: AuthRequest, res: Response) => {
             username: true,
             email: true,
             avatar: true,
+            avatarData: true,
             bio: true,
             role: true,
             isActive: true,

@@ -1,0 +1,491 @@
+/* ==========================================
+   主题增强样式 - 日/夜模式优化
+   ========================================== */
+
+/* 主题过渡动画 */
+body.theme-transitioning,
+body.theme-transitioning *,
+body.theme-transitioning *::before,
+body.theme-transitioning *::after {
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 防止主题切换时的闪烁 */
+[data-theme] {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ==========================================
+   高对比度模式支持
+   ========================================== */
+
+[data-contrast="high"] {
+  --text-primary: #000000;
+  --text-secondary: #1a1a1a;
+  --border-color: #000000;
+  --color-primary: #ff5500;
+  --color-success: #00aa00;
+  --color-warning: #aa8800;
+  --color-error: #cc0000;
+}
+
+[data-theme="dark"][data-contrast="high"] {
+  --text-primary: #ffffff;
+  --text-secondary: #e5e5e5;
+  --border-color: #ffffff;
+  --color-primary: #ff7733;
+  --color-success: #00cc00;
+  --color-warning: #ffcc00;
+  --color-error: #ff3333;
+}
+
+/* ==========================================
+   减少动画模式支持
+   ========================================== */
+
+[data-reduced-motion="true"] *,
+[data-reduced-motion="true"] *::before,
+[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* ==========================================
+   主题切换按钮样式增强
+   ========================================== */
+
+.theme-button-glow {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+/* ==========================================
+   卡片主题优化
+   ========================================== */
+
+/* 日间模式卡片优化 */
+[data-theme="light"] .ant-card {
+  background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .ant-card-hoverable:hover {
+  background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
+  box-shadow: 0 8px 24px rgba(255, 107, 53, 0.12);
+  border-color: rgba(255, 107, 53, 0.2);
+}
+
+/* 夜间模式卡片优化 */
+[data-theme="dark"] .ant-card {
+  background: linear-gradient(135deg, #1a1a1a 0%, #1f1f1f 100%);
+  border: 1px solid #2d2d2d;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .ant-card-hoverable:hover {
+  background: linear-gradient(135deg, #1f1f1f 0%, #262626 100%);
+  box-shadow: 0 8px 24px rgba(255, 107, 53, 0.2);
+  border-color: rgba(255, 107, 53, 0.3);
+}
+
+/* ==========================================
+   输入框主题优化
+   ========================================== */
+
+[data-theme="light"] .ant-input {
+  background: #ffffff;
+  border-color: #f0f0f0;
+  color: #262626;
+}
+
+[data-theme="light"] .ant-input:focus,
+[data-theme="light"] .ant-input-focused {
+  border-color: #ff6b35;
+  box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.1);
+}
+
+[data-theme="dark"] .ant-input {
+  background: #262626;
+  border-color: #3d3d3d;
+  color: #e6e6e6;
+}
+
+[data-theme="dark"] .ant-input:focus,
+[data-theme="dark"] .ant-input-focused {
+  border-color: #ff6b35;
+  box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+}
+
+/* ==========================================
+   按钮主题优化
+   ========================================== */
+
+[data-theme="light"] .ant-btn-primary {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%);
+  border: none;
+  color: #ffffff;
+}
+
+[data-theme="light"] .ant-btn-primary:hover {
+  background: linear-gradient(135deg, #ff8c5a 0%, #ffa06b 100%);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+[data-theme="dark"] .ant-btn-primary {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%);
+  border: none;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .ant-btn-primary:hover {
+  background: linear-gradient(135deg, #ff8c5a 0%, #ffa06b 100%);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+}
+
+/* ==========================================
+   下拉菜单主题优化
+   ========================================== */
+
+[data-theme="light"] .ant-dropdown-menu {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .ant-dropdown-menu {
+  background: rgba(31, 31, 31, 0.98);
+  backdrop-filter: blur(10px);
+  border: 1px solid #3d3d3d;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* ==========================================
+   模态框主题优化
+   ========================================== */
+
+[data-theme="light"] .ant-modal-content {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
+  border: 1px solid #f0f0f0;
+}
+
+[data-theme="dark"] .ant-modal-content {
+  background: rgba(31, 31, 31, 0.98);
+  backdrop-filter: blur(10px);
+  border: 1px solid #3d3d3d;
+}
+
+/* ==========================================
+   导航栏主题优化
+   ========================================== */
+
+[data-theme="light"] .ant-layout-header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 107, 53, 0.1);
+}
+
+[data-theme="dark"] .ant-layout-header {
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 107, 53, 0.2);
+}
+
+/* ==========================================
+   表格主题优化
+   ========================================== */
+
+[data-theme="light"] .ant-table {
+  background: #ffffff;
+  color: #262626;
+}
+
+[data-theme="light"] .ant-table-thead > tr > th {
+  background: #fafafa;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+[data-theme="light"] .ant-table-tbody > tr:hover > td {
+  background: rgba(255, 107, 53, 0.05);
+}
+
+[data-theme="dark"] .ant-table {
+  background: #1f1f1f;
+  color: #e6e6e6;
+}
+
+[data-theme="dark"] .ant-table-thead > tr > th {
+  background: #262626;
+  border-bottom: 2px solid #3d3d3d;
+}
+
+[data-theme="dark"] .ant-table-tbody > tr:hover > td {
+  background: rgba(255, 107, 53, 0.1);
+}
+
+/* ==========================================
+   标签页主题优化
+   ========================================== */
+
+[data-theme="light"] .ant-tabs-tab {
+  color: #595959;
+}
+
+[data-theme="light"] .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #ff6b35;
+  font-weight: 600;
+}
+
+[data-theme="light"] .ant-tabs-ink-bar {
+  background: linear-gradient(90deg, #ff6b35 0%, #ff8e53 100%);
+}
+
+[data-theme="dark"] .ant-tabs-tab {
+  color: #8c8c8c;
+}
+
+[data-theme="dark"] .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #ff6b35;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .ant-tabs-ink-bar {
+  background: linear-gradient(90deg, #ff6b35 0%, #ff8e53 100%);
+}
+
+/* ==========================================
+   通知主题优化
+   ========================================== */
+
+[data-theme="light"] .ant-notification-notice {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .ant-notification-notice {
+  background: rgba(31, 31, 31, 0.98);
+  backdrop-filter: blur(10px);
+  border: 1px solid #3d3d3d;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* ==========================================
+   气泡卡片主题优化
+   ========================================== */
+
+[data-theme="light"] .ant-popover-inner {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
+  border: 1px solid #f0f0f0;
+}
+
+[data-theme="dark"] .ant-popover-inner {
+  background: rgba(31, 31, 31, 0.98);
+  backdrop-filter: blur(10px);
+  border: 1px solid #3d3d3d;
+}
+
+/* ==========================================
+   食物主题卡片优化
+   ========================================== */
+
+[data-theme="light"] .post-card-urban {
+  background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .post-card-urban:hover {
+  background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
+  box-shadow: 0 8px 24px rgba(255, 107, 53, 0.12);
+  border-color: rgba(255, 107, 53, 0.2);
+  transform: translateY(-2px);
+}
+
+[data-theme="dark"] .post-card-urban {
+  background: linear-gradient(135deg, #1a1a1a 0%, #1f1f1f 100%);
+  border: 1px solid #2d2d2d;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .post-card-urban:hover {
+  background: linear-gradient(135deg, #1f1f1f 0%, #262626 100%);
+  box-shadow: 0 8px 24px rgba(255, 107, 53, 0.2);
+  border-color: rgba(255, 107, 53, 0.3);
+  transform: translateY(-2px);
+}
+
+/* ==========================================
+   滚动条主题优化
+   ========================================== */
+
+[data-theme="light"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%);
+  border-radius: 4px;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #ff8c5a 0%, #ffa06b 100%);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #262626;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%);
+  border-radius: 4px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #ff8c5a 0%, #ffa06b 100%);
+}
+
+/* ==========================================
+   工具提示主题优化
+   ========================================== */
+
+[data-theme="light"] .ant-tooltip-inner {
+  background: #262626;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .ant-tooltip-inner {
+  background: #e6e6e6;
+  color: #141414;
+}
+
+/* ==========================================
+   开关组件主题优化
+   ========================================== */
+
+[data-theme="light"] .ant-switch {
+  background: #bfbfbf;
+}
+
+[data-theme="light"] .ant-switch-checked {
+  background: linear-gradient(90deg, #ff6b35 0%, #ff8e53 100%);
+}
+
+[data-theme="dark"] .ant-switch {
+  background: #4d4d4d;
+}
+
+[data-theme="dark"] .ant-switch-checked {
+  background: linear-gradient(90deg, #ff6b35 0%, #ff8e53 100%);
+}
+
+/* ==========================================
+   选择器主题优化
+   ========================================== */
+
+[data-theme="light"] .ant-select-selector {
+  background: #ffffff !important;
+  border-color: #f0f0f0 !important;
+  color: #262626 !important;
+}
+
+[data-theme="dark"] .ant-select-selector {
+  background: #262626 !important;
+  border-color: #3d3d3d !important;
+  color: #e6e6e6 !important;
+}
+
+/* ==========================================
+   分页器主题优化
+   ========================================== */
+
+[data-theme="light"] .ant-pagination-item {
+  background: #ffffff;
+  border-color: #f0f0f0;
+}
+
+[data-theme="light"] .ant-pagination-item-active {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%);
+  border-color: transparent;
+}
+
+[data-theme="light"] .ant-pagination-item-active a {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .ant-pagination-item {
+  background: #1f1f1f;
+  border-color: #3d3d3d;
+  color: #e6e6e6;
+}
+
+[data-theme="dark"] .ant-pagination-item-active {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%);
+  border-color: transparent;
+}
+
+[data-theme="dark"] .ant-pagination-item-active a {
+  color: #ffffff;
+}
+
+/* ==========================================
+   统计徽章主题优化
+   ========================================== */
+
+[data-theme="light"] .food-stat-badge {
+  background: rgba(255, 107, 53, 0.08);
+  border: 1px solid rgba(255, 107, 53, 0.15);
+  color: #ff6b35;
+}
+
+[data-theme="dark"] .food-stat-badge {
+  background: rgba(255, 107, 53, 0.15);
+  border: 1px solid rgba(255, 107, 53, 0.25);
+  color: #ff6b35;
+}
+
+/* ==========================================
+   渐变文字主题优化
+   ========================================== */
+
+.food-gradient-title {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff8e53 50%, #ffb347 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="dark"] .food-gradient-title {
+  background: linear-gradient(135deg, #ff8c5a 0%, #ffa06b 50%, #ffc170 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

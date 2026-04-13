@@ -1,0 +1,490 @@
+/**
+ * 主题修复样式
+ *
+ * 此文件包含针对暗色模式的修复和优化
+ * 确保所有组件在主题切换时正确显示
+ */
+
+/* ==========================================
+   全局重置和基础样式
+   ========================================== */
+
+/* 确保所有元素继承正确的颜色 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* 确保链接颜色正确 */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+/* ==========================================
+   文本颜色修复
+   ========================================== */
+
+/* 确保所有文本元素使用主题变量 */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+}
+
+p, span, div, td, th, li {
+  color: var(--text-primary);
+}
+
+/* 辅助文本 */
+.ant-typography-secondary,
+.text-secondary,
+.text-muted {
+  color: var(--text-secondary) !important;
+}
+
+/* 小文本 */
+small,
+.ant-typography-caption {
+  color: var(--text-tertiary);
+}
+
+/* ==========================================
+   Ant Design 组件覆盖
+   ========================================== */
+
+/* 按钮 */
+.ant-btn {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.ant-btn:hover {
+  background-color: var(--card-bg-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* 输入框 */
+.ant-input,
+.ant-input-lg,
+.ant-input-number,
+.ant-select-selector {
+  background-color: var(--input-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+/* 通用 input 标签样式 */
+input.ant-input,
+input.ant-input-lg {
+  background-color: var(--input-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.ant-input::placeholder,
+.ant-input-lg::placeholder,
+.ant-input-number::placeholder,
+input.ant-input::placeholder,
+input.ant-input-lg::placeholder {
+  color: var(--text-tertiary) !important;
+  background: transparent !important;
+}
+
+.ant-input::-webkit-input-placeholder,
+.ant-input-lg::-webkit-input-placeholder,
+.ant-input-number::-webkit-input-placeholder,
+input.ant-input::-webkit-input-placeholder,
+input.ant-input-lg::-webkit-input-placeholder {
+  color: var(--text-tertiary) !important;
+  background: transparent !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+}
+
+.ant-input::-moz-placeholder,
+.ant-input-lg::-moz-placeholder,
+.ant-input-number::-moz-placeholder,
+input.ant-input::-moz-placeholder,
+input.ant-input-lg::-moz-placeholder {
+  color: var(--text-tertiary) !important;
+  background: transparent !important;
+}
+
+.ant-input:-ms-input-placeholder,
+.ant-input-lg:-ms-input-placeholder,
+.ant-input-number:-ms-input-placeholder,
+input.ant-input:-ms-input-placeholder,
+input.ant-input-lg:-ms-input-placeholder {
+  color: var(--text-tertiary) !important;
+  background: transparent !important;
+}
+
+/* 选择器下拉菜单 */
+.ant-select-dropdown {
+  background-color: var(--dropdown-bg);
+  border-color: var(--border-color);
+}
+
+.ant-select-item {
+  color: var(--text-primary);
+}
+
+.ant-select-item-option-selected {
+  background-color: var(--color-primary-bg);
+  color: var(--color-primary);
+}
+
+/* 日期选择器 */
+.ant-picker {
+  background-color: var(--input-bg);
+  border-color: var(--border-color);
+}
+
+.ant-picker-input > input {
+  color: var(--text-primary);
+}
+
+.ant-picker-dropdown {
+  background-color: var(--dropdown-bg);
+}
+
+/* 表格 */
+.ant-table {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.ant-table-thead > tr > th {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.ant-table-tbody > tr > td {
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* 分页 */
+.ant-pagination-item {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
+
+.ant-pagination-item a {
+  color: var(--text-primary);
+}
+
+.ant-pagination-item-active {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.ant-pagination-item-active a {
+  color: #ffffff;
+}
+
+/* 标签页 */
+.ant-tabs-tab {
+  color: var(--text-secondary);
+}
+
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--color-primary);
+}
+
+.ant-tabs-ink-bar {
+  background-color: var(--color-primary);
+}
+
+/* 模态框 */
+.ant-modal-content,
+.ant-modal-header,
+.ant-modal-body,
+.ant-modal-footer {
+  background-color: var(--modal-bg);
+  color: var(--text-primary);
+}
+
+.ant-modal-title {
+  color: var(--text-primary);
+}
+
+/* 下拉菜单 */
+.ant-dropdown-menu {
+  background-color: var(--dropdown-bg);
+  border-color: var(--border-color);
+}
+
+.ant-dropdown-menu-item {
+  color: var(--text-primary);
+}
+
+.ant-dropdown-menu-item:hover {
+  background-color: var(--color-primary-bg);
+}
+
+/* 气泡卡片 */
+.ant-popover-inner {
+  background-color: var(--popover-bg);
+  color: var(--text-primary);
+}
+
+/* 提示 */
+.ant-tooltip-inner {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* 通知 */
+.ant-notification-notice {
+  background-color: var(--modal-bg);
+  border-color: var(--border-color);
+}
+
+/* 消息 */
+.ant-message-notice-content {
+  background-color: var(--modal-bg);
+  color: var(--text-primary);
+}
+
+/* 警告 */
+.ant-alert {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+.ant-alert-message {
+  color: var(--text-primary);
+}
+
+.ant-alert-description {
+  color: var(--text-secondary);
+}
+
+/* 徽章 */
+.ant-badge-count {
+  background-color: var(--color-primary);
+  color: #ffffff;
+}
+
+/* 标签 */
+.ant-tag {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* 进度条 */
+.ant-progress-bg {
+  background-color: var(--color-primary);
+}
+
+/* 开关 */
+.ant-switch {
+  background-color: var(--text-tertiary);
+}
+
+.ant-switch-checked {
+  background-color: var(--color-primary);
+}
+
+/* 单选框和复选框 */
+.ant-radio-wrapper,
+.ant-checkbox-wrapper {
+  color: var(--text-primary);
+}
+
+.ant-radio-checked .ant-radio-inner,
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* 滑块 */
+.ant-slider-rail {
+  background-color: var(--border-color);
+}
+
+.ant-slider-track {
+  background-color: var(--color-primary);
+}
+
+.ant-slider-handle {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* ==========================================
+   自定义组件覆盖
+   ========================================== */
+
+/* 美食卡片 */
+.post-card-urban {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.post-card-urban:hover {
+  background-color: var(--card-bg-hover);
+  box-shadow: var(--shadow-primary);
+}
+
+.post-content-text {
+  color: var(--text-primary);
+}
+
+.post-location {
+  color: var(--text-secondary);
+  background-color: var(--color-primary-bg);
+  border-color: var(--border-color);
+}
+
+/* 统计徽章 */
+.food-stat-badge {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* 筛选栏 */
+.filter-bar,
+.food-filter-bar {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
+
+/* 用户列表 */
+.food-user-list .ant-list-item {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+.food-user-list .ant-list-item:hover {
+  background-color: var(--color-primary-bg);
+}
+
+/* ==========================================
+   表单元素修复
+   ========================================== */
+
+/* 表单标签 */
+.ant-form-item-label > label {
+  color: var(--text-primary);
+}
+
+.ant-form-item-explain-error {
+  color: var(--color-error);
+}
+
+/* ==========================================
+   导航栏修复
+   ========================================== */
+
+.ant-layout-header {
+  background-color: var(--navbar-bg);
+  border-bottom-color: var(--navbar-border);
+}
+
+/* ==========================================
+   滚动条修复
+   ========================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gradient-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gradient-warm);
+}
+
+/* ==========================================
+   特殊元素修复
+   ========================================== */
+
+/* 代码块 */
+code, pre {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+/* 引用 */
+blockquote {
+  border-left-color: var(--color-primary);
+  color: var(--text-secondary);
+}
+
+/* 分割线 */
+hr,
+.ant-divider {
+  border-color: var(--border-color);
+}
+
+/* ==========================================
+   动画和过渡
+   ========================================== */
+
+/* 确保主题切换时的平滑过渡 */
+body.theme-transitioning *,
+body.theme-transitioning *::before,
+body.theme-transitioning *::after {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+/* ==========================================
+   暗色模式特定修复
+   ========================================== */
+
+[data-theme="dark"] {
+  /* 确保暗色模式下的对比度足够 */
+  --text-primary: #e6e6e6;
+  --text-secondary: #bfbfbf;
+  --text-tertiary: #8c8c8c;
+
+  /* 确保背景色足够暗 */
+  --bg-primary: #141414;
+  --bg-secondary: #1f1f1f;
+  --bg-tertiary: #262626;
+
+  /* 确保卡片背景有适当的对比 */
+  --card-bg: #1f1f1f;
+  --card-bg-hover: #262626;
+}
+
+/* ==========================================
+   高对比度模式支持
+   ========================================== */
+
+[data-contrast="high"] {
+  --text-primary: #000000;
+  --text-secondary: #1a1a1a;
+  --border-color: #000000;
+  --color-primary: #ff5500;
+}
+
+[data-theme="dark"][data-contrast="high"] {
+  --text-primary: #ffffff;
+  --text-secondary: #e5e5e5;
+  --border-color: #ffffff;
+  --color-primary: #ff7733;
+}

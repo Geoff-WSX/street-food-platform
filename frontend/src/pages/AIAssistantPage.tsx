@@ -11,7 +11,7 @@ import {
 } from '@ant-design/icons';
 import { chatWithAI, type ChatMessage } from '../api/ai';
 import { getPosts } from '../api/post';
-import { parseImages } from '../utils/images';
+import { parseImages, getAvatarUrl } from '../utils/images';
 import type { Post } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
@@ -652,7 +652,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
 
     if (!hasAddresses) {
       return (
-        <div style={{ width: '100%', height: '200px', borderRadius: '12px', background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+        <div style={{ width: '100%', height: '200px', borderRadius: '12px', background: 'var(--bg-tertiary)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
           <CompassOutlined style={{ fontSize: 40, marginBottom: 12, opacity: 0.5 }} />
           <div>暂无位置信息</div>
         </div>
@@ -660,8 +660,8 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
     }
 
     return (
-      <div style={{ width: '100%', borderRadius: '12px', overflow: 'hidden', background: '#fff', border: '1px solid #f0f0f0' }}>
-        <div style={{ padding: '16px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: '#fff' }}>
+      <div style={{ width: '100%', borderRadius: '12px', overflow: 'hidden', background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+        <div style={{ padding: '16px', background: 'var(--gradient-primary)', color: '#fff' }}>
           <Space direction="vertical" style={{ width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <CarOutlined style={{ fontSize: 18 }} />
@@ -673,8 +673,8 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
         <div style={{ padding: '12px' }}>
           <Space direction="vertical" style={{ width: '100%' }}>
             {posts.map((post, index) => (
-              <div key={post.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px', background: index % 2 === 0 ? '#fafafa' : '#fff', borderRadius: 8, border: '1px solid #f0f0f0', cursor: 'pointer' }} onClick={() => handlePostClick(post.id)}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+              <div key={post.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px', background: index % 2 === 0 ? 'var(--bg-tertiary)' : 'var(--card-bg)', borderRadius: 8, border: '1px solid var(--border-color)', cursor: 'pointer' }} onClick={() => handlePostClick(post.id)}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--gradient-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
                   {index + 1}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -682,20 +682,20 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
                     {post.content.substring(0, 25)}
                   </div>
                   {post.address && (
-                    <div style={{ fontSize: 11, color: '#999', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                       <EnvironmentOutlined />
                       {post.address}
                     </div>
                   )}
                 </div>
-                <div style={{ fontSize: 12, color: '#ff4d4f', fontWeight: 500, flexShrink: 0 }}>
+                <div style={{ fontSize: 12, color: 'var(--color-error)', fontWeight: 500, flexShrink: 0 }}>
                   👍 {post.likeCount || 0}
                 </div>
               </div>
             ))}
           </Space>
         </div>
-        <div style={{ padding: '10px 16px', borderTop: '1px solid #f0f0f0', background: '#fafafa', textAlign: 'center', fontSize: 11, color: '#999' }}>
+        <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', textAlign: 'center', fontSize: 11, color: 'var(--text-secondary)' }}>
           点击地点查看详情，可排除不感兴趣的推荐
         </div>
       </div>
@@ -714,13 +714,13 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
-      background: '#343541',
+      background: 'var(--bg-primary)',
       zIndex: 1000
     }}>
       {/* 顶部导航栏 */}
-      <div style={{ height: 50, background: '#40414f', borderBottom: '1px solid #444', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 12, flexShrink: 0 }}>
-        <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(fromPath)} style={{ color: '#ececf1' }} title="返回" />
-        <Button type="text" icon={<HistoryOutlined />} onClick={() => setShowSessionPanel(!showSessionPanel)} style={{ color: '#ececf1' }} />
+      <div style={{ height: 50, background: 'var(--navbar-bg)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 12, flexShrink: 0 }}>
+        <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(fromPath)} style={{ color: 'var(--text-primary)' }} title="返回" />
+        <Button type="text" icon={<HistoryOutlined />} onClick={() => setShowSessionPanel(!showSessionPanel)} style={{ color: 'var(--text-primary)' }} />
         <Avatar
           size={32}
           src="https://api.dicebear.com/7.x/bottts/svg?seed=Xiaobian"
@@ -729,7 +729,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
           onClick={() => setShowSessionPanel(!showSessionPanel)}
         />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: '#ececf1', fontWeight: 500 }}>
+          <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
             小边 {xiaobianMode === 'foodie' ? '🍜' : '🛠️'}
           </span>
           <Tag color={xiaobianMode === 'foodie' ? 'orange' : 'blue'} style={{ fontSize: 11 }}>
@@ -751,7 +751,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
         )}
 
         {messages.length > 1 && (
-          <Button type="text" size="small" onClick={clearChat} style={{ color: '#8e8ea0', fontSize: 12 }}>
+          <Button type="text" size="small" onClick={clearChat} style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
             清空对话
           </Button>
         )}
@@ -760,9 +760,9 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
       {/* 主内容区域 */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* 左侧会话列表 */}
-        <div style={{ width: showSessionPanel ? 260 : 0, background: '#202123', borderRight: showSessionPanel ? '1px solid #444' : 'none', transition: 'width 0.2s', overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div style={{ width: showSessionPanel ? 260 : 0, background: 'var(--bg-secondary)', borderRight: showSessionPanel ? '1px solid var(--border-color)' : 'none', transition: 'width 0.2s', overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           <div style={{ padding: '12px' }}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleNewChat} style={{ width: '100%', height: 36, background: '#40414f', border: '1px solid #565869', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13 }}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleNewChat} style={{ width: '100%', height: 36, background: 'var(--navbar-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13 }}>
               新建对话
             </Button>
           </div>
@@ -773,7 +773,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
               renderItem={(session) => {
                 const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
                   if (session.id !== currentSessionId) {
-                    e.currentTarget.style.background = '#2a2b32';
+                    e.currentTarget.style.background = 'var(--color-primary-bg)';
                   }
                 };
                 const handleMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -792,7 +792,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
                   <div
                     key={session.id}
                     onClick={() => handleSelectSession(session.id)}
-                    style={{ padding: '8px 12px', marginBottom: 4, borderRadius: 6, cursor: 'pointer', background: session.id === currentSessionId ? '#343541' : 'transparent', color: '#ececf1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, transition: 'background 0.2s' }}
+                    style={{ padding: '8px 12px', marginBottom: 4, borderRadius: 6, cursor: 'pointer', background: session.id === currentSessionId ? 'var(--bg-tertiary)' : 'transparent', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, transition: 'background 0.2s' }}
                     onMouseEnter={handleMouseEnter}
                     onMouseLeave={handleMouseLeave}
                   >
@@ -805,7 +805,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
                       icon={<DeleteOutlined />}
                       size="small"
                       onClick={(e) => handleDeleteSession(session.id, e)}
-                      style={{ color: '#8e8ea0', opacity: 0, transition: 'opacity 0.2s', minWidth: 'auto' }}
+                      style={{ color: 'var(--text-secondary)', opacity: 0, transition: 'opacity 0.2s', minWidth: 'auto' }}
                       onMouseEnter={handleDeleteMouseEnter}
                       onMouseLeave={handleDeleteMouseLeave}
                     />
@@ -815,28 +815,28 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
             />
           </div>
 
-          <div style={{ padding: '12px', borderTop: '1px solid #444', flexShrink: 0 }}>
-            <Button type="text" icon={<DeleteOutlined />} onClick={() => setShowDeleteModal(true)} style={{ width: '100%', color: '#8e8ea0', textAlign: 'left', fontSize: 13, height: 36 }}>
+          <div style={{ padding: '12px', borderTop: '1px solid var(--border-color)', flexShrink: 0 }}>
+            <Button type="text" icon={<DeleteOutlined />} onClick={() => setShowDeleteModal(true)} style={{ width: '100%', color: 'var(--text-secondary)', textAlign: 'left', fontSize: 13, height: 36 }}>
               清空所有对话
             </Button>
           </div>
         </div>
 
         {/* 中间聊天区域 */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: '#343541', overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--bg-primary)', overflow: 'hidden' }}>
           <div ref={messagesContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {messages.map((msg, index) => (
               <div key={index} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%', alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
                 {msg.role === 'assistant' && (
                   <Avatar size={28} src="https://api.dicebear.com/7.x/bottts/svg?seed=Xiaobian" icon={<RobotOutlined />} style={{ marginRight: 10, flexShrink: 0 }} />
                 )}
-                <div style={{ padding: '10px 14px', borderRadius: 12, background: msg.role === 'user' ? '#667eea' : '#444654', color: '#ececf1', wordBreak: 'break-word', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontSize: 14 }}>
+                <div style={{ padding: '10px 14px', borderRadius: 12, background: msg.role === 'user' ? 'var(--color-primary)' : 'var(--card-bg)', color: msg.role === 'user' ? '#fff' : 'var(--text-primary)', wordBreak: 'break-word', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontSize: 14 }}>
                   {msg.content}
                 </div>
                 {msg.role === 'user' && (
                   <Avatar
                     size={28}
-                    src={user?.avatar}
+                    src={getAvatarUrl(user)}
                     icon={<UserOutlined />}
                     style={{ marginLeft: 10, flexShrink: 0 }}
                   />
@@ -848,7 +848,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
               <div style={{ display: 'flex', marginLeft: 38 }}>
                 <Space>
                   <Spin size="small" />
-                  <Text style={{ color: '#8e8ea0', fontSize: 13 }}>小边正在思考...</Text>
+                  <Text style={{ color: 'var(--text-secondary)', fontSize: 13 }}>小边正在思考...</Text>
                 </Space>
               </div>
             )}
@@ -858,12 +858,12 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
 
           {!loading && quickQuestions.length > 0 && (
             <div style={{ padding: '0 16px 12px', flexShrink: 0 }}>
-              <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block', color: '#8e8ea0' }}>
+              <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block', color: 'var(--text-secondary)' }}>
                 试试问这些：
               </Text>
               <Space wrap>
                 {quickQuestions.map((q, i) => (
-                  <Tag key={i} style={{ cursor: 'pointer', borderRadius: 12, padding: '3px 10px', fontSize: 12, background: '#40414f', color: '#ececf1', border: '1px solid #565869' }} onClick={() => handleSend(q)}>
+                  <Tag key={i} style={{ cursor: 'pointer', borderRadius: 12, padding: '3px 10px', fontSize: 12, background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }} onClick={() => handleSend(q)}>
                     {q}
                   </Tag>
                 ))}
@@ -871,10 +871,10 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
             </div>
           )}
 
-          <div style={{ padding: '12px 16px', borderTop: '1px solid #444', background: '#40414f', flexShrink: 0 }}>
+          <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-color)', background: 'var(--navbar-bg)', flexShrink: 0 }}>
             <Space.Compact style={{ width: '100%' }}>
-              <Input ref={inputRef} size="large" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onPressEnter={() => handleSend()} placeholder="问问小边..." disabled={loading} style={{ background: '#40414f', border: '1px solid #565869', color: '#ececf1', borderRadius: '6px 0 0 6px', fontSize: 14 }} />
-              <Button type="primary" size="large" icon={<SendOutlined />} onClick={() => handleSend()} loading={loading} style={{ background: '#667eea', border: 'none', borderRadius: '0 6px 6px 0' }}>
+              <Input ref={inputRef} size="large" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onPressEnter={() => handleSend()} placeholder="问问小边..." disabled={loading} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '6px 0 0 6px', fontSize: 14 }} />
+              <Button type="primary" size="large" icon={<SendOutlined />} onClick={() => handleSend()} loading={loading} style={{ background: 'var(--color-primary)', border: 'none', borderRadius: '0 6px 6px 0' }}>
                 发送
               </Button>
             </Space.Compact>
@@ -883,13 +883,13 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
 
         {/* 右侧推荐区域 */}
         {showSuggestions ? (
-          <div style={{ width: 360, background: '#fff', borderLeft: '1px solid #e0e0e0', transition: 'width 0.3s', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', background: '#fafafa', flexShrink: 0 }}>
+          <div style={{ width: 360, background: 'var(--card-bg)', borderLeft: '1px solid var(--border-color)', transition: 'width 0.3s', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', flexShrink: 0 }}>
               <Space>
-                <BulbOutlined style={{ color: '#faad14' }} />
+                <BulbOutlined style={{ color: 'var(--color-warning)' }} />
                 <span style={{ fontWeight: 500, fontSize: 13 }}>相关推荐</span>
-                <Badge count={visiblePosts.length} style={{ backgroundColor: '#52c41a' }} />
-                <Button type="text" size="small" icon={<CloseOutlined />} onClick={() => setShowSuggestions(false)} style={{ marginLeft: 'auto', color: '#999' }}>
+                <Badge count={visiblePosts.length} style={{ backgroundColor: 'var(--color-success)' }} />
+                <Button type="text" size="small" icon={<CloseOutlined />} onClick={() => setShowSuggestions(false)} style={{ marginLeft: 'auto', color: 'var(--text-secondary)' }}>
                   收起
                 </Button>
               </Space>
@@ -931,7 +931,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
                   const firstImage = processedImages.length > 0 ? processedImages[0] : null;
 
                   return (
-                    <Card key={post.id} size="small" hoverable={!isExcluded} onClick={() => !isExcluded && handlePostClick(post.id)} style={{ borderRadius: 10, opacity: isExcluded ? 0.5 : 1, background: isExcluded ? '#f5f5f5' : '#fff', border: isExcluded ? '1px dashed #d9d9d9' : '1px solid #f0f0f0', cursor: isExcluded ? 'not-allowed' : 'pointer' }} bodyStyle={{ padding: 10 }}>
+                    <Card key={post.id} size="small" hoverable={!isExcluded} onClick={() => !isExcluded && handlePostClick(post.id)} style={{ borderRadius: 10, opacity: isExcluded ? 0.5 : 1, background: isExcluded ? 'var(--bg-tertiary)' : 'var(--card-bg)', border: isExcluded ? '1px dashed var(--border-color)' : '1px solid var(--border-color)', cursor: isExcluded ? 'not-allowed' : 'pointer' }} bodyStyle={{ padding: 10 }}>
                       <Space direction="vertical" style={{ width: '100%' }}>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                           {firstImage && (
@@ -944,14 +944,14 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
                               {post.content}
                             </Paragraph>
                             {post.address && (
-                              <div style={{ fontSize: 11, color: '#666', display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 3 }}>
                                 <EnvironmentOutlined />
                                 {post.address}
                               </div>
                             )}
                           </div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#999' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'var(--text-secondary)' }}>
                           <Space>
                             <span>{post.user.username}</span>
                             <span>👍 {post.likeCount || 0}</span>
@@ -967,12 +967,12 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
               </Space>
 
               {excludedPostIds.size > 0 && visiblePosts.length > 0 && (
-                <div style={{ marginTop: 12, padding: '10px', background: '#f5f5f5', borderRadius: 8 }}>
+                <div style={{ marginTop: 12, padding: '10px', background: 'var(--bg-tertiary)', borderRadius: 8 }}>
                   <Space direction="vertical" style={{ width: '100%' }}>
                     <Text type="secondary" style={{ fontSize: 11 }}>
                       已排除 {excludedPostIds.size} 个推荐，剩余 {visiblePosts.length} 个
                     </Text>
-                    <Button type="primary" icon={<BulbOutlined />} onClick={handleReplan} loading={loading} style={{ width: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', border: 'none', borderRadius: 6, fontSize: 13 }}>
+                    <Button type="primary" icon={<BulbOutlined />} onClick={handleReplan} loading={loading} style={{ width: '100%', background: 'var(--gradient-primary)', border: 'none', borderRadius: 6, fontSize: 13 }}>
                       让小边重新规划
                     </Button>
                   </Space>
@@ -980,13 +980,13 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
               )}
 
               {visiblePosts.length === 0 && suggestedPosts.length > 0 && (
-                <div style={{ textAlign: 'center', padding: 30, color: '#999' }}>
+                <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-secondary)' }}>
                   <Text type="secondary" style={{ fontSize: 12 }}>所有推荐已被排除，点击"恢复"按钮重新显示</Text>
                 </div>
               )}
 
               {suggestedPosts.length === 0 && (
-                <div style={{ textAlign: 'center', padding: 30, color: '#999' }}>
+                <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-secondary)' }}>
                   <Text type="secondary" style={{ fontSize: 12 }}>暂无相关推荐</Text>
                 </div>
               )}
@@ -999,7 +999,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
                 type="primary"
                 icon={<BulbOutlined />}
                 onClick={() => setShowSuggestions(true)}
-                style={{ height: 100, borderRadius: '0 8px 8px 0', writingMode: 'vertical-rl', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', border: 'none' }}
+                style={{ height: 100, borderRadius: '0 8px 8px 0', writingMode: 'vertical-rl', background: 'var(--gradient-primary)', border: 'none' }}
               >
                 查看推荐 {suggestedPosts.length}
               </Button>

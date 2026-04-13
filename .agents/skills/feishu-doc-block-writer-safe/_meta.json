@@ -1,0 +1,11 @@
+{
+  "owner": "icesumer-lgtm",
+  "slug": "feishu-doc-block-writer-safe",
+  "displayName": "飞书文档 Block 拆分写入（安全版）",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1773807593927,
+    "commit": "https://github.com/openclaw/skills/commit/4a135b3b091c16b524db76cc0ca6c1045ff6904c"
+  },
+  "history": []
+}

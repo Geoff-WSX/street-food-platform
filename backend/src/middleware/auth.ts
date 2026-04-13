@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
 import { verifyToken } from '../utils/jwt';
 import { errorResponse } from '../utils/response';
-import prisma from '../config/database';
+import prisma from '../services/db/prisma';
 
 /**
  * JWT 鉴权中间件

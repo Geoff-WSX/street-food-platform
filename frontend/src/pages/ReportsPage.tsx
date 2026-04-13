@@ -20,6 +20,7 @@ import {
   type ReportStats,
 } from '../api/report';
 import { useAuthStore } from '../store/auth';
+import { getAvatarUrl } from '../utils/images';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -231,7 +232,7 @@ export default function ReportsPage() {
       render: (reporter: Report['reporter']) => (
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <Avatar
-            src={reporter.avatar}
+            src={getAvatarUrl(reporter)}
             icon={<UserOutlined />}
             size={32}
             style={{ marginRight: 8 }}
@@ -251,7 +252,7 @@ export default function ReportsPage() {
       render: (reported: Report['reported']) => (
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <Avatar
-            src={reported.avatar}
+            src={getAvatarUrl(reported)}
             icon={<UserOutlined />}
             size={32}
             style={{ marginRight: 8 }}
@@ -534,7 +535,7 @@ export default function ReportsPage() {
               <Title level={5}>举报人</Title>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <Avatar
-                  src={selectedReport.reporter.avatar}
+                  src={getAvatarUrl(selectedReport.reporter)}
                   icon={<UserOutlined />}
                   size={48}
                   style={{ marginRight: 12 }}
@@ -553,7 +554,7 @@ export default function ReportsPage() {
               <Title level={5}>被举报人</Title>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
                 <Avatar
-                  src={selectedReport.reported.avatar}
+                  src={getAvatarUrl(selectedReport.reported)}
                   icon={<UserOutlined />}
                   size={48}
                   style={{ marginRight: 12 }}

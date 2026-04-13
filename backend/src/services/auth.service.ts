@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import prisma from '../config/database';
+import prisma from '../services/db/prisma';
 import { generateToken } from '../utils/jwt';
 import { RegisterRequest, LoginRequest } from '../types';
 import { isValidEmail, isValidUsername, isValidPassword } from '../utils/validator';

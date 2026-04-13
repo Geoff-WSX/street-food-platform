@@ -3,16 +3,23 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Image, Typography, Space, Button, Avatar, Tag, Divider, Popconfirm, message, Card, Skeleton } from 'antd';
 import {
   HeartOutlined, HeartFilled, StarOutlined, StarFilled,
-  EnvironmentOutlined, UserOutlined, ArrowLeftOutlined, DeleteOutlined, ClockCircleOutlined
+  EnvironmentOutlined, UserOutlined, ArrowLeftOutlined, DeleteOutlined, ClockCircleOutlined, ShareAltOutlined
 } from '@ant-design/icons';
 import { getPost, toggleLike, toggleFavorite, deletePost } from '../api/post';
 import { useAuthStore } from '../store/auth';
-import { parseImages } from '../utils/images';
+import { parseImages, getAvatarUrl } from '../utils/images';
 import type { Post } from '../types';
 import CommentSection from '../components/CommentSection';
 import MapModal from '../components/MapModal';
+import ShareModal from '../components/ShareModal';
 
 const { Text, Paragraph } = Typography;
+
+const calculateReadingStats = (content: string) => {
+  const charCount = content.replace(/\s/g, '').length;
+  const readingTime = Math.ceil(charCount / 400);
+  return { charCount, readingTime: Math.max(1, readingTime) };
+};
 
 export default function PostDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +32,7 @@ export default function PostDetailPage() {
   // 记录来源页面
   const from = (location.state as any)?.from || '/';
   const [showMapModal, setShowMapModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // 从路由 state 获取需要高亮的评论ID
   const highlightCommentId = location.state?.highlightCommentId;
@@ -68,8 +76,8 @@ export default function PostDetailPage() {
 
   if (loading) {
     return (
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 0 80px', background: 'linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%)', minHeight: '80vh' }}>
-        <div style={{ background: '#fff', borderRadius: 20, padding: 32, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 0 80px', minHeight: '80vh' }}>
+        <div style={{ borderRadius: 20, padding: 32, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
           <Skeleton.Image active style={{ width: '100%', height: 400, borderRadius: 16 }} />
           <Skeleton active paragraph={{ rows: 3 }} style={{ marginTop: 24 }} />
           <Skeleton active avatar paragraph={{ rows: 2 }} style={{ marginTop: 16 }} />
@@ -85,7 +93,7 @@ export default function PostDetailPage() {
   const favorited = post.isFavorited ?? false;
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 0 80px', background: 'linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%)', minHeight: '80vh' }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 0 80px', minHeight: '80vh' }}>
       {/* 返回按钮 */}
       <Button
         icon={<ArrowLeftOutlined />}
@@ -162,6 +170,14 @@ export default function PostDetailPage() {
             {post.content}
           </Paragraph>
 
+          {/* 阅读统计 */}
+          <div style={{ fontSize: 13, color: '#8c8c8c', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ClockCircleOutlined style={{ marginRight: 4 }} />
+            <span>{calculateReadingStats(post.content).charCount}字</span>
+            <span>·</span>
+            <span>约{calculateReadingStats(post.content).readingTime}分钟阅读</span>
+          </div>
+
           {/* 标签信息 */}
           <Space wrap style={{ marginBottom: 24 }}>
             {post.address && (
@@ -225,7 +241,7 @@ export default function PostDetailPage() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <Avatar
-                src={post.user.avatar}
+                src={getAvatarUrl(post.user)}
                 icon={<UserOutlined />}
                 size={56}
                 style={{
@@ -282,9 +298,8 @@ export default function PostDetailPage() {
             display: 'flex',
             gap: 16,
             padding: '20px',
-            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
             borderRadius: 16,
-            border: '1px solid #f0f0f0'
+            border: '1px solid var(--border-color)'
           }}>
             <Button
               size="large"
@@ -319,6 +334,21 @@ export default function PostDetailPage() {
               }}
             >
               {post.favoriteCount > 0 ? `${post.favoriteCount} 收藏` : '收藏'}
+            </Button>
+            <Button
+              size="large"
+              icon={<ShareAltOutlined />}
+              onClick={() => setShowShareModal(true)}
+              style={{
+                flex: 1,
+                height: 48,
+                borderRadius: 24,
+                fontWeight: 500,
+                background: 'transparent',
+                borderColor: '#d9d9d9'
+              }}
+            >
+              分享
             </Button>
           </div>
         </div>
@@ -378,6 +408,14 @@ export default function PostDetailPage() {
           address={post.address}
         />
       )}
+
+      {/* 分享弹窗 */}
+      <ShareModal
+        visible={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        postId={post.id}
+        postContent={post.content}
+      />
     </div>
   );
 }

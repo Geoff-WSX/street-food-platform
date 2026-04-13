@@ -1,4 +1,4 @@
-import prisma from '../config/database';
+import prisma from '../services/db/prisma';
 import { createNotification, NotificationType, EntityType } from './notification.service';
 
 /**
@@ -106,7 +106,7 @@ export const getComments = async (postId: number, page: number = 1, pageSize: nu
   const userIds = [...new Set(comments.map(c => c.userId))];
   const users = await prisma.user.findMany({
     where: { id: { in: userIds } },
-    select: { id: true, username: true, avatar: true },
+    select: { id: true, username: true, avatar: true, avatarData: true },
   });
 
   const userMap = new Map(users.map(u => [u.id, u]));
@@ -133,7 +133,7 @@ export const getComments = async (postId: number, page: number = 1, pageSize: nu
       const replyUserIds = [...new Set(replies.map(r => r.userId))];
       const replyUsers = await prisma.user.findMany({
         where: { id: { in: replyUserIds } },
-        select: { id: true, username: true, avatar: true },
+        select: { id: true, username: true, avatar: true, avatarData: true },
       });
       const replyUserMap = new Map(replyUsers.map(u => [u.id, u]));
 
@@ -203,7 +203,7 @@ export const getCommentReplies = async (parentId: number, page: number = 1, page
   const userIds = [...new Set(replies.map(r => r.userId))];
   const users = await prisma.user.findMany({
     where: { id: { in: userIds } },
-    select: { id: true, username: true, avatar: true },
+    select: { id: true, username: true, avatar: true, avatarData: true },
   });
 
   const userMap = new Map(users.map(u => [u.id, u]));
@@ -313,7 +313,7 @@ export const createComment = async (userId: number, data: {
   // 获取用户信息
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, username: true, avatar: true },
+    select: { id: true, username: true, avatar: true, avatarData: true },
   });
 
   // 创建通知（异步执行，不影响评论创建）

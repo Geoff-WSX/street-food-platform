@@ -272,7 +272,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                         if (parent && !parent.querySelector('.placeholder-icon')) {
                           const placeholder = document.createElement('div');
                           placeholder.className = 'placeholder-icon';
-                          placeholder.style.cssText = 'width:80px;height:80px;background:#f5f5f5;borderRadius:8px;display:flex;alignItems:center;justifyContent:center;fontSize:24px;';
+                          placeholder.style.cssText = 'width:80px;height:80px;background:var(--placeholder-bg);borderRadius:8px;display:flex;alignItems:center;justifyContent:center;fontSize:24px;';
                           placeholder.textContent = '🍜';
                           parent.insertBefore(placeholder, target);
                         }
@@ -282,7 +282,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                     <div className="placeholder-icon" style={{
                       width: 80,
                       height: 80,
-                      background: '#f5f5f5',
+                      background: 'var(--placeholder-bg)',
                       borderRadius: 8,
                       display: 'flex',
                       alignItems: 'center',
@@ -424,7 +424,9 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       title={null}
       closable={false}
       styles={{
-        body: { padding: 0 },
+        mask: { backgroundColor: 'rgba(0, 0, 0, 0.45)' },
+        content: { background: 'var(--bg-primary)' },
+        body: { padding: 0, background: 'var(--bg-primary)' },
       }}
     >
       {/* 搜索框 */}
@@ -440,7 +442,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
         >
           <Input
             placeholder="搜索用户、美食、地点... 支持拼音"
-            prefix={<SearchOutlined style={{ color: '#999' }} />}
+            prefix={<SearchOutlined style={{ color: 'var(--text-tertiary)' }} />}
             size="large"
             allowClear
             onPressEnter={handlePressEnter}

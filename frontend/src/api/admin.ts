@@ -10,6 +10,7 @@ const adminUserShape = {
   username: z.string(),
   email: z.string(),
   avatar: z.union([z.string(), z.null()]).optional(),
+  avatarData: z.union([z.string(), z.null()]).optional(),
   bio: z.union([z.string(), z.null()]).optional(),
   role: z.string(),
   isActive: z.boolean(),

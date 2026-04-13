@@ -19,7 +19,7 @@ export interface Post {
   id: number;
   content: string;
   address?: string;
-  images: string | string[];
+  images: string[];
   likeCount: number;
   favoriteCount: number;
   commentCount: number;
@@ -69,7 +69,7 @@ export interface Notification {
   post?: {
     id: number;
     content: string;
-    images: string;
+    images: string[];
     user: {
       id: number;
       username: string;

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../types';
-import prisma from '../config/database';
+import prisma from '../services/db/prisma';
 import { successResponse, errorResponse } from '../utils/response';
 import { buildPinyinSearchCondition } from '../utils/pinyin';
 

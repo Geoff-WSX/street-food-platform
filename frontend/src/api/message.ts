@@ -6,7 +6,30 @@ export interface Message {
   senderId: number;
   content: string;
   readAt: string | null;
+  recalled: boolean;
+  recalledAt: string | null;
   createdAt: string;
+  otherUser?: {
+    id: number;
+    username: string;
+    avatar?: string;
+  };
+}
+
+export interface SearchResult {
+  id: number;
+  senderId: number;
+  content: string;
+  readAt: string | null;
+  recalled: boolean;
+  recalledAt: string | null;
+  createdAt: string;
+  conversationId: number;
+  otherUser: {
+    id: number;
+    username: string;
+    avatar?: string;
+  };
 }
 
 export interface Conversation {
@@ -15,6 +38,8 @@ export interface Conversation {
     id: number;
     username: string;
     avatar?: string;
+    avatarData?: string;
+    bio?: string;
   };
   lastMessage: Message | null;
   unreadCount: number;
@@ -55,6 +80,10 @@ export const markAsRead = (userId: number) =>
 export const deleteMessage = (messageId: number) =>
   api.delete(`/messages/${messageId}`).then((r) => r.data);
 
+// 撤回消息
+export const recallMessage = (messageId: number) =>
+  api.post<ApiResponse<Message>>(`/messages/${messageId}/recall`).then((r) => r.data.data);
+
 // 删除对话
 export const deleteConversation = (userId: number) =>
   api.delete(`/messages/conversations/${userId}`).then((r) => r.data);
@@ -79,3 +108,10 @@ export const getBlockedUsers = () =>
     };
     createdAt: string;
   }>>>('/messages/blocked/list').then((r) => r.data.data);
+
+// 搜索消息
+export const searchMessages = (keyword: string, userId?: number) => {
+  const params = new URLSearchParams({ keyword });
+  if (userId) params.append('userId', String(userId));
+  return api.get<ApiResponse<SearchResult[]>>(`/messages/search?${params}`).then((r) => r.data.data);
+};

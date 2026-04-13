@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { successResponse, errorResponse } from '../utils/response';
-import prisma from '../config/database';
+import prisma from '../services/db/prisma';
 
 // 拉黑用户
 export const blockUser = async (req: AuthRequest, res: Response) => {
@@ -73,6 +73,7 @@ export const getBlockedList = async (req: AuthRequest, res: Response) => {
             id: true,
             username: true,
             avatar: true,
+            avatarData: true,
             bio: true
           }
         }

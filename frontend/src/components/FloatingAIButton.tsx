@@ -6,8 +6,8 @@ export default function FloatingAIButton() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 在 AI 页面不显示悬浮按钮
-  if (location.pathname === '/ai') {
+  // 在 AI 页面和登录页面不显示悬浮按钮
+  if (location.pathname === '/ai' || location.pathname === '/login') {
     return null;
   }
 

@@ -4,8 +4,10 @@ import { MailOutlined, LockOutlined, UserOutlined, FireOutlined, RocketOutlined 
 import { useNavigate } from 'react-router-dom';
 import { login, register } from '../api/auth';
 import { useAuthStore } from '../store/auth';
+import { useThemeStore } from '../store/theme';
 import { getErrorMessage } from '../utils/error';
 import FoodBackground from '../components/FoodBackground';
+import ThemeSwitcher from '../components/ThemeSwitcher';
 import { getAnimationStyle, getRandomFoods } from '../utils/foodAnimations';
 
 const { Text } = Typography;
@@ -13,6 +15,8 @@ const { Text } = Typography;
 export default function LoginPage() {
   const navigate = useNavigate();
   const loginStore = useAuthStore((s) => s.login);
+  const themeMode = useThemeStore((s) => s.mode);
+  const isDark = themeMode === 'dark';
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [screenSize, setScreenSize] = useState({
@@ -91,7 +95,9 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #ff9a56 0%, #ff6b6b 50%, #ee5a24 100%)',
+        background: isDark
+          ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
+          : 'linear-gradient(135deg, #ff9a56 0%, #ff6b6b 50%, #ee5a24 100%)',
         position: 'relative',
         overflow: 'hidden',
         padding: screenSize.isSmallMobile ? '16px' : screenSize.isMobile ? '24px' : '40px',
@@ -99,6 +105,16 @@ export default function LoginPage() {
     >
       {/* 美食背景 */}
       <FoodBackground count={25} minSize={20} maxSize={50} />
+
+      {/* 主题切换按钮 - 右上角 */}
+      <div style={{
+        position: 'absolute',
+        top: screenSize.isSmallMobile ? 16 : screenSize.isMobile ? 20 : 24,
+        right: screenSize.isSmallMobile ? 16 : screenSize.isMobile ? 20 : 24,
+        zIndex: 10,
+      }}>
+        <ThemeSwitcher size="middle" />
+      </div>
 
       {/* 额外的大型美食图标 */}
       {getRandomFoods(8).map((food, index) => (
@@ -174,11 +190,11 @@ export default function LoginPage() {
         }}
       >
         {/* Logo 区域 */}
-        <div style={{ textAlign: 'center', marginBottom: screenSize.isMobile ? 24 : 40 }}>
+        <div style={{ textAlign: 'center', marginBottom: screenSize.isMobile ? 16 : 20 }}>
           <div
             style={{
-              fontSize: screenSize.isSmallMobile ? 50 : screenSize.isMobile ? 60 : 80,
-              marginBottom: screenSize.isSmallMobile ? 12 : 16,
+              fontSize: screenSize.isSmallMobile ? 40 : screenSize.isMobile ? 48 : 60,
+              marginBottom: screenSize.isSmallMobile ? 8 : 10,
               animation: 'bounce 2s ease-in-out infinite',
             }}
           >
@@ -186,7 +202,7 @@ export default function LoginPage() {
           </div>
           <h1
             style={{
-              fontSize: screenSize.isSmallMobile ? 28 : screenSize.isMobile ? 36 : 42,
+              fontSize: screenSize.isSmallMobile ? 24 : screenSize.isMobile ? 30 : 36,
               fontWeight: 800,
               color: '#fff',
               margin: 0,
@@ -198,10 +214,10 @@ export default function LoginPage() {
           </h1>
           <Text
             style={{
-              fontSize: screenSize.isSmallMobile ? 13 : 15,
+              fontSize: screenSize.isSmallMobile ? 12 : 13,
               color: 'rgba(255,255,255,0.85)',
               display: 'block',
-              marginTop: screenSize.isSmallMobile ? 6 : 8,
+              marginTop: screenSize.isSmallMobile ? 4 : 6,
             }}
           >
             发现身边的烟火气 🎯
@@ -213,9 +229,9 @@ export default function LoginPage() {
           style={{
             display: 'flex',
             background: 'rgba(255,255,255,0.2)',
-            borderRadius: screenSize.isMobile ? 14 : 16,
-            padding: screenSize.isSmallMobile ? 5 : 6,
-            marginBottom: screenSize.isMobile ? 24 : 32,
+            borderRadius: screenSize.isMobile ? 12 : 14,
+            padding: screenSize.isSmallMobile ? 4 : 5,
+            marginBottom: screenSize.isMobile ? 16 : 20,
             backdropFilter: 'blur(10px)',
           }}
         >
@@ -223,12 +239,12 @@ export default function LoginPage() {
             onClick={() => setIsLogin(true)}
             style={{
               flex: 1,
-              padding: screenSize.isSmallMobile ? '12px 16px' : '14px 24px',
+              padding: screenSize.isSmallMobile ? '10px 14px' : '12px 20px',
               border: 'none',
-              borderRadius: screenSize.isMobile ? 10 : 12,
+              borderRadius: screenSize.isMobile ? 8 : 10,
               background: isLogin ? 'rgba(255,255,255,0.95)' : 'transparent',
               color: isLogin ? '#764ba2' : '#fff',
-              fontSize: screenSize.isSmallMobile ? 14 : 16,
+              fontSize: screenSize.isSmallMobile ? 13 : 14,
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.3s ease',
@@ -241,12 +257,12 @@ export default function LoginPage() {
             onClick={() => setIsLogin(false)}
             style={{
               flex: 1,
-              padding: screenSize.isSmallMobile ? '12px 16px' : '14px 24px',
+              padding: screenSize.isSmallMobile ? '10px 14px' : '12px 20px',
               border: 'none',
-              borderRadius: screenSize.isMobile ? 10 : 12,
+              borderRadius: screenSize.isMobile ? 8 : 10,
               background: !isLogin ? 'rgba(255,255,255,0.95)' : 'transparent',
               color: !isLogin ? '#764ba2' : '#fff',
-              fontSize: screenSize.isSmallMobile ? 14 : 16,
+              fontSize: screenSize.isSmallMobile ? 13 : 14,
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.3s ease',
@@ -260,38 +276,40 @@ export default function LoginPage() {
         {/* 表单卡片 */}
         <div
           style={{
-            background: 'rgba(255,255,255,0.98)',
-            borderRadius: screenSize.isMobile ? 24 : 28,
-            padding: screenSize.isSmallMobile ? '24px 20px' : screenSize.isMobile ? '32px 28px' : '48px 40px',
-            boxShadow: screenSize.isMobile ? '0 20px 50px rgba(0,0,0,0.15)' : '0 25px 70px rgba(0,0,0,0.2)',
+            background: isDark ? 'rgba(30, 30, 50, 0.98)' : 'rgba(255,255,255,0.98)',
+            borderRadius: screenSize.isMobile ? 20 : 24,
+            padding: screenSize.isSmallMobile ? '20px 18px' : screenSize.isMobile ? '24px 22px' : '32px 28px',
+            boxShadow: isDark
+              ? '0 20px 50px rgba(0,0,0,0.5)'
+              : screenSize.isMobile ? '0 20px 50px rgba(0,0,0,0.15)' : '0 25px 70px rgba(0,0,0,0.2)',
             backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255,255,255,0.3)',
+            border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.3)',
             transition: 'all 0.3s ease'
           }}
         >
           {isLogin ? (
-            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <div style={{ textAlign: 'center', marginBottom: 18 }}>
               <h2 style={{
-                fontSize: screenSize.isSmallMobile ? 22 : 26,
+                fontSize: screenSize.isSmallMobile ? 18 : 20,
                 fontWeight: 700,
-                color: '#262626',
+                color: isDark ? '#fff' : '#262626',
                 margin: 0
               }}>
                 欢迎回来 👋
               </h2>
-              <Text type="secondary" style={{ fontSize: 14 }}>登录到街边美食</Text>
+              <Text style={{ fontSize: 13, color: isDark ? 'rgba(255,255,255,0.65)' : undefined }}>登录到街边美食</Text>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <div style={{ textAlign: 'center', marginBottom: 18 }}>
               <h2 style={{
-                fontSize: screenSize.isSmallMobile ? 22 : 26,
+                fontSize: screenSize.isSmallMobile ? 18 : 20,
                 fontWeight: 700,
-                color: '#262626',
+                color: isDark ? '#fff' : '#262626',
                 margin: 0
               }}>
                 加入我们 🎉
               </h2>
-              <Text type="secondary" style={{ fontSize: 14 }}>开启美食探索之旅</Text>
+              <Text style={{ fontSize: 13, color: isDark ? 'rgba(255,255,255,0.65)' : undefined }}>开启美食探索之旅</Text>
             </div>
           )}
           {isLogin ? (
@@ -299,36 +317,36 @@ export default function LoginPage() {
               <Form.Item
                 name="email"
                 rules={[{ required: true, message: '请输入邮箱' }, { type: 'email', message: '邮箱格式不正确' }]}
-                style={{ marginBottom: screenSize.isSmallMobile ? 14 : 16 }}
+                style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
               >
                 <Input
                   size={screenSize.isSmallMobile ? 'middle' : 'large'}
                   prefix={<MailOutlined style={{ color: '#bfbfbf' }} />}
                   placeholder="邮箱地址"
                   style={{
-                    borderRadius: screenSize.isMobile ? 10 : 12,
-                    padding: screenSize.isSmallMobile ? '10px 14px' : '12px 16px',
-                    fontSize: screenSize.isSmallMobile ? 14 : 15,
+                    borderRadius: screenSize.isMobile ? 8 : 10,
+                    padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
+                    fontSize: screenSize.isSmallMobile ? 13 : 14,
                   }}
                 />
               </Form.Item>
               <Form.Item
                 name="password"
                 rules={[{ required: true, message: '请输入密码' }]}
-                style={{ marginBottom: screenSize.isSmallMobile ? 14 : 16 }}
+                style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
               >
                 <Input.Password
                   size={screenSize.isSmallMobile ? 'middle' : 'large'}
                   prefix={<LockOutlined style={{ color: '#bfbfbf' }} />}
                   placeholder="密码"
                   style={{
-                    borderRadius: screenSize.isMobile ? 10 : 12,
-                    padding: screenSize.isSmallMobile ? '10px 14px' : '12px 16px',
-                    fontSize: screenSize.isSmallMobile ? 14 : 15,
+                    borderRadius: screenSize.isMobile ? 8 : 10,
+                    padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
+                    fontSize: screenSize.isSmallMobile ? 13 : 14,
                   }}
                 />
               </Form.Item>
-              <Form.Item style={{ marginBottom: 8 }}>
+              <Form.Item style={{ marginBottom: 6 }}>
                 <Button
                   type="primary"
                   htmlType="submit"
@@ -337,9 +355,9 @@ export default function LoginPage() {
                   size={screenSize.isSmallMobile ? 'middle' : 'large'}
                   icon={screenSize.isSmallMobile ? undefined : <RocketOutlined />}
                   style={{
-                    height: screenSize.isSmallMobile ? 44 : screenSize.isMobile ? 48 : 50,
-                    borderRadius: screenSize.isMobile ? 10 : 12,
-                    fontSize: screenSize.isSmallMobile ? 15 : 16,
+                    height: screenSize.isSmallMobile ? 38 : screenSize.isMobile ? 42 : 46,
+                    borderRadius: screenSize.isMobile ? 8 : 10,
+                    fontSize: screenSize.isSmallMobile ? 14 : 15,
                     fontWeight: 600,
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     border: 'none',
@@ -354,7 +372,7 @@ export default function LoginPage() {
             <Form layout="vertical" onFinish={handleRegister}>
               <Form.Item
                 name="username"
-                style={{ marginBottom: screenSize.isSmallMobile ? 14 : 16 }}
+                style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
                 rules={[
                   { required: true, message: '请输入用户名' },
                   { min: 3, max: 20, message: '用户名长度为3-20个字符' },
@@ -366,15 +384,15 @@ export default function LoginPage() {
                   prefix={<UserOutlined style={{ color: '#bfbfbf' }} />}
                   placeholder="用户名"
                   style={{
-                    borderRadius: screenSize.isMobile ? 10 : 12,
-                    padding: screenSize.isSmallMobile ? '10px 14px' : '12px 16px',
-                    fontSize: screenSize.isSmallMobile ? 14 : 15,
+                    borderRadius: screenSize.isMobile ? 8 : 10,
+                    padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
+                    fontSize: screenSize.isSmallMobile ? 13 : 14,
                   }}
                 />
               </Form.Item>
               <Form.Item
                 name="email"
-                style={{ marginBottom: screenSize.isSmallMobile ? 14 : 16 }}
+                style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
                 rules={[{ required: true, message: '请输入邮箱' }, { type: 'email', message: '邮箱格式不正确' }]}
               >
                 <Input
@@ -382,15 +400,15 @@ export default function LoginPage() {
                   prefix={<MailOutlined style={{ color: '#bfbfbf' }} />}
                   placeholder="邮箱地址"
                   style={{
-                    borderRadius: screenSize.isMobile ? 10 : 12,
-                    padding: screenSize.isSmallMobile ? '10px 14px' : '12px 16px',
-                    fontSize: screenSize.isSmallMobile ? 14 : 15,
+                    borderRadius: screenSize.isMobile ? 8 : 10,
+                    padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
+                    fontSize: screenSize.isSmallMobile ? 13 : 14,
                   }}
                 />
               </Form.Item>
               <Form.Item
                 name="password"
-                style={{ marginBottom: screenSize.isSmallMobile ? 14 : 16 }}
+                style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
                 rules={[
                   { required: true, message: '请输入密码' },
                   { min: 6, message: '密码至少6位' },
@@ -401,13 +419,13 @@ export default function LoginPage() {
                   prefix={<LockOutlined style={{ color: '#bfbfbf' }} />}
                   placeholder="密码（至少6位）"
                   style={{
-                    borderRadius: screenSize.isMobile ? 10 : 12,
-                    padding: screenSize.isSmallMobile ? '10px 14px' : '12px 16px',
-                    fontSize: screenSize.isSmallMobile ? 14 : 15,
+                    borderRadius: screenSize.isMobile ? 8 : 10,
+                    padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
+                    fontSize: screenSize.isSmallMobile ? 13 : 14,
                   }}
                 />
               </Form.Item>
-              <Form.Item style={{ marginBottom: 8 }}>
+              <Form.Item style={{ marginBottom: 6 }}>
                 <Button
                   type="primary"
                   htmlType="submit"
@@ -416,9 +434,9 @@ export default function LoginPage() {
                   size={screenSize.isSmallMobile ? 'middle' : 'large'}
                   icon={screenSize.isSmallMobile ? undefined : <FireOutlined />}
                   style={{
-                    height: screenSize.isSmallMobile ? 44 : screenSize.isMobile ? 48 : 50,
-                    borderRadius: screenSize.isMobile ? 10 : 12,
-                    fontSize: screenSize.isSmallMobile ? 15 : 16,
+                    height: screenSize.isSmallMobile ? 38 : screenSize.isMobile ? 42 : 46,
+                    borderRadius: screenSize.isMobile ? 8 : 10,
+                    fontSize: screenSize.isSmallMobile ? 14 : 15,
                     fontWeight: 600,
                     background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
                     border: 'none',
@@ -431,26 +449,26 @@ export default function LoginPage() {
             </Form>
           )}
 
-          <Divider style={{ margin: screenSize.isMobile ? '20px 0' : '24px 0', borderColor: '#f0f0f0' }}>
-            <Text style={{ color: '#999', fontSize: screenSize.isSmallMobile ? 12 : 13 }}>
+          <Divider style={{ margin: screenSize.isMobile ? '16px 0' : '18px 0', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }}>
+            <Text style={{ color: isDark ? 'rgba(255,255,255,0.45)' : '#999', fontSize: screenSize.isSmallMobile ? 11 : 12 }}>
               {isLogin ? '或' : '注册即表示同意用户协议'}
             </Text>
           </Divider>
 
           {/* 社交登录提示 */}
           <div style={{ textAlign: 'center' }}>
-            <Text style={{ color: '#999', fontSize: screenSize.isSmallMobile ? 12 : 13 }}>
+            <Text style={{ color: isDark ? 'rgba(255,255,255,0.45)' : '#999', fontSize: screenSize.isSmallMobile ? 11 : 12 }}>
               {isLogin ? '还没有账号？' : '已有账号？'}
               <button
                 onClick={() => setIsLogin(!isLogin)}
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#764ba2',
-                  fontSize: screenSize.isSmallMobile ? 12 : 13,
+                  color: isDark ? '#a78bfa' : '#764ba2',
+                  fontSize: screenSize.isSmallMobile ? 11 : 12,
                   fontWeight: 600,
                   cursor: 'pointer',
-                  padding: '4px 8px',
+                  padding: '3px 6px',
                   marginLeft: 4,
                 }}
               >
@@ -461,8 +479,8 @@ export default function LoginPage() {
         </div>
 
         {/* 底部提示 */}
-        <div style={{ textAlign: 'center', marginTop: screenSize.isMobile ? 20 : 24 }}>
-          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: screenSize.isSmallMobile ? 11 : 12 }}>
+        <div style={{ textAlign: 'center', marginTop: screenSize.isMobile ? 14 : 16 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: screenSize.isSmallMobile ? 10 : 11 }}>
             记录城市味道 · 分享美食故事 📸
           </Text>
         </div>
@@ -487,10 +505,25 @@ export default function LoginPage() {
           }
         }
         input::-webkit-input-placeholder {
-          color: #bfbfbf;
+          color: ${isDark ? '#6b7280' : '#bfbfbf'};
         }
         .ant-input-affix-wrapper-focused {
           box-shadow: 0 0 0 2px rgba(118, 75, 162, 0.1) !important;
+        }
+        /* 暗色模式输入框样式 */
+        .dark-theme .ant-input-affix-wrapper,
+        [data-theme="dark"] .ant-input-affix-wrapper {
+          background: rgba(50, 50, 80, 0.98) !important;
+          border-color: rgba(255,255,255,0.15) !important;
+        }
+        .dark-theme .ant-input,
+        [data-theme="dark"] .ant-input {
+          background: transparent !important;
+          color: #fff !important;
+        }
+        .dark-theme .ant-input-prefix,
+        [data-theme="dark"] .ant-input-prefix {
+          color: rgba(255,255,255,0.5) !important;
         }
         /* 禁止移动端双击缩放 */
         * {

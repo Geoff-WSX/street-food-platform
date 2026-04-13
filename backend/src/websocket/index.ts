@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import jwt from 'jsonwebtoken';
-import prisma from '../config/database';
+import prisma from '../services/db/prisma';
 
 interface Client {
   ws: WebSocket;

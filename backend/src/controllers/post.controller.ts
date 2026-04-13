@@ -152,7 +152,31 @@ export const getUserFavorites = async (req: AuthRequest, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = Math.min(parseInt(req.query.pageSize as string) || 10, 50);
-    const result = await postService.getUserFavorites(req.user!.userId, page, pageSize);
+    const category = req.query.category as string | undefined;
+    const result = await postService.getUserFavorites(req.user!.userId, page, pageSize, category);
+    return successResponse(res, result);
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'FETCH_FAILED', 500);
+  }
+};
+
+export const updateFavoriteSettings = async (req: AuthRequest, res: Response) => {
+  try {
+    const postId = parseInt(req.params.id);
+    if (isNaN(postId)) {
+      return errorResponse(res, '无效的动态ID', 'INVALID_PARAM');
+    }
+    const { isPinned, category } = req.body;
+    const result = await postService.updateFavoriteSettings(req.user!.userId, postId, { isPinned, category });
+    return successResponse(res, result);
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'UPDATE_FAILED', 500);
+  }
+};
+
+export const getFavoriteCategories = async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await postService.getFavoriteCategories(req.user!.userId);
     return successResponse(res, result);
   } catch (error: any) {
     return errorResponse(res, error.message, 'FETCH_FAILED', 500);

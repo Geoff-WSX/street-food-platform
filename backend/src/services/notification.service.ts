@@ -1,4 +1,4 @@
-import prisma from '../config/database';
+import prisma from '../services/db/prisma';
 
 /**
  * 通知类型枚举
@@ -20,6 +20,21 @@ export enum EntityType {
   COMMENT = 'COMMENT',
   USER = 'USER',
 }
+
+/**
+ * 安全解析 images 字段
+ */
+const parseImages = (imagesStr: string | null): string[] => {
+  if (!imagesStr || imagesStr === '' || imagesStr === '[]') {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(imagesStr);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
 /**
  * 创建通知
@@ -71,6 +86,7 @@ export const getUserNotifications = async (
             id: true,
             username: true,
             avatar: true,
+            avatarData: true,
           },
         },
       },
@@ -102,7 +118,10 @@ export const getUserNotifications = async (
           },
         });
         if (post) {
-          relatedData.post = post;
+          relatedData.post = {
+            ...post,
+            images: parseImages(post.images),
+          };
         }
       } else if (notification.entityType === EntityType.COMMENT) {
         const comment = await prisma.comment.findUnique({

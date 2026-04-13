@@ -1,4 +1,4 @@
-import prisma from '../config/database';
+import prisma from '../services/db/prisma';
 import { pushMessage } from '../websocket/notification';
 
 /**
@@ -165,7 +165,7 @@ export const sendMessage = async (senderId: number, receiverId: number, content:
   // 获取发送者信息
   const sender = await prisma.user.findUnique({
     where: { id: senderId },
-    select: { id: true, username: true, avatar: true },
+    select: { id: true, username: true, avatar: true, avatarData: true },
   });
 
   // 实时推送消息给接收方
@@ -174,7 +174,7 @@ export const sendMessage = async (senderId: number, receiverId: number, content:
       conversationId: conversation.id,
       senderId: senderId,
       senderName: sender.username,
-      senderAvatar: sender.avatar,
+      senderAvatar: sender.avatarData || sender.avatar,
       content: content,
     });
   }
@@ -221,6 +221,8 @@ export const getConversations = async (userId: number) => {
             id: true,
             username: true,
             avatar: true,
+            avatarData: true,
+            bio: true,
           },
         }),
       ]);
@@ -378,6 +380,7 @@ export const getBlockedUsers = async (userId: number) => {
           id: true,
           username: true,
           avatar: true,
+          avatarData: true,
           bio: true,
         },
       },
@@ -518,4 +521,68 @@ export const batchDeleteMessages = async (messageIds: number[], userId: number) 
   });
 
   return { success: true, deletedCount: result.count };
+};
+
+/**
+ * 搜索消息
+ */
+export const searchMessages = async (userId: number, keyword: string, userIdFilter?: number) => {
+  // 获取用户所有对话
+  const conversations = await prisma.conversation.findMany({
+    where: {
+      OR: [
+        { userId1: userId },
+        { userId2: userId },
+      ],
+    },
+  });
+
+  const conversationIds = conversations.map((c) => c.id);
+
+  // 构建查询条件
+  const whereCondition: any = {
+    conversationId: { in: conversationIds },
+    recalled: false,
+    content: {
+      contains: keyword,
+    },
+  };
+
+  // 如果指定了用户ID，只搜索与该用户的对话
+  if (userIdFilter) {
+    const otherUserId = userIdFilter;
+    const conversation = await getOrCreateConversation(userId, otherUserId);
+    whereCondition.conversationId = conversation.id;
+  }
+
+  const messages = await prisma.message.findMany({
+    where: whereCondition,
+    include: {
+      conversation: {
+        select: {
+          userId1: true,
+          userId2: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+  });
+
+  // 获取每个消息的对方用户信息
+  const result = await Promise.all(
+    messages.map(async (msg) => {
+      const otherUserId = msg.conversation.userId1 === userId ? msg.conversation.userId2 : msg.conversation.userId1;
+      const otherUser = await prisma.user.findUnique({
+        where: { id: otherUserId },
+        select: { id: true, username: true, avatar: true, avatarData: true },
+      });
+      return {
+        ...msg,
+        otherUser,
+      };
+    })
+  );
+
+  return result;
 };

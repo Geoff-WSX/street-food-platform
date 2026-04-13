@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useMessageStore } from '../store/message';
 import NotificationBell from './NotificationBell';
+import ThemeSwitcher from './ThemeSwitcher';
 import { useEffect, useState } from 'react';
 import { getUnreadCount } from '../api/message';
 import { getAvatarUrl } from '../utils/images';
@@ -100,16 +101,17 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
         display: 'flex',
         alignItems: 'center',
         padding: '0 32px',
-        background: scrolled ? 'rgba(255, 255, 255, 0.95)' : '#fff',
+        background: 'var(--navbar-bg)',
         backdropFilter: scrolled ? 'blur(10px)' : 'none',
-        boxShadow: scrolled ? '0 4px 20px rgba(0,0,0,0.08)' : '0 2px 8px rgba(0,0,0,0.06)',
+        boxShadow: scrolled ? 'var(--shadow-1)' : 'none',
         position: 'sticky',
         top: 0,
         zIndex: 100,
         height: 70,
         transition: 'all 0.3s ease',
-        borderBottom: scrolled ? '1px solid rgba(255, 107, 53, 0.1)' : '1px solid #f0f0f0'
+        borderBottom: '1px solid var(--navbar-border)'
       }}
+      className={scrolled ? 'navbar-scrolled' : ''}
     >
       {/* Logo */}
       <div
@@ -160,7 +162,7 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
           ...item,
           label: (
             <span style={{
-              color: selectedKey === item.key ? '#ff6b35' : '#262626',
+              color: selectedKey === item.key ? 'var(--color-primary)' : 'var(--text-primary)',
               position: 'relative',
               padding: '8px 16px',
               borderRadius: 8,
@@ -269,6 +271,9 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
           />
         </Tooltip>
 
+        {/* 主题切换按钮 */}
+        <ThemeSwitcher size="middle" />
+
         {isLoggedIn ? (
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
             <Space style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: 20, transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 107, 53, 0.05)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
@@ -281,10 +286,10 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
                   transition: 'all 0.3s ease'
                 }}
               />
-              <span style={{ fontSize: 15, fontWeight: 500, color: '#262626', marginLeft: 8 }}>
+              <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', marginLeft: 8 }}>
                 {user?.username}
               </span>
-              <CaretDownOutlined style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 4 }} />
+              <CaretDownOutlined style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 4 }} />
             </Space>
           </Dropdown>
         ) : (

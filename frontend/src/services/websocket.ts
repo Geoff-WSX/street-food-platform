@@ -1,7 +1,8 @@
 import { useNotificationStore } from '../store/notification';
 import { useMessageStore } from '../store/message';
+import { useFriendStore } from '../store/friend';
 
-type MessageType = 'notification' | 'message' | 'ping' | 'connected' | 'error';
+type MessageType = 'notification' | 'message' | 'ping' | 'connected' | 'error' | 'friend_request' | 'friend_accepted';
 
 interface NotificationData {
   id: number;
@@ -100,6 +101,16 @@ class WebSocketService {
           this.handleMessage_(message.data as MessageData);
         }
         break;
+      case 'friend_request':
+        if (message.data) {
+          this.handleFriendRequest(message.data as NotificationData);
+        }
+        break;
+      case 'friend_accepted':
+        if (message.data) {
+          this.handleFriendAccepted(message.data as NotificationData);
+        }
+        break;
       case 'ping':
         this.send({ type: 'pong' });
         break;
@@ -146,6 +157,35 @@ class WebSocketService {
       type: 'MESSAGE',
       actor: { username: data.senderName, avatar: data.senderAvatar },
       content: data.content?.slice(0, 50),
+    });
+  }
+
+  // 处理好友请求
+  private handleFriendRequest(data: NotificationData) {
+    const friendStore = useFriendStore.getState();
+    // 刷新收到的好友请求列表
+    friendStore.fetchReceivedRequests();
+
+    // 显示浏览器通知
+    this.showBrowserNotification({
+      type: 'FRIEND_REQUEST',
+      actor: data.actor,
+      content: data.content || '请求添加你为好友',
+    });
+  }
+
+  // 处理好友请求接受
+  private handleFriendAccepted(data: NotificationData) {
+    const friendStore = useFriendStore.getState();
+    // 刷新好友列表和发出的请求列表
+    friendStore.fetchFriends();
+    friendStore.fetchSentRequests();
+
+    // 显示浏览器通知
+    this.showBrowserNotification({
+      type: 'FRIEND_ACCEPTED',
+      actor: data.actor,
+      content: data.content || '已接受你的好友请求',
     });
   }
 

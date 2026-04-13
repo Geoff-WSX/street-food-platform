@@ -105,6 +105,7 @@ export const getAdminLogs = async (req: Request, res: Response) => {
               username: true,
               email: true,
               avatar: true,
+              avatarData: true,
               role: true,
             },
           },
@@ -154,6 +155,7 @@ export const getAdminLogById = async (req: Request, res: Response) => {
             username: true,
             email: true,
             avatar: true,
+            avatarData: true,
             role: true,
           },
         },
@@ -218,6 +220,7 @@ export const getAdminLogStats = async (req: Request, res: Response) => {
         id: true,
         username: true,
         avatar: true,
+        avatarData: true,
         role: true,
       },
     });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { getAnimationStyle } from '../utils/foodAnimations';
 
 interface FoodBackgroundProps {
@@ -8,24 +8,31 @@ interface FoodBackgroundProps {
   enabled?: boolean;
 }
 
-// 预定义的固定美食背景数据（避免每次渲染重新计算）
-const FIXED_FOODS = Array.from({ length: 20 }, (_, i) => ({
-  id: i,
-  emoji: ['🍜', '🍲', '🍛', '🍣', '🍱', '🥟', '🍕', '🍔', '🍟', '🌮', '🍿', '🧀', '🥚', '🍳', '🥘', '🍖', '🥩', '🥠', '🍡'][i % 20],
-  x: (i * 5) % 100,
-  y: (i * 7) % 100,
-  size: 20 + (i % 3) * 12,
-  delay: (i % 5) * 0.6,
-}));
+// 美食表情符号列表
+const FOOD_EMOJIS = ['🍜', '🍲', '🍛', '🍣', '🍱', '🥟', '🍕', '🍔', '🍟', '🌮', '🍿', '🧀', '🥚', '🍳', '🥘', '🍖', '🥩', '🥠', '🍡', '🥙', '🌯', '🍦', '🧇', '🍩', '🍪'];
+
+// 生成随机美食背景数据
+const generateRandomFoods = (count: number, minSize: number, maxSize: number) => {
+  return Array.from({ length: count }, (_, i) => ({
+    id: i,
+    emoji: FOOD_EMOJIS[Math.floor(Math.random() * FOOD_EMOJIS.length)],
+    x: Math.random() * 95, // 留出边缘空间
+    y: Math.random() * 95,
+    size: minSize + Math.random() * (maxSize - minSize),
+    delay: Math.random() * 3,
+  }));
+};
 
 const FoodBackground: React.FC<FoodBackgroundProps> = ({
   count = 15,
+  minSize = 20,
+  maxSize = 40,
   enabled = true,
 }) => {
-  if (!enabled) return null;
+  // 使用 useMemo 确保位置在组件生命周期内保持稳定，但每次页面刷新时重新随机
+  const foods = useMemo(() => generateRandomFoods(count, minSize, maxSize), [count, minSize, maxSize]);
 
-  // 只使用前 count 个元素
-  const foods = FIXED_FOODS.slice(0, Math.min(count, FIXED_FOODS.length));
+  if (!enabled) return null;
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}>

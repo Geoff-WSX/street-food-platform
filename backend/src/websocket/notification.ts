@@ -1,5 +1,5 @@
 import { sendToUser } from './index';
-import prisma from '../config/database';
+import prisma from '../services/db/prisma';
 import { NotificationType, EntityType } from '../services/notification.service';
 
 // 重新导出
@@ -39,6 +39,7 @@ export async function pushNotification(payload: NotificationPayload) {
           id: true,
           username: true,
           avatar: true,
+          avatarData: true,
         },
       },
     },
@@ -77,7 +78,7 @@ export function pushMessage(userId: number, data: {
 export async function pushLikeNotification(userId: number, postId: number, actorId: number) {
   const actor = await prisma.user.findUnique({
     where: { id: actorId },
-    select: { id: true, username: true, avatar: true },
+    select: { id: true, username: true, avatar: true, avatarData: true },
   });
 
   if (actor) {
@@ -97,7 +98,7 @@ export async function pushLikeNotification(userId: number, postId: number, actor
 export async function pushFollowNotification(userId: number, actorId: number) {
   const actor = await prisma.user.findUnique({
     where: { id: actorId },
-    select: { id: true, username: true, avatar: true },
+    select: { id: true, username: true, avatar: true, avatarData: true },
   });
 
   if (actor) {
@@ -111,9 +112,52 @@ export async function pushFollowNotification(userId: number, actorId: number) {
   }
 }
 
+/**
+ * 推送好友请求通知
+ */
+export async function pushFriendRequestNotification(
+  userId: number,
+  actorId: number,
+  message?: string
+) {
+  const actor = await prisma.user.findUnique({
+    where: { id: actorId },
+    select: { id: true, username: true, avatar: true, avatarData: true },
+  });
+
+  if (actor) {
+    sendToUser(userId, 'friend_request', {
+      type: 'FRIEND_REQUEST',
+      actor,
+      message,
+      content: `${actor.username} 请求添加你为好友`,
+    });
+  }
+}
+
+/**
+ * 推送好友请求接受通知
+ */
+export async function pushFriendAcceptedNotification(userId: number, actorId: number) {
+  const actor = await prisma.user.findUnique({
+    where: { id: actorId },
+    select: { id: true, username: true, avatar: true, avatarData: true },
+  });
+
+  if (actor) {
+    sendToUser(userId, 'friend_accepted', {
+      type: 'FRIEND_ACCEPTED',
+      actor,
+      content: `${actor.username} 已接受你的好友请求`,
+    });
+  }
+}
+
 export default {
   pushNotification,
   pushMessage,
   pushLikeNotification,
   pushFollowNotification,
+  pushFriendRequestNotification,
+  pushFriendAcceptedNotification,
 };

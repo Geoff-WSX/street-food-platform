@@ -7,6 +7,7 @@ import {
 import { getComments, createComment, deleteComment, toggleCommentLike, getCommentReplies, checkContent, type Comment } from '../api/comment';
 import { useAuthStore } from '../store/auth';
 import { getErrorMessage } from '../utils/error';
+import { getAvatarUrl } from '../utils/images';
 
 const { TextArea } = Input;
 const { Text, Paragraph } = Typography;
@@ -303,12 +304,12 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
         id={`comment-${comment.id}`}
         style={{
           padding: isReply ? '12px 0' : '16px 0',
-          borderBottom: isReply ? 'none' : '1px solid #f0f0f0'
+          borderBottom: isReply ? 'none' : '1px solid var(--border-color)'
         }}
       >
         <div style={{ display: 'flex', gap: 12 }}>
           <Avatar
-            src={comment.user.avatar}
+            src={getAvatarUrl(comment.user)}
             icon={<UserOutlined />}
             size={isReply ? 32 : 40}
             style={{ flexShrink: 0 }}
@@ -328,7 +329,7 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
               style={{
                 marginBottom: 8,
                 fontSize: isReply ? 14 : 15,
-                color: '#262626',
+                color: 'var(--text-primary)',
                 lineHeight: '1.6'
               }}
             >
@@ -385,7 +386,7 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
 
             {/* 回复输入框 */}
             {replyingTo?.id === comment.id && (
-              <div style={{ marginTop: 12, background: '#f5f5f5', padding: 12, borderRadius: 12 }}>
+              <div style={{ marginTop: 12, background: 'var(--bg-secondary)', padding: 12, borderRadius: 12 }}>
                 <div style={{ position: 'relative' }}>
                   <TextArea
                     value={replyContent}
@@ -452,10 +453,10 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
       </Divider>
 
       {/* 评论输入框 */}
-      <div style={{ marginBottom: 24, padding: 20, background: 'linear-gradient(135deg, #f5f7fa 0%, #f0f2f5 100%)', borderRadius: 16, border: '1px solid #e8e8e8' }}>
+      <div style={{ marginBottom: 24, padding: 20, background: 'var(--bg-secondary)', borderRadius: 16, border: '1px solid var(--border-color)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-          <Avatar src={user?.avatar} icon={<UserOutlined />} size={40} style={{ border: '2px solid #fff' }} />
-          <div style={{ fontSize: 14, color: '#666' }}>
+          <Avatar src={getAvatarUrl(user)} icon={<UserOutlined />} size={40} style={{ border: '2px solid var(--border-color)' }} />
+          <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
             {isLoggedIn ? (
               <span>{user?.username} <Text type="secondary">，分享你的想法...</Text></span>
             ) : (
@@ -470,7 +471,7 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
             placeholder={isLoggedIn ? '写下你的评论...（文明发言，友善交流）' : '请先登录后再发表评论'}
             autoSize={{ minRows: 3, maxRows: 6 }}
             maxLength={500}
-            style={{ borderRadius: 12, padding: '12px 16px 32px 16px', background: '#fff', resize: 'none' }}
+            style={{ borderRadius: 12, padding: '12px 16px 32px 16px', background: 'var(--card-bg)', resize: 'none' }}
             disabled={!isLoggedIn}
           />
           <div style={{ position: 'absolute', bottom: 8, right: 12, fontSize: 12, color: content.length > 450 ? '#ff4d4f' : '#999' }}>
@@ -503,11 +504,11 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
       {/* 评论列表 */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40 }}>
-          <LoadingOutlined style={{ fontSize: 32, color: '#999' }} />
-          <div style={{ marginTop: 12, color: '#999' }}>加载评论中...</div>
+          <LoadingOutlined style={{ fontSize: 32, color: 'var(--text-secondary)' }} />
+          <div style={{ marginTop: 12, color: 'var(--text-secondary)' }}>加载评论中...</div>
         </div>
       ) : comments.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+        <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
           <MessageOutlined style={{ fontSize: 48, marginBottom: 12 }} />
           <div>还没有评论，快来抢沙发吧~</div>
         </div>
@@ -516,7 +517,7 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
           <List
             dataSource={comments}
             renderItem={(comment) => <div>{renderCommentItem(comment)}</div>}
-            style={{ background: '#fff', borderRadius: 12 }}
+            style={{ background: 'var(--card-bg)', borderRadius: 12 }}
           />
           {hasMore && (
             <div style={{ textAlign: 'center', marginTop: 16 }}>

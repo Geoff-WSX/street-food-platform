@@ -1,0 +1,211 @@
+/* 首页潮流美食社区风样式 */
+
+/* ===== 页面容器 ===== */
+.home-page-container {
+  position: relative;
+  min-height: calc(100vh - 64px);
+  padding-bottom: var(--space-3xl);
+}
+
+/* ===== 页面头部 ===== */
+.home-header {
+  text-align: center;
+  padding: var(--space-2xl) var(--space-md) var(--space-xl);
+}
+
+.home-title {
+  font-family: var(--font-display);
+  font-size: var(--text-4xl);
+  font-weight: var(--font-extrabold);
+  margin: 0 0 var(--space-sm);
+  letter-spacing: -0.02em;
+}
+
+.home-subtitle {
+  font-size: var(--text-lg);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .home-header {
+    padding: var(--space-xl) var(--space-sm) var(--space-lg);
+  }
+
+  .home-title {
+    font-size: var(--text-3xl);
+  }
+
+  .home-subtitle {
+    font-size: var(--text-base);
+  }
+}
+
+/* ===== 内容区域 ===== */
+.home-content {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-md);
+}
+
+/* ===== 筛选栏 ===== */
+.filter-bar {
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-xl);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 51, 102, 0.05) 100%);
+  border-radius: var(--radius-full);
+  color: var(--brand-start);
+  font-weight: var(--font-semibold);
+}
+
+.filter-label svg {
+  color: var(--brand-start);
+}
+
+.location-tag {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.12) 0%, rgba(255, 179, 71, 0.1) 100%) !important;
+  color: var(--brand-start) !important;
+  border: 1px solid rgba(255, 107, 53, 0.2) !important;
+  border-radius: var(--radius-full) !important;
+  padding: 4px 12px !important;
+  font-size: var(--text-sm) !important;
+}
+
+.stats-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: linear-gradient(135deg, rgba(250, 173, 20, 0.1) 0%, rgba(250, 173, 20, 0.05) 100%);
+  border-radius: var(--radius-full);
+  color: var(--color-warning);
+}
+
+.stats-badge svg {
+  color: var(--color-warning);
+}
+
+/* ===== 动态网格 ===== */
+.posts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-lg);
+}
+
+.posts-grid > div {
+  display: flex;
+  height: 480px;
+}
+
+.posts-grid > div > article {
+  width: 100%;
+}
+
+/* ===== 空状态 ===== */
+.empty-state {
+  text-align: center;
+  padding: var(--space-3xl);
+  border: 2px dashed var(--border-accent);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(255, 107, 53, 0.02) 100%);
+}
+
+/* ===== 底部提示 ===== */
+.footer-tip {
+  text-align: center;
+  margin-top: var(--space-xl);
+  padding: var(--space-lg) 0;
+  background: linear-gradient(to right, transparent, rgba(255, 107, 53, 0.08), transparent);
+}
+
+.decorative-line {
+  width: 40px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--brand-start), transparent);
+}
+
+/* ===== 刷新按钮 ===== */
+.refresh-button {
+  width: 56px !important;
+  height: 56px !important;
+  background: var(--brand-gradient) !important;
+  box-shadow: var(--shadow-brand) !important;
+  border: none !important;
+}
+
+.refresh-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4) !important;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 480px) {
+  .home-content {
+    padding: 0 var(--space-sm);
+  }
+
+  .filter-bar {
+    padding: var(--space-sm);
+  }
+
+  .posts-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+
+  .posts-grid > div {
+    height: auto;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .posts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .posts-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1025px) {
+  .posts-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ===== 暗色模式 ===== */
+.dark .home-page-container {
+  background: var(--bg-primary-dark);
+}
+
+.dark .home-subtitle {
+  color: var(--text-secondary-dark);
+}
+
+.dark .filter-bar {
+  background: var(--bg-card-dark);
+}
+
+.dark .empty-state {
+  background: var(--bg-card-dark);
+  border-color: var(--border-medium-dark);
+}
+
+.dark .footer-tip {
+  background: linear-gradient(to right, transparent, rgba(255, 107, 53, 0.1), transparent);
+}

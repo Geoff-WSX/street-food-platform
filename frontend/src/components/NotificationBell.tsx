@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNotificationStore } from '../store/notification';
 import { getNotifications, getUnreadCount, markAsRead as markAsReadApi, markAllAsRead, deleteNotification } from '../api/notification';
 import type { Notification as NotificationType } from '../types';
+import { getAvatarUrl } from '../utils/images';
 
 const { Text } = Typography;
 
@@ -166,8 +167,8 @@ export default function NotificationBell() {
       onOpenChange={handleDropdownOpenChange}
       trigger={['click']}
       dropdownRender={() => (
-        <div style={{ width: 380, maxHeight: 500, overflow: 'auto', background: '#fff', borderRadius: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.15)' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>
+        <div style={{ width: 380, maxHeight: 500, overflow: 'auto', background: 'var(--card-bg)', borderRadius: 8, boxShadow: 'var(--shadow-2)' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text strong style={{ fontSize: 15 }}>通知</Text>
               {unreadCount > 0 && (
@@ -202,26 +203,26 @@ export default function NotificationBell() {
                   onClick={() => handleNotificationClick(item)}
                   onMouseEnter={(e) => {
                     if (!item.isRead) {
-                      e.currentTarget.style.background = '#f5f5f5';
+                      e.currentTarget.style.background = 'var(--bg-secondary)';
                     }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = item.isRead ? 'transparent' : '#fafafa';
+                    e.currentTarget.style.background = item.isRead ? 'transparent' : 'var(--bg-tertiary)';
                   }}
                   style={{
                     padding: '12px 16px',
                     cursor: 'pointer',
-                    background: item.isRead ? 'transparent' : '#fafafa',
-                    borderBottom: '1px solid #f0f0f0',
+                    background: item.isRead ? 'transparent' : 'var(--bg-tertiary)',
+                    borderBottom: '1px solid var(--border-color)',
                     transition: 'background 0.2s',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                     <Avatar
-                      src={item.actor.avatar}
+                      src={getAvatarUrl(item.actor)}
                       size={40}
                       style={{
-                        border: item.isRead ? 'none' : '2px solid #1890ff',
+                        border: item.isRead ? 'none' : '2px solid var(--color-info)',
                         flexShrink: 0,
                       }}
                     >
@@ -265,14 +266,14 @@ export default function NotificationBell() {
             width: 40,
             height: 40,
             transition: 'all 0.3s ease',
-            border: '1px solid #e8e8e8',
+            border: '1px solid var(--border-color-secondary)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = '#667eea';
-            e.currentTarget.style.color = '#667eea';
+            e.currentTarget.style.borderColor = 'var(--color-primary)';
+            e.currentTarget.style.color = 'var(--color-primary)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = '#e8e8e8';
+            e.currentTarget.style.borderColor = 'var(--border-color-secondary)';
             e.currentTarget.style.color = '';
           }}
         />

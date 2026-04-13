@@ -192,3 +192,19 @@ export const batchDeleteMessages = async (req: AuthRequest, res: Response) => {
     return errorResponse(res, errorMessage, 'BATCH_DELETE_FAILED');
   }
 };
+
+// 搜索消息
+export const searchMessages = async (req: AuthRequest, res: Response) => {
+  try {
+    const { keyword, userId } = req.query;
+    if (!keyword || typeof keyword !== 'string') {
+      return errorResponse(res, '请提供搜索关键词', 'INVALID_PARAM');
+    }
+    const userIdFilter = userId ? parseInt(userId as string) : undefined;
+    const messages = await messageService.searchMessages(req.user!.userId, keyword, userIdFilter);
+    return successResponse(res, messages);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '操作失败';
+    return errorResponse(res, errorMessage, 'SEARCH_MESSAGES_FAILED');
+  }
+};

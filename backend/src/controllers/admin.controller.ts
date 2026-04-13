@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
-import prisma from '../config/database';
+import prisma from '../services/db/prisma';
 import { successResponse, errorResponse } from '../utils/response';
 import bcrypt from 'bcrypt';
 import { createAdminLog } from './adminLog.controller';
@@ -40,6 +40,7 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
           username: true,
           email: true,
           avatar: true,
+          avatarData: true,
           bio: true,
           role: true,
           isActive: true,

@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Modal, Avatar, Typography, Button, Empty, Spin } from 'antd';
+import { Modal, Avatar, Typography, Button, Empty, Spin, Image } from 'antd';
 import { UserOutlined, EnvironmentOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { getPost } from '../api/post';
-import { parseImages } from '../utils/images';
+import { parseImages, getAvatarUrl } from '../utils/images';
 import type { Post } from '../types';
 
 const { Text, Paragraph } = Typography;
@@ -61,7 +61,7 @@ export default function PostDetailModal({ postId, visible, onClose }: Props) {
           {/* 用户信息 */}
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, padding: '20px 20px 16px', borderBottom: '1px solid #333', position: 'sticky', top: 0, background: '#1a1a1a', zIndex: 1 }}>
             <Avatar
-              src={post.user.avatar}
+              src={getAvatarUrl(post.user)}
               icon={<UserOutlined />}
               size={48}
               style={{ marginRight: 12 }}
@@ -104,21 +104,23 @@ export default function PostDetailModal({ postId, visible, onClose }: Props) {
 
           {/* 图片 */}
           <div style={{ padding: '0 20px', marginBottom: 16 }}>
-            {processedImages.map((img: string, index: number) => (
-              <img
-                key={index}
-                src={img}
-                alt={`post-${index}`}
-                style={{
-                  width: '100%',
-                  maxHeight: 400,
-                  objectFit: 'cover',
-                  borderRadius: 12,
-                  marginBottom: index < processedImages.length - 1 ? 12 : 0,
-                  display: 'block'
-                }}
-              />
-            ))}
+            <Image.PreviewGroup>
+              {processedImages.map((img: string, index: number) => (
+                <Image
+                  key={index}
+                  src={img}
+                  alt={`post-${index}`}
+                  style={{
+                    width: '100%',
+                    maxHeight: 400,
+                    objectFit: 'cover',
+                    borderRadius: 12,
+                    marginBottom: index < processedImages.length - 1 ? 12 : 0,
+                    display: 'block'
+                  }}
+                />
+              ))}
+            </Image.PreviewGroup>
           </div>
 
           {/* 统计信息 */}
