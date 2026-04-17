@@ -55,6 +55,10 @@
   --popover-bg: rgba(255, 255, 255, 0.98);
   --hover-bg: #ebebeb;
   --placeholder-bg: transparent;
+
+  /* 自动填充颜色 */
+  --autofill-bg: #ffffff;
+  --autofill-text: #262626;
 }
 
 /* ==================== 夜间模式 ==================== */
@@ -113,6 +117,10 @@
   --popover-bg: rgba(31, 31, 31, 0.98);
   --hover-bg: #2a2a2a;
   --placeholder-bg: transparent;
+
+  /* 自动填充颜色 */
+  --autofill-bg: #262626;
+  --autofill-text: #e6e6e6;
 }
 
 /* ==================== 全局样式 ==================== */
@@ -670,4 +678,30 @@ p, span, div {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--gradient-warm);
+}
+
+/* ==================== 浏览器自动填充样式修复 ==================== */
+/* WebKit (Chrome, Safari, Edge) 自动填充背景和文字颜色 */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--autofill-bg) inset !important;
+  -webkit-text-fill-color: var(--autofill-text) !important;
+  caret-color: var(--autofill-text) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Firefox 自动填充背景修复 */
+input:-moz-autofill {
+  background-color: var(--autofill-bg) !important;
+  color: var(--autofill-text) !important;
+}
+
+/* 确保 Ant Design 输入框也使用自动填充样式 */
+.ant-input-affix-wrapper input:-webkit-autofill,
+.ant-input-affix-wrapper input:-webkit-autofill:hover,
+.ant-input-affix-wrapper input:-webkit-autofill:focus,
+.ant-input-affix-wrapper input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--autofill-bg) inset !important;
 }

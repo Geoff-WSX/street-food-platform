@@ -48,8 +48,8 @@ export const deletePost = (id: number) =>
 export const toggleLike = (id: number) =>
   api.post<ApiResponse<{ liked: boolean; likeCount: number }>>(`/posts/${id}/like`).then((r) => r.data.data);
 
-export const toggleFavorite = (id: number) =>
-  api.post<ApiResponse<{ favorited: boolean; favoriteCount: number }>>(`/posts/${id}/favorite`).then((r) => r.data.data);
+export const toggleFavorite = (id: number, folderId?: number | null) =>
+  api.post<ApiResponse<{ favorited: boolean; favoriteCount: number }>>(`/posts/${id}/favorite`, { folderId }).then((r) => r.data.data);
 
 export const getAddressByLocation = (lat: number, lng: number) =>
   api.get<ApiResponse<{ address: string }>>('/posts/address/location', { params: { lat, lng } }).then((r) => r.data.data);
@@ -61,5 +61,8 @@ export const getRandomPosts = (params?: { limit?: number; excludeIds?: string })
 export const getPopularTags = (limit?: number) =>
   api.get<ApiResponse<{ id: number; name: string; postCount: number }[]>>('/tags/popular', { params: { limit } }).then((r) => r.data.data);
 
-export const getPostsByTag = (tag: string, params?: { page?: number; pageSize?: number }) =>
+export const getPostsByTag = (tag: string, params?: { page?: number; pageSize?: number; random?: boolean }) =>
   api.get<ApiResponse<PaginatedPosts>>(`/tags/${tag}/posts`, { params }).then((r) => r.data.data);
+
+export const getPostsByTagAndRegion = (tag: string, region?: string, params?: { page?: number; pageSize?: number }) =>
+  api.get<ApiResponse<PaginatedPosts>>('/posts/by-tag-and-region', { params: { tag, region, ...params } }).then((r) => r.data.data);

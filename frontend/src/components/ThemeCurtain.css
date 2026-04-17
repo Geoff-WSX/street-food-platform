@@ -1,0 +1,83 @@
+/* 窗帘容器 - 覆盖整个页面 */
+.theme-curtain {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 99999;
+  overflow: hidden;
+}
+
+/* 窗帘遮罩层 */
+.curtain-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transition: transform 1.2s cubic-bezier(0.65, 0, 0.35, 1);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* ==================== 切换到夜间模式 ==================== */
+/* 窗帘从上往下落下 */
+.theme-curtain.to-dark .curtain-overlay {
+  transform: translateY(-100%);
+}
+
+.theme-curtain.to-dark.animating .curtain-overlay {
+  transform: translateY(0);
+}
+
+/* 窗帘颜色 - 夜间模式（深色渐变） */
+.theme-curtain.to-dark .curtain-overlay {
+  background: linear-gradient(
+    135deg,
+    #0a0a0a 0%,
+    #1a1a2e 25%,
+    #16213e 50%,
+    #1a1a2e 75%,
+    #0f0f23 100%
+  );
+}
+
+/* ==================== 切换到日间模式 ==================== */
+/* 窗帘从下往上收起 */
+.theme-curtain.to-light .curtain-overlay {
+  transform: translateY(0);
+}
+
+.theme-curtain.to-light.animating .curtain-overlay {
+  transform: translateY(-100%);
+}
+
+/* 窗帘颜色 - 日间模式（浅色渐变） */
+.theme-curtain.to-light .curtain-overlay {
+  background: linear-gradient(
+    135deg,
+    #f0f4f8 0%,
+    #ffffff 25%,
+    #fffaf0 50%,
+    #ffffff 75%,
+    #f0f8ff 100%
+  );
+}
+
+/* 确保窗帘下方的内容仍然可见和可交互 */
+.theme-curtain {
+  pointer-events: none !important;
+}
+
+.theme-curtain * {
+  pointer-events: none !important;
+}
+
+/* 减少动画模式 */
+@media (prefers-reduced-motion: reduce) {
+  .theme-curtain .curtain-overlay {
+    transition-duration: 0.3s;
+  }
+}

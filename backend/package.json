@@ -1,7 +1,7 @@
 {
-  "name": "street-food-backend",
+  "name": "shiyu-backend",
   "version": "1.0.0",
-  "description": "街边美食分享平台 - 后端服务",
+  "description": "食遇 - 后端服务",
   "main": "dist/app.js",
   "scripts": {
     "dev": "nodemon src/app.ts",

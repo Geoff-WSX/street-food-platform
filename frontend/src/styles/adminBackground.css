@@ -1,0 +1,254 @@
+/* 管理员控制台专用背景样式 */
+
+/* 管理员页面容器 */
+.admin-page-container {
+  position: relative;
+  min-height: 100vh;
+  background: transparent;
+}
+
+/* 管理员页面背景 - 亮色模式 */
+.admin-page-bg {
+  position: relative;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+}
+
+/* 管理员页面背景 - 暗色模式 */
+[data-theme="dark"] .admin-page-bg {
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f172a 100%);
+}
+
+/* 科技感网格叠加层 */
+.admin-page-bg::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 1;
+  animation: gridMove 20s linear infinite;
+}
+
+@keyframes gridMove {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(50px, 50px);
+  }
+}
+
+/* 光晕效果 */
+.admin-page-bg::after {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle at center,
+    rgba(99, 102, 241, 0.05) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+  z-index: 2;
+  animation: glowPulse 8s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+/* 管理员卡片增强效果 */
+.admin-page-bg .ant-card {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .admin-page-bg .ant-card {
+  backdrop-filter: blur(10px);
+  background: rgba(30, 41, 59, 0.85) !important;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* 统计卡片特殊效果 */
+.admin-stat-card {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.admin-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.admin-stat-card:hover::before {
+  left: 100%;
+}
+
+.admin-stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(99, 102, 241, 0.2);
+}
+
+/* 表格增强效果 */
+.admin-page-bg .ant-table {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+[data-theme="dark"] .admin-page-bg .ant-table {
+  backdrop-filter: blur(10px);
+  background: rgba(30, 41, 59, 0.9) !important;
+}
+
+/* 表格固定列遮罩修复 */
+.admin-page-bg .ant-table-cell-fix-left,
+.admin-page-bg .ant-table-cell-fix-right {
+  background-color: inherit !important;
+}
+
+.admin-page-bg .ant-table-ping-left .ant-table-cell-fix-left-last::after,
+.admin-page-bg .ant-table-ping-right .ant-table-cell-fix-right-first::after {
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .admin-page-bg .ant-table-cell-fix-left,
+[data-theme="dark"] .admin-page-bg .ant-table-cell-fix-right {
+  background-color: rgba(30, 41, 59, 0.9) !important;
+}
+
+/* 标签页增强效果 */
+.admin-page-bg .ant-tabs {
+  backdrop-filter: blur(10px);
+}
+
+.admin-page-bg .ant-tabs-nav {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+}
+
+[data-theme="dark"] .admin-page-bg .ant-tabs-nav {
+  background: rgba(30, 41, 59, 0.9) !important;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+/* 科技感线条装饰 */
+.admin-tech-lines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+  overflow: hidden;
+}
+
+.admin-tech-lines::before,
+.admin-tech-lines::after {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(99, 102, 241, 0.1),
+    transparent
+  );
+  animation: scanLine 8s linear infinite;
+}
+
+.admin-tech-lines::before {
+  left: 20%;
+  animation-delay: 0s;
+}
+
+.admin-tech-lines::after {
+  right: 20%;
+  animation-delay: 4s;
+}
+
+@keyframes scanLine {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .admin-page-bg::before {
+    background-size: 30px 30px;
+  }
+
+  .admin-tech-lines {
+    display: none;
+  }
+}
+
+/* 性能优化：减少动画 */
+[data-reduced-motion="true"] .admin-page-bg::before,
+[data-reduced-motion="true"] .admin-page-bg::after,
+[data-reduced-motion="true"] .admin-tech-lines::before,
+[data-reduced-motion="true"] .admin-tech-lines::after {
+  animation: none;
+}
+
+/* 管理员页面标题特殊效果 */
+.admin-title-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="dark"] .admin-title-gradient {
+  background: linear-gradient(135deg, #a78bfa 0%, #f472b6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 加载动画优化 */
+.admin-loading-container {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="dark"] .admin-loading-container {
+  backdrop-filter: blur(10px);
+  background: rgba(30, 41, 59, 0.9);
+}

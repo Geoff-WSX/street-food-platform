@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../types';
 import * as postService from '../services/post.service';
+import * as tagService from '../services/tag.service';
 import { successResponse, errorResponse } from '../utils/response';
 import { processPostImagesUpload } from '../middleware/upload';
 
@@ -141,7 +142,9 @@ export const toggleFavorite = async (req: AuthRequest, res: Response) => {
     if (isNaN(postId)) {
       return errorResponse(res, '无效的动态ID', 'INVALID_PARAM');
     }
-    const result = await postService.toggleFavorite(req.user!.userId, postId);
+    const { folderId } = req.body;
+    // folderId 可以是 null（收藏到根目录）或数字（收藏到指定文件夹）
+    const result = await postService.toggleFavorite(req.user!.userId, postId, folderId);
     return successResponse(res, result);
   } catch (error: any) {
     return errorResponse(res, error.message, 'ACTION_FAILED');
@@ -199,6 +202,24 @@ export const getRandomPosts = async (req: AuthRequest, res: Response) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
     const excludeIds = req.query.excludeIds ? (req.query.excludeIds as string).split(',').map(Number) : [];
     const result = await postService.getRandomPosts(limit, excludeIds, req.user?.userId);
+    return successResponse(res, result);
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'FETCH_FAILED', 500);
+  }
+};
+
+export const getPostsByTagAndRegion = async (req: AuthRequest, res: Response) => {
+  try {
+    const tag = req.query.tag as string;
+    const region = req.query.region as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = Math.min(parseInt(req.query.pageSize as string) || 10, 50);
+
+    if (!tag) {
+      return errorResponse(res, '请提供话题名称', 'INVALID_PARAM');
+    }
+
+    const result = await tagService.getPostsByTagAndRegion(tag, region || '', page, pageSize);
     return successResponse(res, result);
   } catch (error: any) {
     return errorResponse(res, error.message, 'FETCH_FAILED', 500);

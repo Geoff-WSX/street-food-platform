@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import AuthGuard from './components/AuthGuard';
 import FloatingAIButton from './components/FloatingAIButton';
 import SearchModal from './components/SearchModal';
+import ThemeSwitcherWrapper from './components/ThemeSwitcherWrapper';
 import HomePage from './pages/HomePage';
 import PostDetailPage from './pages/PostDetailPage';
 import PublishModal from './components/PublishModal';
@@ -19,6 +20,7 @@ import { useThemeStore, applyTheme, applyAccessibilitySettings } from './store/t
 import { getMe } from './api/user';
 import { wsService, requestNotificationPermission } from './services/websocket';
 import { useScreenSize } from './hooks/useScreenSize';
+import FoodClickEffects from './components/FloatingFoodIcon';
 import './styles/designTokens.css';
 import './styles/backgrounds.css';
 import './styles/foodAnimations.css';
@@ -30,11 +32,14 @@ import './styles/homePage.css';
 import './styles/theme.css';
 import './styles/themeEnhancements.css';
 import './styles/themeFixes.css';
+import './styles/adminBackground.css';
 
 // 懒加载大型页面
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const AIAssistantPage = lazy(() => import('./pages/AIAssistantPage'));
+const ThemeTestPage = lazy(() => import('./pages/ThemeTestPage'));
+const AdminBackground = lazy(() => import('./components/AdminBackground'));
 
 const { Content } = Layout;
 
@@ -122,6 +127,9 @@ function AppContent() {
         return 'ai-page-bg';
       case '/login':
         return 'login-page-bg';
+      case '/admin':
+      case '/reports':
+        return 'admin-page-bg';
       default:
         if (location.pathname.startsWith('/post/')) {
           return 'post-detail-bg';
@@ -130,8 +138,24 @@ function AppContent() {
     }
   };
 
+  // 判断是否显示管理员背景
+  const showAdminBackground = location.pathname === '/admin' || location.pathname === '/reports';
+
   return (
     <>
+      {/* 主题切换窗帘动画 */}
+      <ThemeSwitcherWrapper />
+
+      {/* 管理员专用动态背景 */}
+      {showAdminBackground && (
+        <Suspense fallback={null}>
+          <AdminBackground />
+        </Suspense>
+      )}
+
+      {/* 科技感线条装饰 */}
+      {showAdminBackground && <div className="admin-tech-lines" />}
+
       <Layout style={{ minHeight: '100vh', backgroundColor: 'var(--bg-secondary)' }} className={getBackgroundClass()}>
         {location.pathname !== '/login' && (
         <Navbar
@@ -143,7 +167,9 @@ function AppContent() {
           maxWidth: 1200,
           margin: '0 auto',
           width: '100%',
-          padding: location.pathname === '/login' ? '0' : `0 ${screenSize.isSmallMobile ? 12 : screenSize.isMobile ? 16 : 24}px`
+          padding: location.pathname === '/login' ? '0' : `0 ${screenSize.isSmallMobile ? 12 : screenSize.isMobile ? 16 : 24}px`,
+          position: 'relative',
+          zIndex: 10,
         }}>
           <Routes>
             <Route path="/" element={<HomePage />} />
@@ -176,6 +202,14 @@ function AppContent() {
                 </Suspense>
               }
             />
+            <Route
+              path="/theme-test"
+              element={
+                <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}><Spin size="large" /></div>}>
+                  <ThemeTestPage />
+                </Suspense>
+              }
+            />
             <Route path="/friends" element={<AuthGuard><Navigate to={"/profile?tab=friends"} replace /></AuthGuard>} />
             <Route path="/friends/requests" element={<AuthGuard><FriendRequestsPage /></AuthGuard>} />
           </Routes>
@@ -184,6 +218,9 @@ function AppContent() {
 
       {/* 悬浮 AI 助手按钮 */}
       <FloatingAIButton />
+
+      {/* 点击空白处显示美食图标效果 - 全局启用 */}
+      <FoodClickEffects enabled={location.pathname !== '/login'} />
 
       {/* 发布动态弹窗 */}
       <PublishModal open={isModalOpen} onClose={handleClosePublishModal} />

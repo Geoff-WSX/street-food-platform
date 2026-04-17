@@ -133,7 +133,7 @@ export default function PublishPage() {
             🍜 发布美食动态
           </Title>
           <Text type="secondary" style={{ fontSize: 14, marginTop: 8, display: 'block' }}>
-            分享你发现的街边美食，让更多人了解
+            分享你发现的美食，让更多人了解
           </Text>
         </div>
 

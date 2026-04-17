@@ -372,3 +372,68 @@ export const getSystemStats = async (req: AuthRequest, res: Response) => {
     return errorResponse(res, error.message, 'FETCH_FAILED', 500);
   }
 };
+
+/**
+ * 同步所有动态的评论数（管理员）
+ */
+export const syncCommentCount = async (req: AuthRequest, res: Response) => {
+  try {
+    // 获取所有动态
+    const posts = await prisma.post.findMany({
+      select: {
+        id: true,
+        commentCount: true,
+      },
+    });
+
+    let updatedCount = 0;
+    const updates: Array<{ postId: number; oldCount: number; newCount: number }> = [];
+
+    // 逐个更新动态的评论数
+    for (const post of posts) {
+      // 计算实际的顶级评论数量（不包括回复）
+      const actualCommentCount = await prisma.comment.count({
+        where: {
+          postId: post.id,
+          parentId: null, // 只计算顶级评论
+        },
+      });
+
+      // 如果评论数不一致，更新
+      if (post.commentCount !== actualCommentCount) {
+        await prisma.post.update({
+          where: { id: post.id },
+          data: { commentCount: actualCommentCount },
+        });
+        updatedCount++;
+        updates.push({
+          postId: post.id,
+          oldCount: post.commentCount,
+          newCount: actualCommentCount,
+        });
+      }
+    }
+
+    // 记录操作日志
+    await createAdminLog({
+      adminId: req.user!.userId,
+      action: 'SYNC_DATA',
+      targetType: 'SYSTEM',
+      targetId: undefined,
+      targetName: '评论数同步',
+      description: `同步了 ${posts.length} 条动态的评论数，更新了 ${updatedCount} 条`,
+      oldValue: { totalPosts: posts.length },
+      newValue: { updatedPosts: updatedCount },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
+    return successResponse(res, {
+      totalPosts: posts.length,
+      updatedCount,
+      updates: updates.slice(0, 100), // 只返回前100条更新记录
+    }, `同步完成，更新了 ${updatedCount} 条动态`);
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'SYNC_FAILED', 500);
+  }
+};

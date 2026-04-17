@@ -82,7 +82,97 @@ export const getPopularTags = async (limit: number = 20) => {
 /**
  * 根据标签获取帖子
  */
-export const getPostsByTag = async (tagName: string, page: number = 1, pageSize: number = 10) => {
+export const getPostsByTag = async (tagName: string, page: number = 1, pageSize: number = 10, random: boolean = false) => {
+  const normalizedName = tagName.trim().toLowerCase().replace(/#/g, '');
+
+  const tag = await prisma.tag.findUnique({
+    where: { name: normalizedName },
+  });
+
+  if (!tag) {
+    return { data: [], pagination: { page, pageSize, total: 0, totalPages: 0 } };
+  }
+
+  const skip = (page - 1) * pageSize;
+
+  // 随机模式：从所有匹配的帖子中随机选取
+  let postTags;
+  if (random) {
+    const allPostTags = await prisma.postTag.findMany({
+      where: { tagId: tag.id },
+      select: { postId: true },
+    });
+
+    if (allPostTags.length === 0) {
+      return { data: [], pagination: { page, pageSize, total: 0, totalPages: 0 } };
+    }
+
+    // 随机打乱并选取 pageSize 个
+    const shuffled = allPostTags.sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, pageSize);
+    const selectedIds = selected.map(pt => pt.postId);
+
+    postTags = await prisma.postTag.findMany({
+      where: { postId: { in: selectedIds } },
+      include: {
+        post: {
+          include: {
+            user: { select: { id: true, username: true, avatar: true, avatarData: true } },
+            tags: {
+              include: { tag: { select: { id: true, name: true } } },
+            },
+          },
+        },
+      },
+    });
+  } else {
+    const [pts, total] = await Promise.all([
+      prisma.postTag.findMany({
+        where: { tagId: tag.id },
+        skip,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          post: {
+            include: {
+              user: { select: { id: true, username: true, avatar: true, avatarData: true } },
+              tags: {
+                include: { tag: { select: { id: true, name: true } } },
+              },
+            },
+          },
+        },
+      }),
+      prisma.postTag.count({ where: { tagId: tag.id } }),
+    ]);
+    postTags = pts;
+  }
+
+  return {
+    data: postTags.map(pt => ({
+      ...pt.post,
+      user: pt.post.user,
+      images: pt.post.images ? JSON.parse(pt.post.images) : [],
+      tags: pt.post.tags?.map((pst: any) => ({ id: pst.tag.id, name: pst.tag.name })) || [],
+    })),
+    pagination: {
+      page,
+      pageSize,
+      total: 0,
+      totalPages: 0,
+    },
+  };
+};
+
+/**
+ * 根据标签和地区获取帖子
+ */
+export const getPostsByTagAndRegion = async (
+  tagName: string,
+  region: string,
+  page: number = 1,
+  pageSize: number = 10
+) => {
   const skip = (page - 1) * pageSize;
   const normalizedName = tagName.trim().toLowerCase().replace(/#/g, '');
 
@@ -94,9 +184,17 @@ export const getPostsByTag = async (tagName: string, page: number = 1, pageSize:
     return { data: [], pagination: { page, pageSize, total: 0, totalPages: 0 } };
   }
 
+  // 构建地址筛选条件
+  const addressFilter = region ? { contains: region } : undefined;
+
+  const whereCondition: any = { tagId: tag.id };
+  if (addressFilter) {
+    whereCondition.post = { address: addressFilter };
+  }
+
   const [postTags, total] = await Promise.all([
     prisma.postTag.findMany({
-      where: { tagId: tag.id },
+      where: whereCondition,
       skip,
       take: pageSize,
       orderBy: { createdAt: 'desc' },
@@ -104,11 +202,14 @@ export const getPostsByTag = async (tagName: string, page: number = 1, pageSize:
         post: {
           include: {
             user: { select: { id: true, username: true, avatar: true, avatarData: true } },
+            tags: {
+              include: { tag: { select: { id: true, name: true } } },
+            },
           },
         },
       },
     }),
-    prisma.postTag.count({ where: { tagId: tag.id } }),
+    prisma.postTag.count({ where: whereCondition }),
   ]);
 
   return {
@@ -116,6 +217,7 @@ export const getPostsByTag = async (tagName: string, page: number = 1, pageSize:
       ...pt.post,
       user: pt.post.user,
       images: pt.post.images ? JSON.parse(pt.post.images) : [],
+      tags: pt.post.tags?.map((pst: any) => ({ id: pst.tag.id, name: pst.tag.name })) || [],
     })),
     pagination: {
       page,

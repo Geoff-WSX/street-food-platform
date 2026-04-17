@@ -20,15 +20,8 @@ export const useTheme = () => {
 
   // 切换主题（带动画）
   const toggleWithAnimation = () => {
-    // 添加过渡动画类
-    document.body.classList.add('theme-transitioning');
-
-    setTimeout(() => {
-      toggleTheme();
-      setTimeout(() => {
-        document.body.classList.remove('theme-transitioning');
-      }, 300); // 等待过渡完成
-    }, 50);
+    // 动画由 ThemeTransition 组件处理，这里直接切换主题
+    toggleTheme();
   };
 
   // 监听主题变化

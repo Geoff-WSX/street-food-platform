@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Row, Col, Card, Typography, Space, TreeSelect, Tag, Empty, Skeleton, Button } from 'antd';
-import { StarFilled, FireOutlined, CrownOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import { getPosts } from '../api/post';
+import { Row, Col, Card, Typography, Space, Empty, Skeleton, Button } from 'antd';
+import { StarFilled, FireOutlined, CrownOutlined } from '@ant-design/icons';
+import { getPosts, getPopularTags } from '../api/post';
 import PostCard from '../components/PostCard';
+import PostFilterBar from '../components/PostFilterBar';
 import FoodBackground from '../components/FoodBackground';
 import type { Post } from '../types';
+import '../styles/urbanInteractions.css';
 
 const { Title, Text } = Typography;
 
@@ -236,9 +238,12 @@ export default function RankingPage() {
   const [loading, setLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('combined');
+  const [popularTags, setPopularTags] = useState<{ id: number; name: string; postCount: number }[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string>('');
 
   useEffect(() => {
     fetchPosts();
+    fetchPopularTags();
   }, []);
 
   const fetchPosts = async () => {
@@ -250,6 +255,15 @@ export default function RankingPage() {
       // 忽略错误
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPopularTags = async () => {
+    try {
+      const data = await getPopularTags(20);
+      setPopularTags(data || []);
+    } catch {
+      // 忽略错误
     }
   };
 
@@ -271,6 +285,13 @@ export default function RankingPage() {
       // 选了省市区
       return address.includes(parts[0]) && address.includes(parts[1]) && address.includes(parts[2]);
     }
+  };
+
+  // 根据话题过滤
+  const filterByTag = (post: Post) => {
+    if (!selectedTag) return true;
+    if (!post.tags || post.tags.length === 0) return false;
+    return post.tags.some(t => t.name === selectedTag);
   };
 
   // 排序动态
@@ -296,7 +317,7 @@ export default function RankingPage() {
   };
 
   // 过滤和排序后的动态
-  const filteredPosts = sortPosts(posts.filter(filterByLocation));
+  const filteredPosts = sortPosts(posts.filter(post => filterByLocation(post) && filterByTag(post)));
 
   if (loading) {
     return (
@@ -340,118 +361,84 @@ export default function RankingPage() {
           </Title>
           <CrownOutlined style={{ fontSize: 36, color: '#FFD700', animation: 'crownBounce 2s ease-in-out infinite 0.5s' }} />
         </div>
-        <Text type="secondary" style={{ fontSize: 14, color: '#8c8c8c' }}>
-          🔥 发现最受欢迎的街边美食
+        <Text type="secondary" style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>
+          🔥 发现最受欢迎的美食
         </Text>
       </div>
 
       {/* 筛选条件 */}
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 20px', position: 'relative', zIndex: 1 }}>
-        <Card
-          style={{
-            marginBottom: 20,
-            borderRadius: 16,
-            border: '1px solid rgba(255, 215, 0, 0.15)',
-            boxShadow: '0 3px 16px rgba(255, 215, 0, 0.08)',
-          }}
-          bodyStyle={{ padding: '16px 20px' }}
-        >
-          {/* 第一行：地区筛选 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+        <PostFilterBar
+          selectedLocation={selectedLocation}
+          onLocationChange={setSelectedLocation}
+          selectedTag={selectedTag}
+          onTagChange={setSelectedTag}
+          popularTags={popularTags}
+          locationTreeData={LOCATION_DATA}
+          variant="ranking"
+          showStats={false}
+        />
+
+        {/* 排序方式 */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12,
+          marginBottom: 20,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
               padding: '6px 12px',
-              background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 165, 0, 0.08) 100%)',
-              borderRadius: 10
-            }}>
-              <EnvironmentOutlined style={{ color: '#FFA500', fontSize: 14 }} />
-              <Text strong style={{ fontSize: 13, color: '#D48806' }}>地区</Text>
-            </div>
-            <TreeSelect
-              value={selectedLocation}
-              onChange={setSelectedLocation}
-              treeData={LOCATION_DATA}
-              placeholder="选择地区"
-              style={{ width: 180 }}
-              size="large"
-              allowClear
-              showSearch
-              treeDefaultExpandAll={false}
-            />
-            {selectedLocation && (
-              <Tag
-                closable
-                onClose={() => setSelectedLocation('')}
-                style={{
-                  borderRadius: 12,
-                  padding: '4px 10px',
-                  fontSize: 12,
-                  background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 165, 0, 0.08) 100%)',
-                  color: '#D48806',
-                  border: '1px solid rgba(255, 215, 0, 0.25)'
-                }}
-              >
-                📍 {selectedLocation.split('-').pop()}
-              </Tag>
-            )}
-          </div>
-
-          {/* 第二行：排序方式和统计 */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                background: 'linear-gradient(135deg, rgba(255, 77, 79, 0.08) 0%, rgba(255, 77, 79, 0.04) 100%)',
-                borderRadius: 10,
-              }}>
-                <StarFilled style={{ color: '#ff4d4f', fontSize: 14 }} />
-                <Text strong style={{ fontSize: 13, color: '#262626' }}>排序</Text>
-              </div>
-              <Space size={6}>
-                {SORT_OPTIONS.map(option => (
-                  <Button
-                    key={option.value}
-                    type={sortBy === option.value ? 'primary' : 'default'}
-                    onClick={() => setSortBy(option.value)}
-                    size={sortBy === option.value ? 'middle' : 'small'}
-                    style={{
-                      borderRadius: 18,
-                      fontWeight: 500,
-                      fontSize: 13,
-                      ...(sortBy === option.value ? {
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        border: 'none'
-                      } : {})
-                    }}
-                  >
-                    {option.label}
-                  </Button>
-                ))}
-              </Space>
-            </div>
-
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '6px 14px',
               background: 'linear-gradient(135deg, rgba(255, 77, 79, 0.08) 0%, rgba(255, 77, 79, 0.04) 100%)',
-              borderRadius: 12,
-              border: '1px solid rgba(255, 77, 79, 0.15)'
+              borderRadius: 10,
             }}>
-              <FireOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />
-              <Text strong style={{ fontSize: 15, color: '#ff4d4f' }}>
-                {filteredPosts.length}
-              </Text>
-              <Text style={{ fontSize: 12, color: '#8c8c8c' }}>条动态</Text>
+              <StarFilled style={{ color: '#ff4d4f', fontSize: 14 }} />
+              <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>排序</Text>
             </div>
+            <Space size={6}>
+              {SORT_OPTIONS.map(option => (
+                <Button
+                  key={option.value}
+                  type={sortBy === option.value ? 'primary' : 'default'}
+                  onClick={() => setSortBy(option.value)}
+                  size={sortBy === option.value ? 'middle' : 'small'}
+                  style={{
+                    borderRadius: 18,
+                    fontWeight: 500,
+                    fontSize: 13,
+                    ...(sortBy === option.value ? {
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      border: 'none'
+                    } : {})
+                  }}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </Space>
           </div>
-        </Card>
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '6px 14px',
+            background: 'linear-gradient(135deg, rgba(255, 77, 79, 0.08) 0%, rgba(255, 77, 79, 0.04) 100%)',
+            borderRadius: 12,
+            border: '1px solid rgba(255, 77, 79, 0.15)'
+          }}>
+            <FireOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />
+            <Text strong style={{ fontSize: 15, color: '#ff4d4f' }}>
+              {filteredPosts.length}
+            </Text>
+            <Text style={{ fontSize: 12, color: '#8c8c8c' }}>条动态</Text>
+          </div>
+        </div>
       </div>
 
       {/* 空状态 */}
@@ -468,7 +455,7 @@ export default function RankingPage() {
               description={
                 <Space direction="vertical" style={{ gap: 12 }}>
                   <div style={{ fontSize: 56 }}>🏆</div>
-                  <Text style={{ fontSize: 16, color: '#595959', fontWeight: 500 }}>
+                  <Text style={{ fontSize: 16, color: 'var(--text-secondary)', fontWeight: 500 }}>
                     {selectedLocation ? `${selectedLocation.split('-').pop()}暂无美食动态` : '暂无美食动态'}
                   </Text>
                   <Text type="secondary" style={{ fontSize: 14 }}>
@@ -500,7 +487,7 @@ export default function RankingPage() {
           {/* 美食榜列表 */}
           <Row gutter={[18, 18]}>
             {filteredPosts.map((post, index) => (
-              <Col key={post.id} xs={24} sm={12} md={8} lg={6} style={{ display: 'flex', animation: `fadeInUp 0.5s ease ${index * 0.05}s both` }}>
+              <Col key={post.id} xs={24} sm={12} md={8} lg={6} className={`stagger-fade-in delay-${Math.min(index + 1, 8)}`} style={{ display: 'flex' }}>
                 <div style={{ width: '100%', display: 'flex', position: 'relative', height: 480 }}>
                   <div style={{ width: '100%', height: '100%', position: 'relative' }}>
                     <PostCard post={post} from="/ranking" onUpdate={handleUpdate} showRank rank={index} />
@@ -519,7 +506,7 @@ export default function RankingPage() {
           }}>
             <Space size={10}>
               <div style={{ width: 50, height: 1, background: 'linear-gradient(to right, transparent, #FFD700, transparent)' }} />
-              <Text style={{ fontSize: 13, color: '#8c8c8c' }}>
+              <Text style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
                 按 <Text strong style={{ color: '#FFA500' }}>{SORT_OPTIONS.find(s => s.value === sortBy)?.label}</Text> 排名
               </Text>
               <div style={{ width: 50, height: 1, background: 'linear-gradient(to right, transparent, #FFD700, transparent)' }} />
@@ -529,16 +516,6 @@ export default function RankingPage() {
       )}
 
       <style>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
         @keyframes crownBounce {
           0%, 100% {
             transform: translateY(0) rotate(0deg);

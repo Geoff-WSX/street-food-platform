@@ -25,6 +25,9 @@ router.use(requireAdmin);
 // 获取系统统计
 router.get('/stats', adminController.getSystemStats);
 
+// 同步评论数
+router.post('/sync-comment-count', adminController.syncCommentCount);
+
 // 获取所有用户
 router.get('/users', adminController.getAllUsers);
 

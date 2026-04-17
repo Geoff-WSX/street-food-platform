@@ -1,7 +1,8 @@
 {
-  "name": "frontend",
+  "name": "shiyu-frontend",
   "private": true,
   "version": "0.0.0",
+  "description": "食遇 - 发现身边的美食",
   "type": "module",
   "scripts": {
     "dev": "vite",

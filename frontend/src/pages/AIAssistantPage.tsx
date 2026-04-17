@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Card, Input, Button, Space, Typography, Avatar, Spin, Tag, message, Badge, List, Modal, Switch, Tooltip
+  Card, Input, Button, Space, Typography, Avatar, Spin, Tag, message, Badge, List, Modal, Switch, Tooltip, Alert
 } from 'antd';
 import {
   SendOutlined, RobotOutlined, UserOutlined, BulbOutlined,
   EnvironmentOutlined, FireOutlined, StarOutlined, CloseOutlined,
   PlusOutlined, CarOutlined, CompassOutlined, MessageOutlined,
   DeleteOutlined, HistoryOutlined, ArrowLeftOutlined,
-  SafetyOutlined
+  SafetyOutlined, ReloadOutlined
 } from '@ant-design/icons';
 import { chatWithAI, type ChatMessage } from '../api/ai';
 import { getPosts } from '../api/post';
@@ -39,16 +39,52 @@ const STORAGE_KEYS = {
   CURRENT_SESSION: 'xiaobian_current_session',
 };
 
+// 消息发送状态
+type MessageStatus = 'sending' | 'success' | 'error';
+
+// 扩展的消息类型，包含状态信息
+interface MessageWithStatus extends ChatMessage {
+  status?: MessageStatus;
+  errorMessage?: string;
+}
+
 // 美食模式欢迎消息
 const foodieWelcomeMessage: ChatMessage = {
   role: 'assistant',
-  content: '你好呀！我是小边 🍜 你的街边美食助手！\n\n我可以帮你：\n🔍 搜索附近的美食\n🍜 查找特定类型的街边小吃\n📍 根据地点推荐美食聚集地\n🔥 查看热门美食榜单\n\n试试这样问我：\n• "杭州有什么好吃的？"\n• "推荐辣味美食"\n• "上海哪里有小吃？"\n\n说说你想了解什么吧～',
+  content: '你好呀！我是小边 🍜 你的食遇美食助手！\n\n我可以帮你：\n🔍 搜索附近的美食\n🍜 查找特定类型的街头美食\n📍 根据地点推荐美食聚集地\n🔥 查看热门美食榜单\n\n试试这样问我：\n• "杭州有什么好吃的？"\n• "推荐辣味美食"\n• "上海哪里有小吃？"\n\n说说你想了解什么吧～',
 };
 
 // 管理模式欢迎消息
 const adminWelcomeMessage: ChatMessage = {
   role: 'assistant',
   content: '小边管理系统已启动 🛠️\n\n我可以帮你：\n🔍 排查项目中的 Bug 和问题\n📊 查看平台数据统计\n🛠️ 执行代码修复\n✅ 验证修复结果\n📋 审核举报内容\n\n当前技能：\n• Bug 排查/审核/解决/验证\n• 举报审核与处理\n• 平台数据统计\n• 系统状态监控\n• 代码分析与修改\n\n试试这样问我：\n• "查看平台数据"\n• "排查前端报错"\n• "有哪些待处理的举报？"\n\n请告诉我需要做什么～',
+};
+
+// 系统提示词生成器
+const createSystemPrompt = (mode: XiaobianMode): string => {
+  if (mode === 'admin') {
+    return `你是小边管理系统，具有以下技能：
+1. Bug 排查技能 (bug-detection) - 排查项目中的问题
+2. Bug 审核技能 (bug-review) - 审核问题并给出方案
+3. Bug 解决技能 (bug-solution) - 执行代码修复
+4. Bug 验证技能 (bug-verification) - 验证修复结果
+5. 审核员技能 (review-guide) - 审核举报内容
+6. 证据分析技能 (evidence-analysis) - 分析证据材料
+7. 违规判断技能 (violation-judgment) - 判断是否违规
+
+新增能力：
+- 平台数据统计 (get_dashboard_stats) - 查看用户、动态、评论等统计数据
+- 系统状态监控 (get_system_info) - 查看CPU、内存、数据库连接等系统信息
+- 动态搜索 (search_posts) - 按关键词和地点搜索美食动态
+- 评论查询 (get_comments) - 查看评论详情
+
+你有权限访问和分析项目代码、查看数据库、执行命令。请根据用户需求使用合适的技能。`;
+  }
+
+  return `你是小边，一个热情的食遇美食助手！你热爱美食，喜欢探索城市的街头美食。
+你可以推荐美食聚集地、查找特定类型的小吃、给出旅游美食攻略、搜索热门美食。
+回答时要用轻松友好的语气，多使用表情符号，让对话更有趣。
+当你需要搜索美食时，可以使用 search_posts 工具来查找相关内容。`;
 };
 
 // 生成会话标题
@@ -58,6 +94,14 @@ const generateSessionTitle = (messages: ChatMessage[]): string => {
   const firstMessage = userMessages[0].content;
   return firstMessage.length > 15 ? firstMessage.substring(0, 15) + '...' : firstMessage;
 };
+
+// 添加打字动画样式
+const typingAnimationStyle = `
+  @keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-4px); }
+  }
+`;
 
 export default function AIAssistantPage() {
   const navigate = useNavigate();
@@ -91,28 +135,24 @@ export default function AIAssistantPage() {
     const savedSessionId = localStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
     const storedSessions = localStorage.getItem(STORAGE_KEYS.SESSIONS);
 
-    console.log('Loading initial state:', { savedSessionId, hasStoredSessions: !!storedSessions });
-
     if (savedSessionId && storedSessions) {
       try {
         const allSessions: ChatSession[] = JSON.parse(storedSessions);
-        console.log('Found', allSessions.length, 'sessions in storage');
         const currentSession = allSessions.find(s => s.id === savedSessionId);
         if (currentSession) {
-          console.log('Loading current session:', currentSession.id, 'with', currentSession.messages.length, 'messages');
           return {
             messages: currentSession.messages,
             suggestedPosts: currentSession.suggestedPosts,
             excludedPostIds: new Set(currentSession.excludedPostIds),
             showSuggestions: currentSession.suggestedPosts.length > 0,
+            mode: currentSession.mode || 'foodie' as XiaobianMode,
           };
         }
       } catch (e) {
-        console.error('Failed to load session state:', e);
+        // 静默处理错误，使用默认状态
       }
     }
 
-    console.log('No saved session found, using default');
     return {
       messages: [foodieWelcomeMessage],
       suggestedPosts: [],
@@ -123,7 +163,7 @@ export default function AIAssistantPage() {
   };
 
   const initialState = getInitialState();
-  const [messages, setMessages] = useState<ChatMessage[]>(initialState.messages);
+  const [messages, setMessages] = useState<MessageWithStatus[]>(initialState.messages);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [suggestedPosts, setSuggestedPosts] = useState<Post[]>(initialState.suggestedPosts);
@@ -131,18 +171,26 @@ export default function AIAssistantPage() {
   const [showSuggestions, setShowSuggestions] = useState(initialState.showSuggestions);
   const [showMap, setShowMap] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showTypingIndicator, setShowTypingIndicator] = useState(false);
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<any>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 使用 ref 来确保总是获取最新的模式值
-  const xiaobianModeRef = useRef<XiaobianMode>(xiaobianMode);
+  const xiaobianModeRef = useRef<XiaobianMode>(initialState.mode);
 
   // 更新 ref 当模式变化时
   useEffect(() => {
     xiaobianModeRef.current = xiaobianMode;
   }, [xiaobianMode]);
+
+  // 初始化模式状态
+  useEffect(() => {
+    setXiaobianMode(initialState.mode);
+  }, []);
 
   // 根据模式获取推荐问题
   const getQuickQuestions = useCallback((mode: XiaobianMode) => {
@@ -263,13 +311,20 @@ export default function AIAssistantPage() {
     return Array.from(new Set(questions)).slice(0, 4);
   }, []);
 
-  // 保存会话到 localStorage
+  // 保存会话到 localStorage（优化性能）
   const saveSessions = useCallback((newSessions: ChatSession[]) => {
     try {
-      localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(newSessions));
-      console.log('Sessions saved:', newSessions.length, 'sessions');
+      // 清理防抖定时器
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+
+      // 使用防抖避免频繁保存
+      saveTimerRef.current = setTimeout(() => {
+        localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(newSessions));
+      }, 300);
     } catch (e) {
-      console.error('Failed to save sessions:', e);
+      // 静默处理存储错误
     }
   }, []);
 
@@ -322,14 +377,14 @@ export default function AIAssistantPage() {
     setLoading(false);
   }, []);
 
-  // 保存当前会话状态
+  // 保存当前会话状态（优化性能）
   const saveCurrentSession = useCallback(() => {
     if (!currentSessionId) {
-      console.log('No current session ID, skipping save');
       return;
     }
 
-    console.log('Saving current session:', currentSessionId, 'with', messages.length, 'messages');
+    // 清理状态消息（移除临时状态信息）
+    const cleanMessages = messages.map(({ status, errorMessage, ...msg }) => msg);
 
     // 直接从 localStorage 读取最新数据
     const storedSessions = localStorage.getItem(STORAGE_KEYS.SESSIONS);
@@ -342,10 +397,10 @@ export default function AIAssistantPage() {
       // 更新现有会话
       allSessions[sessionIndex] = {
         ...allSessions[sessionIndex],
-        messages,
+        messages: cleanMessages,
         suggestedPosts,
         excludedPostIds: Array.from(excludedPostIds),
-        title: generateSessionTitle(messages),
+        title: generateSessionTitle(cleanMessages),
         updatedAt: Date.now(),
       };
     } else {
@@ -353,8 +408,8 @@ export default function AIAssistantPage() {
       const newSession: ChatSession = {
         id: currentSessionId,
         mode: xiaobianMode,
-        title: generateSessionTitle(messages),
-        messages,
+        title: generateSessionTitle(cleanMessages),
+        messages: cleanMessages,
         suggestedPosts,
         excludedPostIds: Array.from(excludedPostIds),
         createdAt: Date.now(),
@@ -370,16 +425,24 @@ export default function AIAssistantPage() {
     setSessions(allSessions);
   }, [currentSessionId, messages, suggestedPosts, excludedPostIds, saveSessions, xiaobianMode]);
 
-  // 在消息、推荐或排除状态变化时保存当前会话
-  // 使用防抖避免频繁保存
+  // 在消息、推荐或排除状态变化时保存当前会话（优化防抖）
   useEffect(() => {
     if (currentSessionId && messages.length >= 1) {
       const timer = setTimeout(() => {
         saveCurrentSession();
-      }, 500); // 500ms 防抖
+      }, 800); // 800ms 防抖，减少保存频率
       return () => clearTimeout(timer);
     }
   }, [messages, suggestedPosts, excludedPostIds, currentSessionId, saveCurrentSession]);
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, []);
 
   // 保存当前会话ID到localStorage
   useEffect(() => {
@@ -476,10 +539,8 @@ export default function AIAssistantPage() {
 
     // 使用 ref 获取最新的模式值
     const currentMode = xiaobianModeRef.current;
-    console.log('handleSend - current mode:', currentMode, 'xiaobianMode state:', xiaobianMode);
 
     if (!sessionId) {
-
       // 创建新会话
       const welcomeMessage = currentMode === 'foodie' ? foodieWelcomeMessage : adminWelcomeMessage;
       const newSession: ChatSession = {
@@ -504,57 +565,73 @@ export default function AIAssistantPage() {
       localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, newSession.id);
 
       sessionId = newSession.id;
-      console.log('Created new session:', sessionId);
     }
 
-    // 添加用户消息
-    const newUserMessage: ChatMessage = { role: 'user', content: userMessage };
+    // 添加用户消息（带状态）
+    const newUserMessage: MessageWithStatus = {
+      role: 'user',
+      content: userMessage,
+      status: 'sending'
+    };
     setMessages((prev) => [...prev, newUserMessage]);
     setInputValue('');
     setLoading(true);
+    setShowTypingIndicator(true);
     setShowSuggestions(false);
     setExcludedPostIds(new Set());
+    setLastFailedMessage(null);
+
+    // 立即保存用户消息到会话（修复首次消息不保存的问题）
+    try {
+      const storedSessions = localStorage.getItem(STORAGE_KEYS.SESSIONS);
+      const allSessions: ChatSession[] = storedSessions ? JSON.parse(storedSessions) : [];
+      const sessionIndex = allSessions.findIndex(s => s.id === sessionId);
+      if (sessionIndex >= 0) {
+        const cleanUserMessage = { role: 'user' as const, content: userMessage };
+        allSessions[sessionIndex] = {
+          ...allSessions[sessionIndex],
+          messages: [...allSessions[sessionIndex].messages, cleanUserMessage],
+          title: userMessage.length > 15 ? userMessage.substring(0, 15) + '...' : userMessage,
+          updatedAt: Date.now(),
+        };
+        localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(allSessions));
+
+        // 更新会话标题
+        setSessions(allSessions);
+      }
+    } catch (e) {
+      // 静默处理存储错误
+    }
 
     // 创建新的 AbortController
     abortControllerRef.current = new AbortController();
 
     try {
-      // 使用 ref 获取最新的模式值
-      const currentMode = xiaobianModeRef.current;
+      // 使用预构建的系统提示词
+      const systemPrompt = createSystemPrompt(currentMode);
 
-      // 根据模式设置系统提示
-      const systemPrompt = currentMode === 'admin'
-        ? `你是小边管理系统，具有以下技能：
-1. Bug 排查技能 (bug-detection) - 排查项目中的问题
-2. Bug 审核技能 (bug-review) - 审核问题并给出方案
-3. Bug 解决技能 (bug-solution) - 执行代码修复
-4. Bug 验证技能 (bug-verification) - 验证修复结果
-5. 审核员技能 (review-guide) - 审核举报内容
-6. 证据分析技能 (evidence-analysis) - 分析证据材料
-7. 违规判断技能 (violation-judgment) - 判断是否违规
-
-新增能力：
-- 平台数据统计 (get_dashboard_stats) - 查看用户、动态、评论等统计数据
-- 系统状态监控 (get_system_info) - 查看CPU、内存、数据库连接等系统信息
-- 动态搜索 (search_posts) - 按关键词和地点搜索美食动态
-- 评论查询 (get_comments) - 查看评论详情
-
-你有权限访问和分析项目代码、查看数据库、执行命令。请根据用户需求使用合适的技能。`
-        : `你是小边，一个热情的街边美食助手！你热爱美食，喜欢探索城市的街头小吃。
-你可以推荐美食聚集地、查找特定类型的小吃、给出旅游美食攻略、搜索热门美食。
-回答时要用轻松友好的语气，多使用表情符号，让对话更有趣。
-当你需要搜索美食时，可以使用 search_posts 工具来查找相关内容。`;
+      // 获取当前消息历史（不包含状态信息）
+      const cleanMessages = messages.map(({ status, errorMessage, ...msg }) => msg);
+      const conversationHistory = [...cleanMessages, { role: 'user' as const, content: userMessage }];
 
       const res = await chatWithAI({
         message: userMessage,
-        conversationHistory: [...messages, newUserMessage],
+        conversationHistory,
         systemPrompt,
         mode: currentMode,
       }, abortControllerRef.current.signal);
 
-      const aiMessage: ChatMessage = {
+      // 更新用户消息状态为成功
+      setMessages((prev) =>
+        prev.map((msg, index) =>
+          index === prev.length - 1 ? { ...msg, status: 'success' as const } : msg
+        )
+      );
+
+      const aiMessage: MessageWithStatus = {
         role: 'assistant',
         content: res.data.data.message,
+        status: 'success',
       };
       setMessages((prev) => [...prev, aiMessage]);
 
@@ -567,20 +644,47 @@ export default function AIAssistantPage() {
 
       if (suggestedIds.length > 0) {
         const allPosts = await getPosts({ page: 1, pageSize: 100 });
-        // getPosts returns PaginatedPosts which has data property
         const postsData = allPosts.data || [];
         const suggested = postsData.filter((p: Post) => suggestedIds.includes(p.id));
-        setSuggestedPosts(suggested);
-        // 自动显示推荐
-        setShowSuggestions(true);
+        if (suggested.length > 0) {
+          setSuggestedPosts(suggested);
+          setShowSuggestions(true);
+        }
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : '小边暂时无法回复，请稍后再试';
-      void message.error(errorMessage);
+      const errorMessage = error instanceof Error ? error.message : '网络连接失败，请检查网络后重试';
+
+      // 更新用户消息状态为失败
+      setMessages((prev) =>
+        prev.map((msg, index) =>
+          index === prev.length - 1 ? {
+            ...msg,
+            status: 'error' as const,
+            errorMessage
+          } : msg
+        )
+      );
+
+      // 保存失败的消息以便重发
+      setLastFailedMessage(userMessage);
+
+      // 显示友好的错误提示
+      void message.error({
+        content: errorMessage,
+        duration: 5,
+        key: 'ai-error'
+      });
     } finally {
       setLoading(false);
+      setShowTypingIndicator(false);
     }
   };
+
+  // 重发失败的消息
+  const handleResendMessage = useCallback(async (messageContent: string) => {
+    setLastFailedMessage(null);
+    await handleSend(messageContent);
+  }, [handleSend]);
 
   const handlePostClick = (postId: number) => {
     navigate(`/post/${postId}`);
@@ -643,6 +747,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
     setSuggestedPosts([]);
     setExcludedPostIds(new Set());
     setShowSuggestions(false);
+    setLastFailedMessage(null);
     void message.success('已清空当前对话');
   };
 
@@ -705,18 +810,20 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
   const visiblePosts = suggestedPosts.filter(p => !excludedPostIds.has(p.id));
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-      background: 'var(--bg-primary)',
-      zIndex: 1000
-    }}>
+    <>
+      <style>{typingAnimationStyle}</style>
+      <div style={{
+        position: 'fixed',
+        top: 70, // Offset by Navbar height (70px) to avoid being covered
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        background: 'var(--bg-primary)',
+        zIndex: 1000
+      }}>
       {/* 顶部导航栏 */}
       <div style={{ height: 50, background: 'var(--navbar-bg)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 12, flexShrink: 0 }}>
         <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(fromPath)} style={{ color: 'var(--text-primary)' }} title="返回" />
@@ -825,32 +932,119 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
         {/* 中间聊天区域 */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--bg-primary)', overflow: 'hidden' }}>
           <div ref={messagesContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {messages.map((msg, index) => (
-              <div key={index} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%', alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                {msg.role === 'assistant' && (
-                  <Avatar size={28} src="https://api.dicebear.com/7.x/bottts/svg?seed=Xiaobian" icon={<RobotOutlined />} style={{ marginRight: 10, flexShrink: 0 }} />
-                )}
-                <div style={{ padding: '10px 14px', borderRadius: 12, background: msg.role === 'user' ? 'var(--color-primary)' : 'var(--card-bg)', color: msg.role === 'user' ? '#fff' : 'var(--text-primary)', wordBreak: 'break-word', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontSize: 14 }}>
-                  {msg.content}
-                </div>
-                {msg.role === 'user' && (
-                  <Avatar
-                    size={28}
-                    src={getAvatarUrl(user)}
-                    icon={<UserOutlined />}
-                    style={{ marginLeft: 10, flexShrink: 0 }}
-                  />
-                )}
-              </div>
-            ))}
+            {messages.map((msg, index) => {
+              const messageStatus = (msg as MessageWithStatus).status;
+              const showStatus = messageStatus && messageStatus !== 'success';
 
-            {loading && (
+              return (
+                <div key={index} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%', alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                  {msg.role === 'assistant' && (
+                    <Avatar size={28} src="https://api.dicebear.com/7.x/bottts/svg?seed=Xiaobian" icon={<RobotOutlined />} style={{ marginRight: 10, flexShrink: 0 }} />
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                    <div style={{
+                      padding: '10px 14px',
+                      borderRadius: 12,
+                      background: msg.role === 'user' ? 'var(--color-primary)' : 'var(--card-bg)',
+                      color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'pre-wrap',
+                      lineHeight: 1.5,
+                      fontSize: 14,
+                      opacity: messageStatus === 'sending' ? 0.7 : 1,
+                      border: messageStatus === 'error' ? '1px solid var(--color-error)' : 'none'
+                    }}>
+                      {msg.content}
+                    </div>
+
+                    {showStatus && (
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {messageStatus === 'sending' && (
+                          <>
+                            <Spin size="small" />
+                            <span>发送中...</span>
+                          </>
+                        )}
+                        {messageStatus === 'error' && (
+                          <>
+                            <span style={{ color: 'var(--color-error)' }}>发送失败</span>
+                            <Button
+                              type="link"
+                              size="small"
+                              icon={<ReloadOutlined />}
+                              onClick={() => handleResendMessage(msg.content)}
+                              style={{ padding: 0, height: 'auto', fontSize: 11 }}
+                            >
+                              重试
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {msg.role === 'user' && (
+                    <Avatar
+                      size={28}
+                      src={getAvatarUrl(user)}
+                      icon={<UserOutlined />}
+                      style={{ marginLeft: 10, flexShrink: 0 }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+
+            {showTypingIndicator && (
               <div style={{ display: 'flex', marginLeft: 38 }}>
                 <Space>
-                  <Spin size="small" />
-                  <Text style={{ color: 'var(--text-secondary)', fontSize: 13 }}>小边正在思考...</Text>
+                  <div style={{
+                    padding: '8px 12px',
+                    background: 'var(--card-bg)',
+                    borderRadius: 12,
+                    display: 'flex',
+                    gap: 4,
+                    alignItems: 'center'
+                  }}>
+                    <div style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: 'var(--color-primary)',
+                      animation: 'typing 1.4s infinite'
+                    }} />
+                    <div style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: 'var(--color-primary)',
+                      animation: 'typing 1.4s infinite 0.2s'
+                    }} />
+                    <div style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: 'var(--color-primary)',
+                      animation: 'typing 1.4s infinite 0.4s'
+                    }} />
+                  </div>
                 </Space>
               </div>
+            )}
+
+            {lastFailedMessage && (
+              <Alert
+                message="消息发送失败"
+                description="您可以点击重试按钮重新发送消息"
+                type="error"
+                closable
+                onClose={() => setLastFailedMessage(null)}
+                action={
+                  <Button size="small" danger onClick={() => handleResendMessage(lastFailedMessage)}>
+                    重试
+                  </Button>
+                }
+                style={{ margin: '8px 0' }}
+              />
             )}
 
             <div ref={messagesEndRef} />
@@ -858,9 +1052,6 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
 
           {!loading && quickQuestions.length > 0 && (
             <div style={{ padding: '0 16px 12px', flexShrink: 0 }}>
-              <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block', color: 'var(--text-secondary)' }}>
-                试试问这些：
-              </Text>
               <Space wrap>
                 {quickQuestions.map((q, i) => (
                   <Tag key={i} style={{ cursor: 'pointer', borderRadius: 12, padding: '3px 10px', fontSize: 12, background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }} onClick={() => handleSend(q)}>
@@ -995,14 +1186,30 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
         ) : (
           <div style={{ width: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             {suggestedPosts.length > 0 && (
-              <Button
-                type="primary"
-                icon={<BulbOutlined />}
-                onClick={() => setShowSuggestions(true)}
-                style={{ height: 100, borderRadius: '0 8px 8px 0', writingMode: 'vertical-rl', background: 'var(--gradient-primary)', border: 'none' }}
-              >
-                查看推荐 {suggestedPosts.length}
-              </Button>
+              <Tooltip title="展开推荐列表" placement="left">
+                <Button
+                  type="primary"
+                  icon={<BulbOutlined />}
+                  onClick={() => setShowSuggestions(true)}
+                  style={{
+                    height: 100,
+                    width: 48,
+                    borderRadius: '0 8px 8px 0',
+                    background: 'var(--gradient-primary)',
+                    border: 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    boxShadow: '-2px 0 8px rgba(0,0,0,0.15)',
+                  }}
+                >
+                  <span style={{ writingMode: 'vertical-rl', fontSize: 12, fontWeight: 500 }}>
+                    {suggestedPosts.length} 推荐
+                  </span>
+                </Button>
+              </Tooltip>
             )}
           </div>
         )}
@@ -1012,5 +1219,6 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
         <p>确定要清空所有对话记录吗？此操作不可恢复。</p>
       </Modal>
     </div>
+    </>
   );
 }

@@ -14,6 +14,10 @@ interface ThemeState {
   fontScale: ThemeFontScale;
   reduceMotion: boolean;
 
+  // 动画状态
+  isAnimating: boolean;
+  pendingTheme: ThemeMode | null;
+
   // 操作方法
   toggleTheme: () => void;
   setTheme: (mode: ThemeMode) => void;
@@ -24,6 +28,9 @@ interface ThemeState {
   // 系统偏好检测
   detectSystemPreference: () => ThemeMode;
   followSystemPreference: () => void;
+
+  // 动画完成回调
+  onAnimationComplete: () => void;
 }
 
 // 检测系统主题偏好
@@ -44,18 +51,38 @@ const detectReduceMotion = (): boolean => {
 
 export const useThemeStore = create<ThemeState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       mode: 'light',
       contrast: 'normal',
       fontScale: 'medium',
       reduceMotion: detectReduceMotion(),
+      isAnimating: false,
+      pendingTheme: null,
 
-      toggleTheme: () => set((state) => {
+      toggleTheme: () => {
+        const state = get();
+        console.log('🔄 [Theme] toggleTheme called, current state:', {
+          mode: state.mode,
+          isAnimating: state.isAnimating,
+          pendingTheme: state.pendingTheme
+        });
+
+        if (state.isAnimating) {
+          console.log('⚠️ [Theme] Animation already in progress, ignoring toggle');
+          return; // 防止动画期间重复点击
+        }
+
         const newMode = state.mode === 'light' ? 'dark' : 'light';
-        return { mode: newMode };
-      }),
+        console.log('✅ [Theme] Starting transition to:', newMode);
+        set({ isAnimating: true, pendingTheme: newMode });
+      },
 
-      setTheme: (mode) => set({ mode }),
+      setTheme: (mode) => {
+        const state = get();
+        if (state.isAnimating) return;
+
+        set({ isAnimating: true, pendingTheme: mode });
+      },
 
       setContrast: (contrast) => set({ contrast }),
 
@@ -66,6 +93,27 @@ export const useThemeStore = create<ThemeState>()(
       detectSystemPreference: () => detectSystemTheme(),
 
       followSystemPreference: () => set({ mode: detectSystemTheme() }),
+
+      onAnimationComplete: () => {
+        const state = get();
+        console.log('🎬 [Theme] onAnimationComplete called:', {
+          pendingTheme: state.pendingTheme,
+          currentMode: state.mode
+        });
+
+        if (state.pendingTheme) {
+          console.log('✨ [Theme] Applying theme:', state.pendingTheme);
+          applyTheme(state.pendingTheme);
+          set({
+            mode: state.pendingTheme,
+            isAnimating: false,
+            pendingTheme: null
+          });
+          console.log('✅ [Theme] Theme transition completed');
+        } else {
+          console.warn('⚠️ [Theme] onAnimationComplete called but no pending theme!');
+        }
+      },
     }),
     {
       name: 'theme-storage',
@@ -185,17 +233,7 @@ export const themeUtils = {
   // 切换主题（带动画）
   toggleWithAnimation: () => {
     const { toggleTheme } = useThemeStore.getState();
-
-    // 添加过渡动画类
-    if (typeof document !== 'undefined') {
-      document.body.classList.add('theme-transitioning');
-
-      setTimeout(() => {
-        toggleTheme();
-        setTimeout(() => {
-          document.body.classList.remove('theme-transitioning');
-        }, 300); // 等待过渡完成
-      }, 50);
-    }
+    // 动画由 ThemeTransition 组件处理，这里直接切换主题
+    toggleTheme();
   }
 };

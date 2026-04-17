@@ -199,7 +199,7 @@ const tools = [
     type: 'function' as const,
     function: {
       name: 'search_posts',
-      description: '搜索美食动态，支持关键词、地点、美食类型筛选。用于美食推荐场景',
+      description: '搜索美食动态，支持关键词、地点、话题筛选。用于美食推荐场景',
       parameters: {
         type: 'object',
         properties: {
@@ -210,6 +210,10 @@ const tools = [
           location: {
             type: 'string',
             description: '地点筛选，如城市名、区名',
+          },
+          tag: {
+            type: 'string',
+            description: '话题筛选，如"火锅"、"烧烤"等',
           },
           limit: {
             type: 'number',
@@ -634,8 +638,8 @@ async function updateUserStatus(params: { userId: number; isActive: boolean }, r
 }
 
 // 搜索动态
-async function searchPosts(params: { keyword?: string; location?: string; limit?: number }) {
-  const { keyword, location, limit = 10 } = params;
+async function searchPosts(params: { keyword?: string; location?: string; tag?: string; limit?: number }) {
+  const { keyword, location, tag, limit = 10 } = params;
 
   const where: any = {};
 
@@ -650,6 +654,37 @@ async function searchPosts(params: { keyword?: string; location?: string; limit?
   // 地点筛选
   if (location) {
     where.address = { contains: location };
+  }
+
+  // 话题筛选
+  let tagId: number | null = null;
+  if (tag) {
+    const normalizedTag = tag.trim().toLowerCase().replace(/#/g, '');
+    const tagRecord = await prisma.tag.findUnique({
+      where: { name: normalizedTag },
+    });
+    if (tagRecord) {
+      tagId = tagRecord.id;
+    }
+  }
+
+  let postIds: number[] = [];
+  if (tagId !== null) {
+    const postTags = await prisma.postTag.findMany({
+      where: { tagId },
+      select: { postId: true },
+    });
+    postIds = postTags.map(pt => pt.postId);
+    if (postIds.length === 0) {
+      return {
+        keyword: keyword || '全部',
+        location: location || '不限',
+        tag: tag || '不限',
+        total: 0,
+        posts: [],
+      };
+    }
+    where.id = { in: postIds };
   }
 
   const posts = await prisma.post.findMany({
@@ -676,6 +711,7 @@ async function searchPosts(params: { keyword?: string; location?: string; limit?
   return {
     keyword: keyword || '全部',
     location: location || '不限',
+    tag: tag || '不限',
     total: posts.length,
     posts: posts.map(p => ({
       id: p.id,
@@ -1058,43 +1094,113 @@ export const chat = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // 美食模式：先搜索数据，再生成回复
+    // 美食模式：智能美食推荐
     try {
-      // 先获取热门动态数据
-      const trendingPosts = await prisma.post.findMany({
-        take: 20,
+      // 从用户消息中提取地点关键词
+      const cityKeywords = ['北京', '上海', '广州', '深圳', '杭州', '成都', '重庆', '西安', '武汉', '南京', '苏州', '天津', '青岛', '大连', '厦门', '长沙', '郑州', '济南', '哈尔滨', '长春', '沈阳', '石家庄', '福州', '南昌', '合肥', '昆明', '贵阳', '南宁', '海口', '太原', '兰州', '乌鲁木齐', '呼和浩特', '拉萨', '银川', '西宁'];
+      let detectedCity: string | null = null;
+      for (const city of cityKeywords) {
+        if (message.includes(city)) {
+          detectedCity = city;
+          break;
+        }
+      }
+
+      // 获取动态数据（带图片）
+      let posts = await prisma.post.findMany({
+        take: 50,
         orderBy: [
           { likeCount: 'desc' },
-          { favoriteCount: 'desc' }
+          { favoriteCount: 'desc' },
+          { commentCount: 'desc' }
         ],
         select: {
           id: true,
           content: true,
+          images: true,
           address: true,
           likeCount: true,
           favoriteCount: true,
+          commentCount: true,
           user: {
-            select: { username: true },
+            select: { username: true, avatar: true, avatarData: true },
           },
         },
       });
 
-      const cities = [...new Set(trendingPosts.map(p => p.address).filter(Boolean))];
+      // 如果用户提到了具体城市，优先搜索该城市的美食
+      let locationSpecificPosts: typeof posts = [];
+      let hasLocationData = false;
+      if (detectedCity) {
+        // 先筛选出该城市的帖子
+        locationSpecificPosts = posts.filter(p => p.address && p.address.includes(detectedCity!));
+        // 再按综合热度排序（点赞 + 收藏 * 2 + 评论 * 3）
+        locationSpecificPosts.sort((a, b) => {
+          const scoreA = (a.likeCount || 0) * 1 + (a.favoriteCount || 0) * 2 + (a.commentCount || 0) * 3;
+          const scoreB = (b.likeCount || 0) * 1 + (b.favoriteCount || 0) * 2 + (b.commentCount || 0) * 3;
+          return scoreB - scoreA;
+        });
+        if (locationSpecificPosts.length > 0) {
+          hasLocationData = true;
+        }
+      }
 
-      // 美食模式的系统提示词
+      // 获取所有城市列表
+      const cities = [...new Set(posts.map(p => p.address).filter(Boolean))];
+
+      // 构建带有图片的美食列表
+      const formatPostForPrompt = (p: typeof posts[0]) => {
+        const images = p.images ? JSON.parse(p.images) : [];
+        const hasImage = images.length > 0 ? ' [有图片]' : ' [无图片]';
+        return `${p.id}. "${p.content.substring(0, 50)}" (👍${p.likeCount || 0} ❤️${p.favoriteCount || 0} 💬${p.commentCount || 0})${hasImage} 📍${p.address || '未知位置'}`;
+      };
+
+      const formatPostForResponse = (p: typeof posts[0]) => {
+        const images = p.images ? JSON.parse(p.images) : [];
+        return {
+          id: p.id,
+          content: p.content,
+          address: p.address,
+          likeCount: p.likeCount,
+          favoriteCount: p.favoriteCount,
+          commentCount: p.commentCount,
+          username: p.user.username,
+          image: images[0] || null,
+        };
+      };
+
+      // 构建系统提示词
+      const topPosts = posts.slice(0, 10);
+      const locationInfo = detectedCity
+        ? hasLocationData
+          ? `**用户询问地区：** ${detectedCity}\n**该地区美食数量：** ${locationSpecificPosts.length} 个\n**该地区热门美食：**\n${locationSpecificPosts.slice(0, 5).map(formatPostForPrompt).join('\n')}`
+          : `**用户询问地区：** ${detectedCity}\n⚠️ **注意：** 该地区暂无美食数据，小边会告知用户并尝试提供其他建议`
+        : '';
+
       const foodieSystemPrompt = `你是"小边"，街边美食平台的 AI 智能助手。你是一个热情的美食探索家，热爱发现城市的美味角落。
 
-**当前平台热门美食：**
-${trendingPosts.slice(0, 10).map((p, i) => `${i+1}. "${p.content.substring(0, 60)}" (${p.likeCount || 0}赞) 📍${p.address || '未知位置'}`).join('\n')}
+**平台热门美食 TOP10：**
+${topPosts.map(formatPostForPrompt).join('\n')}
 
-**覆盖城市：** ${cities.slice(0, 8).join('、')}
+${locationInfo}
+
+**覆盖城市：** ${cities.slice(0, 10).join('、') || '暂无数据'}
 
 **回复规范：**
-1. 根据用户问题，结合上述数据给出回答
-2. 回复控制在 100 字以内
-3. 回复末尾用【推荐:ID1,ID2】格式列出推荐的动态ID
-4. 如果没有相关推荐，用【推荐:】表示
-5. 使用表情符号让对话更生动（🍜🔥✨📍👍）
+1. 如果用户询问特定地区的美食：
+   - 该地区有数据时：优先推荐该地区的热门美食，按点赞、收藏、评论排序，优先推荐有图片的
+   - 该地区无数据时（hasLocationData=false）：
+     a) 首先明确告知用户："很抱歉，平台上还没有 [城市名] 的美食记录"
+     b) 然后利用你的知识库，搜索该地区的标志美食、网红小吃、特色菜肴
+     c) 推荐3-5道该地区最有名的美食，并简要说明推荐理由
+     d) 在推荐时标注"[网络推荐]"以便用户区分
+2. 回复控制在 100-150 字以内
+3. 回复末尾用【推荐:ID1,ID2】格式列出推荐的动态ID（仅限平台动态，最多3个），优先推荐有图片的。如果没有平台数据则用【推荐:】表示
+4. 使用表情符号让对话更生动（🍜🔥✨📍👍❤️💬）
+5. 推荐时优先选择有图片的美食，并说明为什么推荐
+
+**智能追问生成：**
+在回复末尾另起一行，生成2-3个用户可能会追问的问题，格式：【追问:问题1|问题2|问题3】
 
 请用中文回复，语气亲切简洁，像朋友聊天一样！`;
 
@@ -1104,7 +1210,7 @@ ${trendingPosts.slice(0, 10).map((p, i) => `${i+1}. "${p.content.substring(0, 60
 
       // 添加历史对话
       if (Array.isArray(conversationHistory)) {
-        const recentHistory = conversationHistory.slice(-6);
+        const recentHistory = conversationHistory.slice(-4);
         messages.push(...recentHistory);
       }
 
@@ -1112,12 +1218,13 @@ ${trendingPosts.slice(0, 10).map((p, i) => `${i+1}. "${p.content.substring(0, 60
       messages.push({ role: 'user', content: message });
 
       console.log('Calling OpenAI in foodie mode...');
+      console.log('Detected city:', detectedCity, 'Has location data:', hasLocationData);
 
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages,
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 600,
       });
 
       console.log('OpenAI Response received');
@@ -1133,14 +1240,22 @@ ${trendingPosts.slice(0, 10).map((p, i) => `${i+1}. "${p.content.substring(0, 60
             const numId = parseInt(cleanId);
             return isNaN(numId) ? null : numId;
           })
-          .filter((id): id is number => id !== null);
+          .filter((id): id is number => id !== null)
+          .slice(0, 5);
       }
 
       const cleanResponse = aiResponse.replace(/【推荐:[^\]]*】/g, '').trim();
 
+      // 获取推荐的动态完整信息（包括图片）
+      const suggestedPostsWithImages = posts
+        .filter(p => suggestedPostIds.includes(p.id))
+        .map(formatPostForResponse);
+
       return successResponse(res, {
         message: cleanResponse,
         suggestedPosts: suggestedPostIds,
+        locationData: hasLocationData,
+        city: detectedCity,
       });
     } catch (openaiError: any) {
       console.error('OpenAI Error in foodie mode:', openaiError.message);

@@ -173,6 +173,28 @@ input.ant-input-lg:-ms-input-placeholder {
   color: var(--text-primary);
 }
 
+/* 表格固定列遮罩修复 - 夜间模式下去除黑色遮罩 */
+.ant-table-cell-fix-left,
+.ant-table-cell-fix-right {
+  background-color: var(--card-bg) !important;
+}
+
+.ant-table-ping-left .ant-table-cell-fix-left-last::after,
+.ant-table-ping-right .ant-table-cell-fix-right-first::after {
+  box-shadow: none !important;
+}
+
+/* 固定列背景色修复 */
+.ant-table-fixed-left .ant-table-cell,
+.ant-table-fixed-right .ant-table-cell {
+  background-color: var(--card-bg) !important;
+}
+
+[data-theme="dark"] .ant-table-fixed-left .ant-table-cell,
+[data-theme="dark"] .ant-table-fixed-right .ant-table-cell {
+  background-color: var(--card-bg) !important;
+}
+
 /* 分页 */
 .ant-pagination-item {
   background-color: var(--card-bg);

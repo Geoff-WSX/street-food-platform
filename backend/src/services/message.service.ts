@@ -45,12 +45,21 @@ const getOrCreateConversation = async (userId1: number, userId2: number) => {
 /**
  * 检查是否可以发送消息
  * 规则：陌生人只能发一条消息，对方回复后可以无限发送
+ * 管理员(admin/super_admin)可以无限制发送消息
  */
 export const checkCanSendMessage = async (senderId: number, receiverId: number) => {
   // 不能给自己发消息
   if (senderId === receiverId) {
     throw new Error('不能给自己发送消息');
   }
+
+  // 获取发送者信息，检查是否为管理员
+  const sender = await prisma.user.findUnique({
+    where: { id: senderId },
+    select: { role: true },
+  });
+
+  const isAdmin = sender?.role === 'admin' || sender?.role === 'super_admin';
 
   // 检查是否被拉黑
   const blocked = await prisma.block.findFirst({
@@ -72,6 +81,11 @@ export const checkCanSendMessage = async (senderId: number, receiverId: number) 
 
   if (!receiver) {
     return { canSend: false, reason: '用户不存在' };
+  }
+
+  // 管理员可以绕过私信限制
+  if (isAdmin) {
+    return { canSend: true, reason: null, isAdmin: true };
   }
 
   // 使用 ?? 操作符处理 NULL 值，默认为 true

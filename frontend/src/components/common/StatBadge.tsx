@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 const { Text } = Typography;
 
 interface StatBadgeProps {
-  type: 'posts' | 'following' | 'followers' | 'favorites' | 'friends';
+  type: 'posts' | 'following' | 'followers' | 'favorites' | 'friends' | 'recommended';
   count: number;
   onClick?: () => void;
   icon?: ReactNode;
@@ -36,6 +36,11 @@ const typeConfig = {
     icon: <StarOutlined style={{ fontSize: 12 }} />,
     color: '#722ed1',
     label: '收藏'
+  },
+  recommended: {
+    icon: <StarOutlined style={{ fontSize: 12 }} />,
+    color: '#ff6b35',
+    label: '推荐'
   }
 };
 

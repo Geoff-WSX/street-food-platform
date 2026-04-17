@@ -15,6 +15,11 @@ export interface User {
   hideFavorites?: boolean;
 }
 
+export interface Tag {
+  id: number;
+  name: string;
+}
+
 export interface Post {
   id: number;
   content: string;
@@ -28,6 +33,7 @@ export interface Post {
   user: User;
   isLiked?: boolean;
   isFavorited?: boolean;
+  tags?: Tag[];
 }
 
 export interface PaginatedPosts {

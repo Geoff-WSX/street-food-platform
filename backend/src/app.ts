@@ -7,6 +7,7 @@ import { createServer } from 'http';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import postRoutes from './routes/post.routes';
+import favoriteFolderRoutes from './routes/favoriteFolder.routes';
 import followRoutes from './routes/follow.routes';
 import friendRoutes from './routes/friend.routes';
 import blockRoutes from './routes/block.routes';
@@ -20,6 +21,7 @@ import notificationRoutes from './routes/notification.routes';
 import searchRoutes from './routes/search.routes';
 import uploadRoutes from './routes/upload.routes';
 import tagRoutes from './routes/tag.routes';
+import shareRoutes from './routes/share.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { initWebSocket } from './websocket';
 
@@ -74,6 +76,9 @@ app.use('/api/users', apiLimiter, checkBlacklist, userRoutes);
 // 动态路由（通用限流 + 黑名单检查）
 app.use('/api/posts', apiLimiter, checkBlacklist, postRoutes);
 
+// 收藏文件夹路由（通用限流 + 黑名单检查）
+app.use('/api/favorites', apiLimiter, checkBlacklist, favoriteFolderRoutes);
+
 // 关注路由（通用限流 + 黑名单检查）
 app.use('/api/follows', apiLimiter, checkBlacklist, followRoutes);
 
@@ -109,6 +114,9 @@ app.use('/api/search', searchLimiter, checkBlacklist, searchRoutes);
 
 // 标签路由（通用限流 + 黑名单检查）
 app.use('/api/tags', apiLimiter, checkBlacklist, tagRoutes);
+
+// 分享路由（通用限流 + 黑名单检查）
+app.use('/api/share', apiLimiter, checkBlacklist, shareRoutes);
 
 // 上传路由（上传限流 + 黑名单检查）
 app.use('/upload', uploadLimiter, checkBlacklist, uploadRoutes);

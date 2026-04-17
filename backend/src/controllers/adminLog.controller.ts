@@ -15,7 +15,8 @@ export type AdminAction =
   | 'MANAGE_COMMENT'       // 管理评论
   | 'UPDATE_SYSTEM'        // 系统设置
   | 'LOGIN'                // 登录
-  | 'LOGOUT';              // 登出
+  | 'LOGOUT'               // 登出
+  | 'SYNC_DATA';           // 数据同步
 
 export type TargetType = 'USER' | 'POST' | 'REPORT' | 'COMMENT' | 'SYSTEM' | 'SESSION';
 

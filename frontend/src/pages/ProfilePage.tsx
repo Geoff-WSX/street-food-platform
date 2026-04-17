@@ -7,6 +7,7 @@ import {
 import { UserOutlined, EditOutlined, CameraOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined, TeamOutlined, FileTextOutlined, StarOutlined, PlusOutlined, SearchOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getUserById, updateProfile, updateAvatar, changePassword, updateMessageSettings, updatePrivacySettings } from '../api/user';
 import { getUserPosts, getUserFavorites } from '../api/post';
+import { getRecommendedPosts } from '../api/share';
 import { cancelAllPendingRequests } from '../api/index';
 import { getBlockedList, unblockUser, blockUser } from '../api/block';
 import { getFollowing, getFollowers, followUser, unfollowUser } from '../api/follow';
@@ -74,6 +75,7 @@ export default function ProfilePage() {
   const [myPosts, setMyPosts] = useState<Post[]>([]);
   const [myPostsTotal, setMyPostsTotal] = useState(0);
   const [myFavorites, setMyFavorites] = useState<Post[]>([]);
+  const [recommendedPosts, setRecommendedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [pwdModalOpen, setPwdModalOpen] = useState(false);
@@ -232,6 +234,9 @@ export default function ProfilePage() {
       if (isOwner && isLoggedIn) {
         const favData = await getUserFavorites({ pageSize: 50 });
         setMyFavorites(favData.data);
+        // 获取推荐动态
+        const recommendedData = await getRecommendedPosts({ pageSize: 50 });
+        setRecommendedPosts(recommendedData.data);
         // 获取黑名单
         const blocked = await getBlockedList();
         setBlockedUsers(blocked);
@@ -804,6 +809,72 @@ export default function ProfilePage() {
         </>
       )
     }, {
+      key: 'recommended',
+      label: `推荐 ${recommendedPosts.length > 0 ? `(${recommendedPosts.length})` : ''}`,
+      children: (
+        recommendedPosts.length === 0 ? (
+          <Empty description="暂无推荐动态" style={{ padding: '32px 0' }} />
+        ) : (
+          <Row gutter={[14, 14]}>
+            {recommendedPosts.map((p) => {
+              const post = p as Post & { recommender?: { id: number; username: string; avatar?: string }; sharedAt?: string };
+              return (
+                <Col key={post.id} xs={24} sm={12} md={8} lg={6}>
+                  <div style={{ height: 520, width: '100%', position: 'relative' }}>
+                    {/* 推荐标记 */}
+                    <div style={{
+                      position: 'absolute',
+                      top: 8,
+                      left: 8,
+                      zIndex: 10,
+                      background: 'linear-gradient(135deg, #ff6b35 0%, #ff8f5a 100%)',
+                      color: '#fff',
+                      padding: '2px 8px',
+                      borderRadius: 10,
+                      fontSize: 11,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}>
+                      <StarOutlined /> 推荐
+                    </div>
+                    <PostCard post={p} from="/profile" onUpdate={(u) => {
+                      setRecommendedPosts((prev) => prev.map((x) => x.id === u.id ? { ...x, ...u } : x));
+                    }} />
+                    {/* 推荐来源信息 */}
+                    {post.recommender && (
+                      <div style={{
+                        position: 'absolute',
+                        bottom: 8,
+                        left: 8,
+                        right: 8,
+                        background: 'rgba(255,255,255,0.95)',
+                        padding: '6px 10px',
+                        borderRadius: 8,
+                        fontSize: 11,
+                        color: 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}>
+                        <span>推荐自</span>
+                        <a
+                          href="#"
+                          onClick={(e) => { e.preventDefault(); navigate(`/profile?userId=${post.recommender!.id}`); }}
+                          style={{ color: '#ff6b35', fontWeight: 500 }}
+                        >
+                          @{post.recommender!.username}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </Col>
+              );
+            })}
+          </Row>
+        )
+      )
+    }, {
       key: 'settings',
       label: '设置',
       children: (
@@ -1081,7 +1152,7 @@ export default function ProfilePage() {
 
           <Paragraph
             ellipsis={{ rows: 2 }}
-            style={{ marginBottom: 12, fontSize: 13, color: '#595959', maxWidth: 320, lineHeight: '1.4' }}
+            style={{ marginBottom: 12, fontSize: 13, color: 'var(--text-secondary)', maxWidth: 320, lineHeight: '1.4' }}
           >
             {profileUser.bio || '这个人很懒，什么都没写 ✨'}
           </Paragraph>
@@ -1093,6 +1164,7 @@ export default function ProfilePage() {
             <StatBadge type="followers" count={followers.length} onClick={() => setActiveTab('followers')} />
             {isOwner && <StatBadge type="friends" count={friendCount} onClick={() => setActiveTab('friends')} />}
             {isOwner && <StatBadge type="favorites" count={myFavorites.length} onClick={() => setActiveTab('favorites')} />}
+            {isOwner && <StatBadge type="recommended" count={recommendedPosts.length} onClick={() => setActiveTab('recommended')} />}
           </div>
 
           <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>

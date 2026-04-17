@@ -163,7 +163,7 @@ export default function PostDetailPage() {
           <Paragraph style={{
             fontSize: 18,
             lineHeight: '1.8',
-            color: '#262626',
+            color: 'var(--text-primary)',
             marginBottom: 20,
             fontWeight: 400
           }}>
@@ -171,7 +171,7 @@ export default function PostDetailPage() {
           </Paragraph>
 
           {/* 阅读统计 */}
-          <div style={{ fontSize: 13, color: '#8c8c8c', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
             <ClockCircleOutlined style={{ marginRight: 4 }} />
             <span>{calculateReadingStats(post.content).charCount}字</span>
             <span>·</span>
@@ -225,6 +225,21 @@ export default function PostDetailPage() {
             >
               {new Date(post.createdAt).toLocaleString('zh-CN')}
             </Tag>
+            {post.tags && post.tags.map(tag => (
+              <Tag
+                key={tag.id}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 16,
+                  fontSize: 14,
+                  background: 'linear-gradient(135deg, rgba(24, 144, 255, 0.1) 0%, rgba(24, 144, 255, 0.05) 100%)',
+                  color: '#1890ff',
+                  border: '1px solid rgba(24, 144, 255, 0.2)'
+                }}
+              >
+                #{tag.name}
+              </Tag>
+            ))}
           </Space>
 
           <Divider style={{ margin: '24px 0' }} />
@@ -257,7 +272,7 @@ export default function PostDetailPage() {
                   style={{
                     fontSize: 16,
                     cursor: 'pointer',
-                    color: '#262626'
+                    color: 'var(--text-primary)'
                   }}
                   onClick={() => navigate(`/profile?userId=${post.user.id}`)}
                 >
@@ -415,6 +430,7 @@ export default function PostDetailPage() {
         onClose={() => setShowShareModal(false)}
         postId={post.id}
         postContent={post.content}
+        isOwnPost={post.user?.id === user?.id}
       />
     </div>
   );

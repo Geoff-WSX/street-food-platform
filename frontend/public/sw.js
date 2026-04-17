@@ -1,4 +1,4 @@
-const CACHE_NAME = 'street-food-v1';
+const CACHE_NAME = 'shiyu-v1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

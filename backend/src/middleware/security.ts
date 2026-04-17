@@ -158,8 +158,10 @@ export const corsOptions = {
       'http://localhost:3002'
     ];
 
-    // 开发环境允许所有 localhost
-    if (process.env.NODE_ENV === 'development') {
+    // 开发环境和测试环境允许所有 localhost
+    const isDevOrTest = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+
+    if (isDevOrTest) {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {

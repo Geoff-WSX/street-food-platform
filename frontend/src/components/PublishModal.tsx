@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Modal, Form, Input, Button, Upload, message, Typography, Space } from 'antd';
+import { Modal, Form, Input, Button, Upload, message, Typography, Space, Tag } from 'antd';
 import { PlusOutlined, EnvironmentOutlined, LoadingOutlined, CloseOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { createPost } from '../api/post';
@@ -44,6 +44,8 @@ export default function PublishModal({ open, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
 
   // AI 文案生成状态 - 合并为单个状态对象
   const [aiState, setAiState] = useState({
@@ -61,6 +63,8 @@ export default function PublishModal({ open, onClose }: Props) {
       form.resetFields();
       setFileList([]);
       setIsPrivate(false);
+      setTags([]);
+      setTagInput('');
       // 只在有值时才更新，避免不必要的重渲染
       if (aiState.keywords !== '' || aiState.generatedCopy !== '') {
         setAiState({ keywords: '', isGenerating: false, generatedCopy: '' });
@@ -251,6 +255,10 @@ export default function PublishModal({ open, onClose }: Props) {
       formData.append('content', values.content);
       if (values.address) formData.append('address', values.address);
       formData.append('isPrivate', isPrivate ? 'true' : 'false');
+      // 添加话题标签
+      if (tags.length > 0) {
+        formData.append('tags', JSON.stringify(tags));
+      }
       fileList.forEach((f) => {
         if (f.originFileObj) formData.append('images', f.originFileObj);
       });
@@ -259,12 +267,32 @@ export default function PublishModal({ open, onClose }: Props) {
       form.resetFields();
       setFileList([]);
       setIsPrivate(false);
+      setTags([]);
+      setTagInput('');
       setAiState({ keywords: '', isGenerating: false, generatedCopy: '' });
       onClose();
       navigate(`/post/${post.id}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  // 添加话题标签
+  const handleAddTag = () => {
+    const tag = tagInput.trim().replace(/#/g, '');
+    if (tag && !tags.includes(tag) && tags.length < 5) {
+      setTags([...tags, tag]);
+      setTagInput('');
+    } else if (tags.includes(tag)) {
+      void message.warning('该话题已添加');
+    } else if (tags.length >= 5) {
+      void message.warning('最多添加5个话题');
+    }
+  };
+
+  // 移除话题标签
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
   };
 
   return (
@@ -354,6 +382,37 @@ export default function PublishModal({ open, onClose }: Props) {
             </Space>
           </div>
         )}
+
+        {/* 话题标签 */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 8 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>添加话题（选填，最多5个）</Text>
+          </div>
+          <Space.Compact style={{ width: '100%' }}>
+            <Input
+              placeholder="输入话题名称，如：火锅、烧烤..."
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onPressEnter={handleAddTag}
+              maxLength={20}
+            />
+            <Button type="primary" onClick={handleAddTag}>添加</Button>
+          </Space.Compact>
+          {tags.length > 0 && (
+            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {tags.map(tag => (
+                <Tag
+                  key={tag}
+                  closable
+                  onClose={() => handleRemoveTag(tag)}
+                  style={{ marginRight: 0 }}
+                >
+                  #{tag}
+                </Tag>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* 位置信息 */}
         <Form.Item name="address" style={{ marginBottom: 12 }}>

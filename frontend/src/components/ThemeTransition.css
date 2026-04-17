@@ -1,0 +1,73 @@
+/* ==================== 主题过渡容器 ==================== */
+.theme-transition {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 99999;
+  overflow: hidden;
+}
+
+/* ==================== 圆形波纹展开效果 ==================== */
+.theme-transition-overlay {
+  position: absolute;
+  inset: 0;
+  /* 使用 clip-path 实现从指定角落展开的圆形动画 */
+  clip-path: circle(0% at 0% 0%);
+  transition: clip-path 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-transition-overlay.active {
+  /* 展开到覆盖整个屏幕 */
+  clip-path: circle(150% at 0% 0%);
+}
+
+/* 切换到深色模式：从左上角展开 */
+.theme-transition-overlay.to-dark {
+  background: linear-gradient(
+    135deg,
+    #1a1a2e 0%,
+    #16213e 30%,
+    #0f0f23 60%,
+    #0a0a0a 100%
+  );
+  clip-path: circle(0% at 0% 0%);
+}
+
+.theme-transition-overlay.to-dark.active {
+  clip-path: circle(150% at 0% 0%);
+}
+
+/* 切换到浅色模式：从右下角展开 */
+.theme-transition-overlay.to-light {
+  background: linear-gradient(
+    135deg,
+    #fffaf0 0%,
+    #f0f8ff 30%,
+    #f8f9fa 60%,
+    #ffffff 100%
+  );
+  clip-path: circle(0% at 100% 100%);
+}
+
+.theme-transition-overlay.to-light.active {
+  clip-path: circle(150% at 100% 100%);
+}
+
+/* 淡出效果 */
+.theme-transition-overlay.fading {
+  opacity: 0;
+  transition: opacity 0.4s ease-out;
+}
+
+/* ==================== 减少动画模式 ==================== */
+@media (prefers-reduced-motion: reduce) {
+  .theme-transition-overlay {
+    transition-duration: 0.25s;
+  }
+}
+
+/* 确保不阻止交互 */
+.theme-transition,
+.theme-transition-overlay {
+  pointer-events: none !important;
+}

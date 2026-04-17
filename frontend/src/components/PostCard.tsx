@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Avatar, message } from 'antd';
+import { Avatar, message, Tag } from 'antd';
 import {
   HeartOutlined, HeartFilled, StarOutlined, StarFilled,
   CommentOutlined, EnvironmentOutlined, UserOutlined, ClockCircleOutlined
@@ -12,6 +12,7 @@ import { useFollowStore } from '../store/follow';
 import { UserProfileModal } from '../components/common/UserProfileModal';
 import ChatModal from './ChatModal';
 import MapModal from './MapModal';
+import FavoriteFolderSelect from './FavoriteFolderSelect';
 import type { Post } from '../types';
 import { getAvatarUrl, parseImages } from '../utils/images';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
@@ -81,6 +82,7 @@ export default function PostCard({ post, onUpdate, showRank, rank, from = '/' }:
   const [showChatModal, setShowChatModal] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [showFolderSelect, setShowFolderSelect] = useState(false);
 
   const isFollowing = followStatus[post.user.id] ?? false;
 
@@ -120,8 +122,23 @@ export default function PostCard({ post, onUpdate, showRank, rank, from = '/' }:
       navigate('/login');
       return;
     }
+
+    // 如果是取消收藏（已收藏），直接执行
+    if (favorited) {
+      try {
+        const res = await toggleFavorite(post.id);
+        onUpdate?.({ id: post.id, isFavorited: res.favorited, favoriteCount: res.favoriteCount });
+      } catch { /* ignore */ }
+      return;
+    }
+
+    // 如果是收藏，显示文件夹选择对话框
+    setShowFolderSelect(true);
+  };
+
+  const handleFolderConfirm = async (folderId: number | null) => {
     try {
-      const res = await toggleFavorite(post.id);
+      const res = await toggleFavorite(post.id, folderId);
       onUpdate?.({ id: post.id, isFavorited: res.favorited, favoriteCount: res.favoriteCount });
     } catch { /* ignore */ }
   };
@@ -253,6 +270,21 @@ export default function PostCard({ post, onUpdate, showRank, rank, from = '/' }:
             </div>
           )}
 
+          {/* 话题标签 */}
+          {post.tags && post.tags.length > 0 && (
+            <div className="post-tags" style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {post.tags.slice(0, 3).map(tag => (
+                <Tag
+                  key={tag.id}
+                  color="blue"
+                  style={{ marginRight: 0, fontSize: 11 }}
+                >
+                  #{tag.name}
+                </Tag>
+              ))}
+            </div>
+          )}
+
           {/* 用户信息和互动 */}
           <div className="post-user-area">
             <Avatar
@@ -310,6 +342,13 @@ export default function PostCard({ post, onUpdate, showRank, rank, from = '/' }:
           otherUser={post.user}
         />
       )}
+
+      {/* 收藏文件夹选择 */}
+      <FavoriteFolderSelect
+        visible={showFolderSelect}
+        onClose={() => setShowFolderSelect(false)}
+        onConfirm={handleFolderConfirm}
+      />
     </>
   );
 }

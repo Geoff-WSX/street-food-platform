@@ -144,7 +144,7 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
           backgroundClip: 'text',
           fontSize: 22,
           fontWeight: 800
-        }}>街边美食</span>
+        }}>食遇</span>
       </div>
 
       {/* 导航菜单 */}

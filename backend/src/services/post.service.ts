@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import prisma from '../services/db/prisma';
 import { CreatePostRequest, UpdatePostRequest } from '../types';
+import { addTagsToPost } from './tag.service';
 
 /**
  * 处理用户头像 - 优先使用 avatarData
@@ -107,7 +108,7 @@ const parseImages = (imagesStr: string | null): string[] => {
  * 创建动态
  */
 export const createPost = async (userId: number, data: CreatePostRequest) => {
-  const { content, images, address, latitude, longitude, isPrivate } = data;
+  const { content, images, address, latitude, longitude, isPrivate, tags } = data;
 
   if (!content || content.trim().length === 0) {
     throw new Error('动态内容不能为空');
@@ -140,12 +141,24 @@ export const createPost = async (userId: number, data: CreatePostRequest) => {
     },
   });
 
+  // 处理话题标签
+  if (tags && Array.isArray(tags) && tags.length > 0) {
+    await addTagsToPost(post.id, tags);
+  }
+
+  // 获取话题标签
+  const postTags = await prisma.postTag.findMany({
+    where: { postId: post.id },
+    include: { tag: true },
+  });
+
   return {
     ...post,
     user: processUserAvatar(post.user),
     images: parseImages(post.images),
     likeCount: typeof post.likeCount === 'number' ? post.likeCount : 0,
     favoriteCount: typeof post.favoriteCount === 'number' ? post.favoriteCount : 0,
+    tags: postTags.map(pt => ({ id: pt.tag.id, name: pt.tag.name })),
   };
 };
 
@@ -180,6 +193,13 @@ export const getPosts = async (page: number = 1, pageSize: number = 10, userId?:
         user: {
           select: { id: true, username: true, avatar: true, avatarData: true },
         },
+        tags: {
+          include: {
+            tag: {
+              select: { id: true, name: true },
+            },
+          },
+        },
       },
     }),
     prisma.post.count({ where: { isPrivate: false } }),
@@ -192,6 +212,7 @@ export const getPosts = async (page: number = 1, pageSize: number = 10, userId?:
     likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
     favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
     commentCount: typeof p.commentCount === 'number' ? p.commentCount : 0,
+    tags: p.tags?.map((pt: any) => ({ id: pt.tag.id, name: pt.tag.name })) || [],
     isLiked: false,
     isFavorited: false
   }));
@@ -257,6 +278,12 @@ export const getPostById = async (postId: number, userId?: number) => {
     isFavorited = !!favorite;
   }
 
+  // 获取话题标签
+  const postTags = await prisma.postTag.findMany({
+    where: { postId: post.id },
+    include: { tag: true },
+  });
+
   return {
     ...post,
     user: processUserAvatar(post.user),
@@ -266,6 +293,7 @@ export const getPostById = async (postId: number, userId?: number) => {
     commentCount: typeof post.commentCount === 'number' ? post.commentCount : 0,
     isLiked,
     isFavorited,
+    tags: postTags.map(pt => ({ id: pt.tag.id, name: pt.tag.name })),
   };
 };
 
@@ -281,23 +309,33 @@ export const getUserPosts = async (
 ) => {
   const skip = (page - 1) * pageSize;
 
+  // 检查是否被当前用户屏蔽
+  if (currentUserId && !isOwner) {
+    const block = await prisma.block.findUnique({
+      where: {
+        blockerId_blockedId: {
+          blockerId: currentUserId,
+          blockedId: userId,
+        },
+      },
+    });
+
+    // 如果该用户被当前用户屏蔽，返回空结果
+    if (block) {
+      return {
+        data: [],
+        pagination: {
+          page,
+          pageSize,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+    }
+  }
+
   // 如果不是主人，只显示非私密动态
   const where = isOwner ? { userId } : { userId, isPrivate: false };
-
-  // 获取当前用户屏蔽的用户列表
-  let blockedUserIds: number[] = [];
-  if (currentUserId && !isOwner) {
-    const blocks = await prisma.block.findMany({
-      where: { blockerId: currentUserId },
-      select: { blockedId: true },
-    });
-    blockedUserIds = blocks.map(b => b.blockedId);
-    // 过滤掉被屏蔽用户的动态
-    where.userId = {
-      ...(where.userId as any),
-      notIn: blockedUserIds,
-    };
-  }
 
   const [posts, total] = await Promise.all([
     prisma.post.findMany({
@@ -454,16 +492,28 @@ export const toggleLike = async (userId: number, postId: number) => {
 
 /**
  * 收藏 / 取消收藏
+ * folderId: 可选，如果提供则收藏到指定文件夹
  */
-export const toggleFavorite = async (userId: number, postId: number) => {
+export const toggleFavorite = async (userId: number, postId: number, folderId?: number | null) => {
   const post = await prisma.post.findUnique({ where: { id: postId } });
   if (!post) throw new Error('动态不存在');
+
+  // 如果提供了 folderId，验证文件夹存在且属于该用户
+  if (folderId !== undefined && folderId !== null) {
+    const folder = await prisma.favoriteFolder.findFirst({
+      where: { id: folderId, userId }
+    });
+    if (!folder) {
+      throw new Error('文件夹不存在');
+    }
+  }
 
   const existing = await prisma.favorite.findUnique({
     where: { userId_postId: { userId, postId } },
   });
 
   if (existing) {
+    // 取消收藏时，不管之前在哪个文件夹都删除
     await prisma.$transaction([
       prisma.favorite.delete({ where: { userId_postId: { userId, postId } } }),
       prisma.post.update({
@@ -473,8 +523,9 @@ export const toggleFavorite = async (userId: number, postId: number) => {
     ]);
     return { favorited: false, favoriteCount: post.favoriteCount - 1 };
   } else {
+    // 收藏时，使用指定的 folderId 或 null
     await prisma.$transaction([
-      prisma.favorite.create({ data: { userId, postId } }),
+      prisma.favorite.create({ data: { userId, postId, folderId: folderId ?? null } }),
       prisma.post.update({
         where: { id: postId },
         data: { favoriteCount: { increment: 1 } },
@@ -666,6 +717,8 @@ export const getRandomPosts = async (
     select: { id: true },
   });
 
+  console.log('🔍 getRandomPosts - allPosts count:', allPosts.length);
+
   const availableIds = allPosts.map(p => p.id);
 
   // 随机选择指定数量的ID
@@ -680,6 +733,8 @@ export const getRandomPosts = async (
     availableIds.splice(randomIndex, 1);
   }
 
+  console.log('🔍 getRandomPosts - selectedIds:', selectedIds);
+
   if (selectedIds.length === 0) {
     return { data: [] };
   }
@@ -690,6 +745,13 @@ export const getRandomPosts = async (
     include: {
       user: {
         select: { id: true, username: true, avatar: true, avatarData: true },
+      },
+      tags: {
+        include: {
+          tag: {
+            select: { id: true, name: true },
+          },
+        },
       },
     },
     orderBy: { createdAt: 'desc' },
@@ -703,7 +765,8 @@ export const getRandomPosts = async (
     favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
     commentCount: typeof p.commentCount === 'number' ? p.commentCount : 0,
     isLiked: false,
-    isFavorited: false
+    isFavorited: false,
+    tags: p.tags?.map((pt: any) => ({ id: pt.tag.id, name: pt.tag.name })) || [],
   }));
 
   if (userId) {

@@ -1,5 +1,18 @@
 /* 美食动画全局样式 */
 
+/* FoodBackground 组件优化 */
+.food-background-container {
+  will-change: transform;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.food-background-item {
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  filter: blur(0.5px);
+}
+
 /* 美食图标浮动动画 */
 @keyframes foodFloat {
   0%, 100% {

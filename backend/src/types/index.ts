@@ -63,6 +63,7 @@ export interface CreatePostRequest {
   latitude?: number;
   longitude?: number;
   isPrivate?: boolean;
+  tags?: string[];
 }
 
 // 更新动态请求

@@ -26,6 +26,9 @@ router.get('/favorites/categories', authenticate, postController.getFavoriteCate
 // GET /api/posts/likes - 获取我的点赞（需登录)
 router.get('/likes', authenticate, paginationRules, postController.getUserLikes);
 
+// GET /api/posts/by-tag-and-region - 按话题+地区获取动态
+router.get('/by-tag-and-region', optionalAuth, paginationRules, postController.getPostsByTagAndRegion);
+
 // GET /api/posts/user/:userId - 获取指定用户的动态（可选登录）
 router.get('/user/:userId', optionalAuth, idParamRules, paginationRules, postController.getUserPosts);
 

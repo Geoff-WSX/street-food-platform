@@ -8,6 +8,8 @@ export interface ChatMessage {
 export interface ChatResponse {
   message: string;
   suggestedPosts: number[];
+  locationData?: boolean;
+  city?: string;
 }
 
 // AI 文案生成 Prompt 模板

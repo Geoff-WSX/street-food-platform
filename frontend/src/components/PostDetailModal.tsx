@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Modal, Avatar, Typography, Button, Empty, Spin, Image } from 'antd';
+import { Modal, Avatar, Typography, Button, Empty, Spin, Image, Tag } from 'antd';
 import { UserOutlined, EnvironmentOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { getPost } from '../api/post';
 import { parseImages, getAvatarUrl } from '../utils/images';
@@ -101,6 +101,21 @@ export default function PostDetailModal({ postId, visible, onClose }: Props) {
           >
             {post.content}
           </Paragraph>
+
+          {/* 话题标签 */}
+          {post.tags && post.tags.length > 0 && (
+            <div style={{ padding: '0 20px', marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {post.tags.map(tag => (
+                <Tag
+                  key={tag.id}
+                  color="blue"
+                  style={{ marginRight: 0 }}
+                >
+                  #{tag.name}
+                </Tag>
+              ))}
+            </div>
+          )}
 
           {/* 图片 */}
           <div style={{ padding: '0 20px', marginBottom: 16 }}>

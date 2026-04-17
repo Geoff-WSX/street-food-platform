@@ -99,14 +99,32 @@ model Favorite {
   postId    Int
   isPinned Boolean  @default(false)
   category  String?  @db.VarChar(50)
+  folderId  Int?
   createdAt DateTime @default(now())
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder    FavoriteFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   @@unique([userId, postId])
   @@index([postId])
   @@index([userId, isPinned])
+  @@index([userId, folderId])
   @@map("favorites")
+}
+
+model FavoriteFolder {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  name      String   @db.VarChar(50)
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favorites Favorite[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("favorite_folders")
 }
 
 model Follow {
@@ -191,6 +209,7 @@ model Post {
   mentions      Mention[]
   favorites     Favorite[]
   likes         Like[]
+  shares        Share[]
   user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([commentCount])
@@ -219,6 +238,22 @@ model PostTag {
   @@index([postId])
   @@index([tagId])
   @@map("post_tags")
+}
+
+model Share {
+  id            Int      @id @default(autoincrement())
+  postId        Int
+  userId        Int
+  type          String   @db.VarChar(20) // 'friend' | 'recommend'
+  friendId      Int?
+  createdAt     DateTime @default(now())
+  post          Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId, type])
+  @@index([userId])
+  @@index([postId])
+  @@map("shares")
 }
 
 model Mention {
@@ -294,6 +329,7 @@ model User {
   commentLikes                                      CommentLike[]
   comments                                          Comment[]
   favorites                                         Favorite[]
+  favoriteFolders                                   FavoriteFolder[]
   followers                                         Follow[]          @relation("Follow_follower")
   following                                         Follow[]          @relation("Follow_following")
   friend_requests_friend_requests_receiverIdTousers friend_requests[] @relation("friend_requests_receiverIdTousers")
@@ -310,6 +346,7 @@ model User {
   reportsAsReporter                                 Report[]          @relation("Report_reporter")
   reportsAsReviewer                                 Report[]          @relation("Report_reviewer")
   mentions                                          Mention[]
+  shares                                            Share[]
 
   @@map("users")
 }

@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Row, Col, Empty, Typography, Space, TreeSelect, Tag, Divider, FloatButton, Button } from 'antd';
+import { useState, useEffect, useRef } from 'react';
+import { Row, Col, Empty, Typography, Space, FloatButton, Button } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
-import { getRandomPosts } from '../api/post';
+import { getRandomPosts, getPopularTags, getPostsByTag } from '../api/post';
 import { cancelAllPendingRequests } from '../api/index';
 import PostCard from '../components/PostCard';
 import FoodBackground from '../components/FoodBackground';
+import PostFilterBar from '../components/PostFilterBar';
 import { parseImages } from '../utils/images';
 import { useScreenSize } from '../hooks/useScreenSize';
 import type { Post } from '../types';
@@ -142,34 +143,87 @@ const PostSkeleton = () => (
 
 export default function HomePage() {
   const screenSize = useScreenSize();
+  const homeContentRef = useRef<HTMLDivElement>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
+  const [loadInProgress, setLoadInProgress] = useState(false);
+  const [popularTags, setPopularTags] = useState<{ id: number; name: string; postCount: number }[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string>('');
+  const selectedTagRef = useRef<string>('');
 
-  const loadRandomPosts = async (showLoading = true) => {
+  // 同步 selectedTag 到 ref
+  useEffect(() => {
+    selectedTagRef.current = selectedTag;
+  }, [selectedTag]);
+
+  const loadPosts = async (showLoading = true, isRefresh = false) => {
+    // 防止并发请求
+    if (loadInProgress) {
+      console.log('🔄 请求进行中，跳过');
+      return;
+    }
+
+    // 使用 ref 中的 currentTag 避免闭包问题
+    const currentTag = selectedTagRef.current;
+
+    // 如果是刷新操作，先清空现有数据
+    if (isRefresh) {
+      setPosts([]);
+    }
+
     try {
+      setLoadInProgress(true);
       if (showLoading) setInitialLoading(true);
       else setRefreshing(true);
 
-      const data = await getRandomPosts({ limit: 20 });
+      let data: Post[];
+      if (currentTag) {
+        // 话题筛选模式：获取该话题的动态
+        const result = await getPostsByTag(currentTag, { page: 1, pageSize: 20, random: true });
+        data = result.data;
+      } else {
+        // 随机推荐模式
+        data = await getRandomPosts({ limit: 20 });
+      }
 
-      const validPosts = (data || []).filter((post) => {
+      // 双重检查：确保响应回来时 selectedTag 仍然是同一个
+      if (currentTag !== selectedTagRef.current) {
+        console.log('🔄 跳过过时的 API 响应:', currentTag, '->', selectedTagRef.current);
+        return;
+      }
+
+      let validPosts = (data || []).filter((post) => {
         const images = parseImages(post.images);
         return post?.content && post?.images && images.length > 0 && post?.user?.username;
       });
 
+      // 确保最多只显示 20 条
+      if (validPosts.length > 20) {
+        console.log('📊 裁剪帖子数量:', validPosts.length, '-> 20');
+        validPosts = validPosts.slice(0, 20);
+      }
+
+      // 再次检查
+      if (currentTag !== selectedTagRef.current) {
+        console.log('🔄 跳过过时的数据更新:', currentTag, '->', selectedTagRef.current);
+        return;
+      }
+
+      console.log('✅ 最终帖子数量:', validPosts.length, '话题:', currentTag);
       setPosts(validPosts);
     } catch (error) {
       console.error('加载动态失败:', error);
     } finally {
+      setLoadInProgress(false);
       if (showLoading) setInitialLoading(false);
       else setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    loadRandomPosts();
+    loadPosts();
     // 组件卸载时取消所有进行中的请求
     return () => {
       cancelAllPendingRequests();
@@ -177,14 +231,16 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    loadRandomPosts(false);
-  }, [selectedLocation]);
+    loadPosts(false);
+    // 获取热门话题
+    getPopularTags(20).then(setPopularTags).catch(() => {});
+  }, [selectedLocation, selectedTag]);
 
   const handleUpdate = (updated: Partial<Post> & { id: number }) => {
     setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
   };
 
-  const handleRefresh = () => loadRandomPosts(false);
+  const handleRefresh = () => loadPosts(false, true);
 
   const filterByLocation = (post: Post) => {
     if (!selectedLocation) return true;
@@ -193,7 +249,13 @@ export default function HomePage() {
     return parts.every((part) => address.includes(part));
   };
 
-  const filteredPosts = posts.filter(filterByLocation);
+  const filterByTag = (post: Post) => {
+    if (!selectedTag) return true;
+    if (!post.tags || post.tags.length === 0) return false;
+    return post.tags.some(t => t.name === selectedTag);
+  };
+
+  const filteredPosts = posts.filter(post => filterByLocation(post) && filterByTag(post));
 
   // 骨架屏加载状态
   if (initialLoading) {
@@ -216,51 +278,18 @@ export default function HomePage() {
       <FoodBackground count={screenSize.isMobile ? 10 : 18} minSize={screenSize.isSmallMobile ? 16 : 22} maxSize={screenSize.isSmallMobile ? 32 : 45} />
 
       {/* 页面内容 */}
-      <div className="home-content">
-        {/* 页面标题 */}
-        <header className="home-header stagger-fade-in delay-1">
-          <h1 className="home-title gradient-text">发现美食</h1>
-          <p className="home-subtitle">{screenSize.isMobile ? '随机推荐美食动态' : '✨ 随机推荐精彩美食动态'}</p>
-        </header>
-
+      <div className="home-content" ref={homeContentRef}>
         {/* 筛选条件 */}
-        <div className="filter-bar card-trendy stagger-fade-in delay-2">
-          <Space size={screenSize.isMobile ? 10 : 14} wrap>
-            <div className="filter-label">
-              地区
-            </div>
-
-            <TreeSelect
-              value={selectedLocation}
-              onChange={setSelectedLocation}
-              treeData={LOCATION_DATA}
-              placeholder={screenSize.isMobile ? '选择地区' : '选择地区发现美食'}
-              style={{ width: screenSize.isSmallMobile ? 130 : screenSize.isMobile ? 160 : 200 }}
-              size={screenSize.isMobile ? 'middle' : 'large'}
-              allowClear
-              showSearch
-              treeDefaultExpandAll={false}
-              dropdownStyle={{ minWidth: screenSize.isSmallMobile ? 180 : 220 }}
-            />
-
-            {selectedLocation && (
-              <Tag
-                closable
-                onClose={() => setSelectedLocation('')}
-                className="location-tag"
-              >
-                📍 {selectedLocation.split('-').pop()}
-              </Tag>
-            )}
-
-            <Divider type="vertical" style={{ margin: 0, height: screenSize.isSmallMobile ? 18 : 24 }} />
-
-            <div className="stats-badge">
-              <Text strong>{filteredPosts.length}</Text>
-              <Text type="secondary">条动态</Text>
-            </div>
-          </Space>
-        </div>
+        <PostFilterBar
+          selectedLocation={selectedLocation}
+          onLocationChange={setSelectedLocation}
+          selectedTag={selectedTag}
+          onTagChange={setSelectedTag}
+          popularTags={popularTags}
+          locationTreeData={LOCATION_DATA}
+          variant="home"
+          showStats={false}
+        />
 
         {/* 空状态 */}
         {filteredPosts.length === 0 ? (
@@ -271,15 +300,15 @@ export default function HomePage() {
                 <Space direction="vertical" size={screenSize.isMobile ? 12 : 16}>
                   <div style={{ fontSize: screenSize.isMobile ? 56 : 68 }}>🍽️</div>
                   <Text style={{ fontSize: screenSize.isSmallMobile ? 16 : screenSize.isMobile ? 18 : 20, fontWeight: 500 }}>
-                    {selectedLocation ? `${selectedLocation.split('-').pop()}暂无美食动态` : '暂无美食动态'}
+                    {selectedTag ? `#${selectedTag} 暂无美食动态` : selectedLocation ? `${selectedLocation.split('-').pop()}暂无美食动态` : '暂无美食动态'}
                   </Text>
                   <Text type="secondary" style={{ fontSize: screenSize.isSmallMobile ? 14 : 16 }}>
-                    {selectedLocation ? '🔄 试试切换其他地区' : '✨ 成为第一个分享美食的人吧！'}
+                    {selectedTag ? '🔄 试试切换其他话题' : selectedLocation ? '🔄 试试切换其他地区' : '✨ 成为第一个分享美食的人吧！'}
                   </Text>
-                  {selectedLocation && (
+                  {(selectedLocation || selectedTag) && (
                     <Button
                       type="primary"
-                      onClick={() => setSelectedLocation('')}
+                      onClick={() => { setSelectedLocation(''); setSelectedTag(''); }}
                       size={screenSize.isMobile ? 'middle' : 'large'}
                       className="btn-primary"
                     >

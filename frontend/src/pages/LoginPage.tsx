@@ -210,7 +210,7 @@ export default function LoginPage() {
               letterSpacing: screenSize.isMobile ? 1 : 2,
             }}
           >
-            街边美食
+            食遇
           </h1>
           <Text
             style={{
@@ -297,7 +297,7 @@ export default function LoginPage() {
               }}>
                 欢迎回来 👋
               </h2>
-              <Text style={{ fontSize: 13, color: isDark ? 'rgba(255,255,255,0.65)' : undefined }}>登录到街边美食</Text>
+              <Text style={{ fontSize: 13, color: isDark ? 'rgba(255,255,255,0.65)' : undefined }}>登录到食遇</Text>
             </div>
           ) : (
             <div style={{ textAlign: 'center', marginBottom: 18 }}>

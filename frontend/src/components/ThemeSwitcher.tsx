@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button, Tooltip, theme } from 'antd';
 import {
   SunOutlined,
   MoonOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
-import { useThemeStore, themeUtils } from '../store/theme';
+import { useThemeStore } from '../store/theme';
 
 interface ThemeSwitcherProps {
   style?: React.CSSProperties;
@@ -20,19 +20,22 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({
   showLabel = false,
   size = 'middle',
 }) => {
-  const { mode } = useThemeStore();
-  const [isAnimating, setIsAnimating] = useState(false);
+  const { mode, toggleTheme, isAnimating } = useThemeStore();
   const { token } = theme.useToken();
 
   const handleToggle = () => {
-    if (isAnimating) return;
+    console.log('🎯 [ThemeSwitcher] Button clicked:', {
+      currentMode: mode,
+      isAnimating
+    });
 
-    setIsAnimating(true);
-    themeUtils.toggleWithAnimation();
+    if (isAnimating) {
+      console.log('⚠️ [ThemeSwitcher] Animation in progress, ignoring click');
+      return;
+    }
 
-    setTimeout(() => {
-      setIsAnimating(false);
-    }, 350);
+    console.log('✅ [ThemeSwitcher] Proceeding with theme toggle');
+    toggleTheme();
   };
 
   const getIcon = () => {
