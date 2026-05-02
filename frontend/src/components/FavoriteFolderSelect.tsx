@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Modal, Radio, Button, Input, Space, Typography, message, Popconfirm } from 'antd';
-import { FolderOutlined, FolderAddOutlined, EditOutlined, DeleteOutlined, StarFilled } from '@ant-design/icons';
+import { FolderOutlined, SearchOutlined, EditOutlined, DeleteOutlined, StarFilled } from '@ant-design/icons';
 import { getFavoriteFolders, createFavoriteFolder, renameFavoriteFolder, deleteFavoriteFolder, setDefaultFavoriteFolder, cancelDefaultFavoriteFolder, type FavoriteFolder } from '../api/favoriteFolder';
 
 const { Text } = Typography;
@@ -16,7 +16,6 @@ export default function FavoriteFolderSelect({ visible, onClose, onConfirm, curr
   const [folders, setFolders] = useState<FavoriteFolder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -39,6 +38,19 @@ export default function FavoriteFolderSelect({ visible, onClose, onConfirm, curr
     }
   }, [folders, currentFolderId]);
 
+  // 根据输入过滤文件夹列表
+  const filteredFolders = useMemo(() => {
+    if (!newFolderName.trim()) return folders;
+    const search = newFolderName.trim().toLowerCase();
+    return folders.filter(f => f.name.toLowerCase().includes(search));
+  }, [folders, newFolderName]);
+
+  // 检查是否有重复的文件夹名称
+  const duplicateFolder = useMemo(() => {
+    if (!newFolderName.trim()) return null;
+    return folders.find(f => f.name.toLowerCase() === newFolderName.trim().toLowerCase());
+  }, [folders, newFolderName]);
+
   const loadFolders = async () => {
     try {
       setLoading(true);
@@ -51,24 +63,6 @@ export default function FavoriteFolderSelect({ visible, onClose, onConfirm, curr
     }
   };
 
-  const handleCreateFolder = async () => {
-    if (!newFolderName.trim()) {
-      void message.warning('请输入文件夹名称');
-      return;
-    }
-    try {
-      setCreating(true);
-      const newFolder = await createFavoriteFolder(newFolderName.trim());
-      setFolders([newFolder, ...folders]);
-      setNewFolderName('');
-      void message.success('文件夹创建成功');
-    } catch (error: any) {
-      void message.error(error.response?.data?.message || '创建失败');
-    } finally {
-      setCreating(false);
-    }
-  };
-
   const handleRename = async (folderId: number) => {
     if (!editingName.trim()) {
       void message.warning('请输入文件夹名称');
@@ -76,12 +70,12 @@ export default function FavoriteFolderSelect({ visible, onClose, onConfirm, curr
     }
     try {
       const updated = await renameFavoriteFolder(folderId, editingName.trim());
-      setFolders(folders.map(f => f.id === folderId ? updated : f));
+      setFolders(folders.map(f => f.id === folderId ? { ...updated, _count: updated._count || f._count } : f));
       setEditingId(null);
       setEditingName('');
       void message.success('重命名成功');
     } catch (error: any) {
-      void message.error(error.response?.data?.message || '重命名失败');
+      void message.error(error.response?.data?.error || error.response?.data?.message || '重命名失败');
     }
   };
 
@@ -94,7 +88,7 @@ export default function FavoriteFolderSelect({ visible, onClose, onConfirm, curr
       }
       void message.success('删除成功');
     } catch (error: any) {
-      void message.error(error.response?.data?.message || '删除失败');
+      void message.error(error.response?.data?.error || error.response?.data?.message || '删除失败');
     }
   };
 
@@ -118,9 +112,27 @@ export default function FavoriteFolderSelect({ visible, onClose, onConfirm, curr
     }
   };
 
-  const handleConfirm = () => {
-    onConfirm(selectedFolderId);
-    onClose();
+  const handleConfirm = async () => {
+    try {
+      let folderId = selectedFolderId;
+      // 如果输入了新文件夹名称
+      if (newFolderName.trim()) {
+        // 检查是否已存在同名文件夹
+        const existing = folders.find(f => f.name.toLowerCase() === newFolderName.trim().toLowerCase());
+        if (existing) {
+          // 使用已存在的文件夹
+          folderId = existing.id;
+        } else {
+          // 创建新文件夹
+          const newFolder = await createFavoriteFolder(newFolderName.trim());
+          folderId = newFolder.id;
+        }
+      }
+      onConfirm(folderId);
+      onClose();
+    } catch (error: any) {
+      void message.error(error.response?.data?.error || error.response?.data?.message || '操作失败');
+    }
   };
 
   return (
@@ -134,7 +146,29 @@ export default function FavoriteFolderSelect({ visible, onClose, onConfirm, curr
       width={480}
     >
       <div style={{ minHeight: 200 }}>
-        {/* 收藏到根目录选项 */}
+        {/* 新建文件夹输入 */}
+        <div style={{ marginBottom: 16 }}>
+          <Input
+            placeholder="输入名称搜索或创建文件夹"
+            value={newFolderName}
+            onChange={e => setNewFolderName(e.target.value)}
+            prefix={<SearchOutlined />}
+            style={{ marginBottom: 8 }}
+          />
+          {newFolderName && (
+            duplicateFolder ? (
+              <Text type="danger" style={{ fontSize: 12 }}>
+                <StarFilled style={{ color: '#ff4d4f', fontSize: 10 }} /> 文件夹「{duplicateFolder.name}」已存在，可直接选择或创建新名称
+              </Text>
+            ) : (
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                确认后将创建新文件夹「{newFolderName}」并收藏到此文件夹
+              </Text>
+            )
+          )}
+        </div>
+
+        {/* 根目录选项 */}
         <div
           style={{
             padding: '12px',
@@ -149,7 +183,7 @@ export default function FavoriteFolderSelect({ visible, onClose, onConfirm, curr
           <Radio checked={selectedFolderId === null}>
             <Space>
               <FolderOutlined style={{ fontSize: 16 }} />
-              <Text>收藏到根目录</Text>
+              <Text>根目录</Text>
             </Space>
           </Radio>
         </div>
@@ -163,9 +197,13 @@ export default function FavoriteFolderSelect({ visible, onClose, onConfirm, curr
           <div style={{ textAlign: 'center', padding: 40 }}>
             <Text type="secondary">暂无收藏文件夹</Text>
           </div>
+        ) : filteredFolders.length === 0 && newFolderName ? (
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <Text type="secondary">没有找到包含「{newFolderName}」的文件夹</Text>
+          </div>
         ) : (
           <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-            {folders.map(folder => (
+            {filteredFolders.map(folder => (
               <div
                 key={folder.id}
                 style={{
@@ -176,6 +214,7 @@ export default function FavoriteFolderSelect({ visible, onClose, onConfirm, curr
                   cursor: 'pointer',
                   background: selectedFolderId === folder.id ? '#fff7f0' : 'transparent',
                 }}
+                onClick={() => setSelectedFolderId(folder.id)}
               >
                 {editingId === folder.id ? (
                   <div onClick={e => e.stopPropagation()}>
@@ -256,27 +295,6 @@ export default function FavoriteFolderSelect({ visible, onClose, onConfirm, curr
             ))}
           </div>
         )}
-
-        {/* 创建新文件夹 */}
-        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
-          <Space.Compact style={{ width: '100%' }}>
-            <Input
-              placeholder="新文件夹名称"
-              value={newFolderName}
-              onChange={e => setNewFolderName(e.target.value)}
-              onPressEnter={void handleCreateFolder}
-              prefix={<FolderAddOutlined />}
-            />
-            <Button
-              type="primary"
-              icon={<FolderAddOutlined />}
-              loading={creating}
-              onClick={void handleCreateFolder}
-            >
-              新建
-            </Button>
-          </Space.Compact>
-        </div>
       </div>
     </Modal>
   );

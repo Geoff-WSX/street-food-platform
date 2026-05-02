@@ -13,6 +13,12 @@ export interface User {
   hideFollowers?: boolean;
   hidePosts?: boolean;
   hideFavorites?: boolean;
+  // 用户等级信息（可选，后端提供时显示）
+  level?: {
+    level: number;
+    name: string;
+    icon?: string;
+  };
 }
 
 export interface Tag {
@@ -48,6 +54,7 @@ export interface PaginatedPosts {
 
 export interface AuthData {
   token: string;
+  trustedDeviceToken?: string;
   user: User;
 }
 
@@ -61,7 +68,7 @@ export interface ApiResponse<T> {
 export interface Notification {
   id: number;
   userId: number;
-  type: 'COMMENT' | 'REPLY' | 'LIKE' | 'COMMENT_LIKE' | 'FAVORITE' | 'FOLLOW';
+  type: 'COMMENT' | 'REPLY' | 'LIKE' | 'COMMENT_LIKE' | 'FAVORITE' | 'FOLLOW' | 'FRIEND_REQUEST' | 'FRIEND_ACCEPTED';
   actorId: number;
   entityId: number;
   entityType: 'POST' | 'COMMENT' | 'USER';

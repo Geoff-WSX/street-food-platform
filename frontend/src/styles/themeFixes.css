@@ -231,13 +231,30 @@ input.ant-input-lg:-ms-input-placeholder {
 .ant-modal-content,
 .ant-modal-header,
 .ant-modal-body,
-.ant-modal-footer {
-  background-color: var(--modal-bg);
-  color: var(--text-primary);
+.ant-modal-footer,
+.ant-modal-confirm-content,
+.ant-modal-confirm-body,
+.ant-modal-confirm,
+.ant-modal,
+.ant-modal-container {
+  background-color: var(--modal-bg) !important;
+  color: var(--text-primary) !important;
 }
 
 .ant-modal-title {
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
+}
+
+.ant-modal-confirm-title {
+  color: var(--text-primary) !important;
+}
+
+.ant-modal-wrap {
+  background-color: rgba(0, 0, 0, 0.45) !important;
+}
+
+.ant-modal-mask {
+  background-color: rgba(0, 0, 0, 0.45) !important;
 }
 
 /* 下拉菜单 */
@@ -509,4 +526,110 @@ body.theme-transitioning *::after {
   --text-secondary: #e5e5e5;
   --border-color: #ffffff;
   --color-primary: #ff7733;
+}
+
+/* ==========================================
+   等级提示框样式 - 日夜模式通用
+   ========================================== */
+
+/* 强制覆盖 Ant Design Tooltip 的样式 */
+.ant-tooltip.level-tooltip {
+  background: transparent !important;
+}
+
+.ant-tooltip.level-tooltip .ant-tooltip-inner {
+  border-radius: 10px !important;
+  padding: 14px 16px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), 0 0 1px rgba(0, 0, 0, 0.3) !important;
+  min-width: 130px !important;
+  max-width: 160px !important;
+}
+
+.ant-tooltip.level-tooltip .ant-tooltip-arrow {
+  display: none !important;
+}
+
+/* 日间模式 - 白底黑字 */
+[data-theme="light"] .ant-tooltip.level-tooltip .ant-tooltip-inner {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 日间模式文字颜色 */
+[data-theme="light"] .ant-tooltip.level-tooltip .level-tooltip-header,
+[data-theme="light"] .ant-tooltip.level-tooltip .level-tooltip-name,
+[data-theme="light"] .ant-tooltip.level-tooltip .level-tooltip-icon {
+  color: #1a1a1a !important;
+}
+
+[data-theme="light"] .ant-tooltip.level-tooltip .level-tooltip-exp,
+[data-theme="light"] .ant-tooltip.level-tooltip .level-tooltip-remain,
+[data-theme="light"] .ant-tooltip.level-tooltip .level-tooltip-progress-text {
+  color: #4a4a4a !important;
+}
+
+/* 夜间模式 - 黑底白字 */
+[data-theme="dark"] .ant-tooltip.level-tooltip .ant-tooltip-inner {
+  background: rgba(20, 20, 20, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 夜间模式文字颜色 */
+[data-theme="dark"] .ant-tooltip.level-tooltip .level-tooltip-header,
+[data-theme="dark"] .ant-tooltip.level-tooltip .level-tooltip-name,
+[data-theme="dark"] .ant-tooltip.level-tooltip .level-tooltip-icon,
+[data-theme="dark"] .ant-tooltip.level-tooltip .level-tooltip-exp,
+[data-theme="dark"] .ant-tooltip.level-tooltip .level-tooltip-remain,
+[data-theme="dark"] .ant-tooltip.level-tooltip .level-tooltip-progress-text {
+  color: #ffffff !important;
+}
+
+/* ==========================================
+   等级提示框内容样式
+   ========================================== */
+
+.level-tooltip-content {
+  text-align: center;
+  padding: 0;
+  margin: 0;
+}
+
+.level-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+
+.level-tooltip-icon {
+  font-size: 18px;
+}
+
+.level-tooltip-name {
+  font-weight: 700;
+}
+
+.level-tooltip-exp {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.level-tooltip-remain {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-bottom: 10px;
+}
+
+.level-tooltip-progress {
+  margin-bottom: 6px;
+}
+
+.level-tooltip-progress-text {
+  font-size: 11px;
+  opacity: 0.5;
+  margin-top: 4px;
 }

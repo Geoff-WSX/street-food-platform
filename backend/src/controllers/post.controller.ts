@@ -225,3 +225,13 @@ export const getPostsByTagAndRegion = async (req: AuthRequest, res: Response) =>
     return errorResponse(res, error.message, 'FETCH_FAILED', 500);
   }
 };
+
+export const getPopularPosts = async (req: AuthRequest, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+    const result = await postService.getPopularPosts(limit, req.user?.userId);
+    return successResponse(res, result);
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'FETCH_FAILED', 500);
+  }
+};

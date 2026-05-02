@@ -2,29 +2,78 @@ import bcrypt from 'bcrypt';
 import prisma from '../services/db/prisma';
 import { UpdateProfileRequest, ChangePasswordRequest } from '../types';
 import { isValidUsername } from '../utils/validator';
+import { cacheGet, cacheSet, cacheDel } from './cache';
 
 /**
- * 获取用户信息（包含统计数据）
+ * 用户资料缓存键
  */
-export const getUserById = async (userId: number, currentUserId?: number) => {
+const USER_PROFILE_CACHE_KEY = 'user:profile';
+
+/**
+ * 预设美食头像列表
+ */
+export const DEFAULT_AVATARS = [
+  { id: 'foodie_1', emoji: '🍜', name: '面食爱好者' },
+  { id: 'foodie_2', emoji: '🍔', name: '汉堡控' },
+  { id: 'foodie_3', emoji: '🍕', name: '披萨达人' },
+  { id: 'foodie_4', emoji: '🍣', name: '日料爱好者' },
+  { id: 'foodie_5', emoji: '🍦', name: '甜品达人' },
+  { id: 'foodie_6', emoji: '🍗', name: '炸鸡专家' },
+  { id: 'foodie_7', emoji: '🥗', name: '轻食主义者' },
+  { id: 'foodie_8', emoji: '🍰', name: '蛋糕控' },
+  { id: 'foodie_9', emoji: '🥟', name: '饺子爱好者' },
+  { id: 'foodie_10', emoji: '🍖', name: '烤肉达人' },
+  { id: 'foodie_11', emoji: '🌮', name: '墨西哥美食' },
+  { id: 'foodie_12', emoji: '🍱', name: '便当达人' },
+];
+
+/**
+ * 根据预设头像ID生成头像URL（SVG格式）
+ */
+export const generateDefaultAvatarUrl = (avatarId: string): string => {
+  const avatar = DEFAULT_AVATARS.find(a => a.id === avatarId);
+  const emoji = avatar?.emoji || '🍜';
+  const name = avatar?.name || '美食爱好者';
+
+  // 创建包含emoji的SVG
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="200" height="200">
+    <defs>
+      <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#FFE4D6;stop-opacity:1" />
+        <stop offset="100%" style="stop-color:#FFD4B8;stop-opacity:1" />
+      </linearGradient>
+    </defs>
+    <rect width="100" height="100" rx="50" fill="url(#bg)"/>
+    <circle cx="50" cy="50" r="40" fill="#FFF" opacity="0.5"/>
+    <text x="50" y="50" dy="0.35em" text-anchor="middle" font-size="50" font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif">${emoji}</text>
+    <text x="50" y="92" dy="0" text-anchor="middle" font-size="10" fill="#666" font-family="sans-serif">${name}</text>
+  </svg>`;
+
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+};
+
+/**
+ * 获取所有预设头像
+ */
+export const getDefaultAvatars = () => {
+  return DEFAULT_AVATARS.map(a => ({
+    ...a,
+    url: generateDefaultAvatarUrl(a.id),
+  }));
+};
+
+/**
+ * 获取用户信息（包含统计数据）- 内部函数，缓存基础数据
+ */
+const getUserByIdInternal = async (userId: number) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: {
-      id: true,
-      username: true,
-      email: true,
-      avatar: true,
-      avatarData: true,
-      bio: true,
-      role: true,
-      allowMessage: true,
-      followOnlyMessage: true,
-      hideFollowing: true,
-      hideFollowers: true,
-      hidePosts: true,
-      hideFavorites: true,
-      createdAt: true,
-      updatedAt: true,
+    include: {
+      userLevel: {
+        include: {
+          level: true,
+        },
+      },
     },
   });
 
@@ -32,7 +81,43 @@ export const getUserById = async (userId: number, currentUserId?: number) => {
     throw new Error('用户不存在');
   }
 
-  // 计算统计数据
+  // 优先使用 avatarData，如果没有则使用 avatar
+  const avatar = user.avatarData || user.avatar;
+
+  // 处理等级信息
+  const level = user.userLevel?.level ? {
+    level: user.userLevel.level.level,
+    name: user.userLevel.level.name,
+    icon: user.userLevel.level.icon,
+  } : undefined;
+
+  // 移除敏感字段
+  const { email, avatarData, userLevel, ...safeUser } = user as any;
+
+  return {
+    ...safeUser,
+    avatar,
+    level,
+  };
+};
+
+/**
+ * 获取用户信息（包含统计数据）
+ * 基础用户数据缓存60秒，关注状态始终实时获取
+ */
+export const getUserById = async (userId: number, currentUserId?: number) => {
+  const cacheKey = `${USER_PROFILE_CACHE_KEY}:${userId}`;
+
+  // Try to get base user data from cache
+  let userData = await cacheGet<any>(cacheKey);
+
+  if (!userData) {
+    userData = await getUserByIdInternal(userId);
+    // Cache for 60 seconds
+    await cacheSet(cacheKey, userData, 60);
+  }
+
+  // 计算统计数据（不缓存，因为会频繁变化）
   const postCount = await prisma.post.count({
     where: { userId, isPrivate: false },
   });
@@ -59,17 +144,21 @@ export const getUserById = async (userId: number, currentUserId?: number) => {
     isFollowing = !!follow;
   }
 
-  // 优先使用 avatarData，如果没有则使用 avatar
-  const avatar = user.avatarData || user.avatar;
-
   return {
-    ...user,
-    avatar,
+    ...userData,
     postCount,
     followingCount,
     followerCount,
     isFollowing,
   };
+};
+
+/**
+ * 清除用户资料缓存
+ */
+export const invalidateUserCache = async (userId: number) => {
+  const cacheKey = `${USER_PROFILE_CACHE_KEY}:${userId}`;
+  await cacheDel(cacheKey);
 };
 
 /**
@@ -129,6 +218,9 @@ export const updateProfile = async (
   // 优先使用 avatarData
   const avatar = user.avatarData || user.avatar;
 
+  // 清除用户缓存
+  await invalidateUserCache(userId);
+
   return {
     ...user,
     avatar,
@@ -159,6 +251,50 @@ export const updateAvatar = async (userId: number, avatarData: string) => {
   });
 
   // 返回时使用 avatarData 作为 avatar
+  // 清除用户缓存
+  await invalidateUserCache(userId);
+
+  return {
+    ...user,
+    avatar: user.avatarData,
+  };
+};
+
+/**
+ * 设置预设头像
+ */
+export const setDefaultAvatar = async (userId: number, avatarId: string) => {
+  // 验证头像ID是否有效
+  const avatar = DEFAULT_AVATARS.find(a => a.id === avatarId);
+  if (!avatar) {
+    throw new Error('无效的头像ID');
+  }
+
+  // 生成预设头像URL
+  const avatarUrl = generateDefaultAvatarUrl(avatarId);
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      avatar: avatarId, // 存储预设头像ID
+      avatarData: avatarUrl, // 存储生成的URL
+    },
+    select: {
+      id: true,
+      username: true,
+      email: true,
+      avatar: true,
+      avatarData: true,
+      bio: true,
+      role: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  // 清除用户缓存
+  await invalidateUserCache(userId);
+
   return {
     ...user,
     avatar: user.avatarData,
@@ -249,6 +385,9 @@ export const updateSettings = async (
   // 优先使用 avatarData
   const avatar = user.avatarData || user.avatar;
 
+  // 清除用户缓存
+  await invalidateUserCache(userId);
+
   return {
     ...user,
     avatar,
@@ -313,12 +452,12 @@ export const getFollowing = async (userId: number, params?: { page?: number; pag
     where: { followerId: userId },
     include: {
       following: {
-        select: {
-          id: true,
-          username: true,
-          avatar: true,
-          avatarData: true,
-          bio: true,
+        include: {
+          userLevel: {
+            include: {
+              level: true,
+            },
+          },
         },
       },
     },
@@ -348,9 +487,15 @@ export const getFollowing = async (userId: number, params?: { page?: number; pag
   return follows.map(f => {
     const user = f.following;
     const avatar = user.avatarData || user.avatar;
+    const level = user.userLevel?.level ? {
+      level: user.userLevel.level.level,
+      name: user.userLevel.level.name,
+      icon: user.userLevel.level.icon,
+    } : undefined;
     return {
       ...user,
       avatar,
+      level,
       isFollowing: currentUserId ? !!followingStatus[f.following.id] : false,
     };
   });
@@ -365,12 +510,12 @@ export const getFollowers = async (userId: number, params?: { page?: number; pag
     where: { followingId: userId },
     include: {
       follower: {
-        select: {
-          id: true,
-          username: true,
-          avatar: true,
-          avatarData: true,
-          bio: true,
+        include: {
+          userLevel: {
+            include: {
+              level: true,
+            },
+          },
         },
       },
     },
@@ -400,9 +545,15 @@ export const getFollowers = async (userId: number, params?: { page?: number; pag
   return follows.map(f => {
     const user = f.follower;
     const avatar = user.avatarData || user.avatar;
+    const level = user.userLevel?.level ? {
+      level: user.userLevel.level.level,
+      name: user.userLevel.level.name,
+      icon: user.userLevel.level.icon,
+    } : undefined;
     return {
       ...user,
       avatar,
+      level,
       isFollowing: currentUserId ? !!followingStatus[f.follower.id] : false,
     };
   });
@@ -491,6 +642,94 @@ export const unblockUser = async (userId: number, blockedId: number) => {
   return { success: true };
 };
  /**
+ * 获取用户自定义头像列表
+ */
+export const getCustomAvatars = async (userId: number) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { customAvatars: true },
+  });
+
+  if (!user) {
+    throw new Error('用户不存在');
+  }
+
+  // 解析存储的 JSON 字符串
+  const avatars = user.customAvatars ? JSON.parse(user.customAvatars) : [];
+  return avatars;
+};
+
+/**
+ * 添加自定义头像
+ */
+export const addCustomAvatar = async (userId: number, avatarData: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { customAvatars: true },
+  });
+
+  if (!user) {
+    throw new Error('用户不存在');
+  }
+
+  // 解析现有头像
+  const avatars = user.customAvatars ? JSON.parse(user.customAvatars) : [];
+
+  // 生成新头像ID
+  const newAvatar = {
+    id: `custom_${Date.now()}`,
+    data: avatarData,
+    createdAt: new Date().toISOString(),
+  };
+
+  // 限制最多保存20张自定义头像
+  if (avatars.length >= 20) {
+    throw new Error('最多只能保存20张自定义头像');
+  }
+
+  avatars.unshift(newAvatar);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      customAvatars: JSON.stringify(avatars),
+    },
+  });
+
+  return newAvatar;
+};
+
+/**
+ * 删除自定义头像
+ */
+export const deleteCustomAvatar = async (userId: number, avatarId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { customAvatars: true },
+  });
+
+  if (!user) {
+    throw new Error('用户不存在');
+  }
+
+  const avatars = user.customAvatars ? JSON.parse(user.customAvatars) : [];
+  const filteredAvatars = avatars.filter((a: any) => a.id !== avatarId);
+
+  if (filteredAvatars.length === avatars.length) {
+    throw new Error('头像不存在');
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      customAvatars: JSON.stringify(filteredAvatars),
+    },
+  });
+
+  return { success: true };
+};
+
+/**
  * 获取黑名单列表
  */
 export const getBlockedUsers = async (userId: number) => {
@@ -498,12 +737,12 @@ export const getBlockedUsers = async (userId: number) => {
     where: { blockerId: userId },
     include: {
       blocked: {
-        select: {
-          id: true,
-          username: true,
-          avatar: true,
-          avatarData: true,
-          bio: true,
+        include: {
+          userLevel: {
+            include: {
+              level: true,
+            },
+          },
         },
       },
     },
@@ -513,9 +752,15 @@ export const getBlockedUsers = async (userId: number) => {
   return blocks.map(b => {
     const user = b.blocked;
     const avatar = user.avatarData || user.avatar;
+    const level = user.userLevel?.level ? {
+      level: user.userLevel.level.level,
+      name: user.userLevel.level.name,
+      icon: user.userLevel.level.icon,
+    } : undefined;
     return {
       ...user,
       avatar,
+      level,
     };
   });
 };

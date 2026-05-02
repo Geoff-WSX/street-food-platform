@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as shareController from '../controllers/share.controller';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireLevel } from '../middleware/auth';
 
 const router = Router();
 
@@ -10,8 +10,8 @@ router.use(authenticate);
 // 分享给好友
 router.post('/to-friend', shareController.shareToFriend);
 
-// 推荐动态到自己的主页
-router.post('/recommend', shareController.recommendPost);
+// 推荐动态到自己的主页（需要Lv3 美食达人）
+router.post('/recommend', authenticate, requireLevel(3), shareController.recommendPost);
 
 // 获取推荐的所有动态
 router.get('/recommended', shareController.getRecommendedPosts);

@@ -59,6 +59,10 @@
   /* 自动填充颜色 */
   --autofill-bg: #ffffff;
   --autofill-text: #262626;
+
+  /* 等级提示框颜色 */
+  --tooltip-bg: #ffffff;
+  --tooltip-color: #1a1a1a;
 }
 
 /* ==================== 夜间模式 ==================== */
@@ -121,6 +125,10 @@
   /* 自动填充颜色 */
   --autofill-bg: #262626;
   --autofill-text: #e6e6e6;
+
+  /* 等级提示框颜色 */
+  --tooltip-bg: #1a1a1a;
+  --tooltip-color: #ffffff;
 }
 
 /* ==================== 全局样式 ==================== */

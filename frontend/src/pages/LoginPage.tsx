@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Form, Input, Button, message, Divider, Typography } from 'antd';
-import { MailOutlined, LockOutlined, UserOutlined, FireOutlined, RocketOutlined } from '@ant-design/icons';
+import { Form, Input, Button, message, Divider, Typography, Checkbox } from 'antd';
+import { MailOutlined, LockOutlined, UserOutlined, FireOutlined, RocketOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { login, register } from '../api/auth';
+import { login, register, getCaptcha, type CaptchaData } from '../api/auth';
 import { useAuthStore } from '../store/auth';
 import { useThemeStore } from '../store/theme';
 import { getErrorMessage } from '../utils/error';
@@ -12,6 +12,8 @@ import { getAnimationStyle, getRandomFoods } from '../utils/foodAnimations';
 
 const { Text } = Typography;
 
+const TRUSTED_DEVICE_KEY = 'sf_trusted_device';
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const loginStore = useAuthStore((s) => s.login);
@@ -19,12 +21,36 @@ export default function LoginPage() {
   const isDark = themeMode === 'dark';
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
+  const [captcha, setCaptcha] = useState<CaptchaData | null>(null);
+  const [trustDevice, setTrustDevice] = useState(false);
+  const [skipCaptcha, setSkipCaptcha] = useState(false);
+  const [trustedDeviceToken, setTrustedDeviceToken] = useState<string | null>(null);
   const [screenSize, setScreenSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
     isMobile: window.innerWidth < 768,
     isSmallMobile: window.innerWidth < 480,
   });
+
+  // 加载验证码
+  const loadCaptcha = async () => {
+    try {
+      const data = await getCaptcha();
+      setCaptcha(data);
+    } catch (error) {
+      console.error('获取验证码失败:', error);
+    }
+  };
+
+  // 检查是否有信任设备令牌
+  useEffect(() => {
+    const savedToken = localStorage.getItem(TRUSTED_DEVICE_KEY);
+    if (savedToken) {
+      setTrustedDeviceToken(savedToken);
+      setSkipCaptcha(true);
+    }
+    loadCaptcha();
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -42,14 +68,33 @@ export default function LoginPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleLogin = async (values: { email: string; password: string }) => {
+  const handleLogin = async (values: { email: string; password: string; captchaCode?: string }) => {
     setLoading(true);
     try {
-      const res = await login(values);
+      const res = await login({
+        email: values.email,
+        password: values.password,
+        captchaId: skipCaptcha && trustedDeviceToken ? '' : (captcha?.id || ''),
+        captchaCode: skipCaptcha && trustedDeviceToken ? '' : (values.captchaCode || ''),
+        trustedDeviceToken: skipCaptcha && trustedDeviceToken ? trustedDeviceToken : undefined,
+        trustDevice: trustDevice,
+      });
+      // 保存信任设备令牌
+      if (res.trustedDeviceToken) {
+        localStorage.setItem(TRUSTED_DEVICE_KEY, res.trustedDeviceToken);
+        setTrustedDeviceToken(res.trustedDeviceToken);
+      }
       loginStore(res.token, res.user);
       navigate('/');
     } catch (error: unknown) {
       const errorMsg = getErrorMessage(error);
+      // 如果是验证码错误或token失效，刷新验证码并显示输入框
+      if (errorMsg.includes('验证码') || errorMsg.includes('信任设备') || errorMsg.includes('token')) {
+        setSkipCaptcha(false);
+        setTrustedDeviceToken(null);
+        localStorage.removeItem(TRUSTED_DEVICE_KEY);
+        await loadCaptcha();
+      }
       void message.error(errorMsg);
     } finally {
       setLoading(false);
@@ -345,6 +390,74 @@ export default function LoginPage() {
                     fontSize: screenSize.isSmallMobile ? 13 : 14,
                   }}
                 />
+              </Form.Item>
+              {skipCaptcha && trustedDeviceToken ? (
+                <Form.Item style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '8px 12px',
+                    background: '#f6ffed',
+                    border: '1px solid #b7eb8f',
+                    borderRadius: 8,
+                    color: '#52c41a',
+                    fontSize: 13,
+                  }}>
+                    ✓ 已开启免验证登录（7天内有效）
+                  </div>
+                </Form.Item>
+              ) : (
+                <Form.Item
+                  name="captchaCode"
+                  rules={[{ required: true, message: '请输入验证码' }]}
+                  style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
+                >
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Input
+                      size={screenSize.isSmallMobile ? 'middle' : 'large'}
+                      placeholder="验证码"
+                      maxLength={4}
+                      style={{
+                        flex: 1,
+                        borderRadius: screenSize.isMobile ? 8 : 10,
+                        padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
+                        fontSize: screenSize.isSmallMobile ? 13 : 14,
+                      }}
+                    />
+                    <div
+                      style={{
+                        cursor: 'pointer',
+                        borderRadius: screenSize.isMobile ? 8 : 10,
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                      title="点击刷新验证码"
+                    >
+                      {captcha ? (
+                        <img
+                          src={`data:image/svg+xml;utf8,${encodeURIComponent(captcha.data)}`}
+                          alt="验证码"
+                          style={{ height: screenSize.isSmallMobile ? 32 : 38, display: 'block', cursor: 'pointer' }}
+                          onClick={loadCaptcha}
+                          title="点击刷新验证码"
+                        />
+                      ) : (
+                        <ReloadOutlined style={{ fontSize: 20, padding: '0 10px' }} spin />
+                      )}
+                    </div>
+                  </div>
+                </Form.Item>
+              )}
+              <Form.Item style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}>
+                <Checkbox
+                  checked={trustDevice}
+                  onChange={(e) => setTrustDevice(e.target.checked)}
+                >
+                  <Text style={{ fontSize: 13 }}>信任此设备（7天内无需验证码）</Text>
+                </Checkbox>
               </Form.Item>
               <Form.Item style={{ marginBottom: 6 }}>
                 <Button

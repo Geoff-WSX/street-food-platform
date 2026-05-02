@@ -3,7 +3,7 @@ import { AuthRequest } from '../types';
 import prisma from '../services/db/prisma';
 import { successResponse, errorResponse } from '../utils/response';
 import OpenAI from 'openai';
-import { execSync, exec } from 'child_process';
+import { exec } from 'child_process';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import os from 'os';
@@ -26,6 +26,37 @@ function createOpenAIClient() {
 }
 
 const openai = createOpenAIClient();
+
+// 挂起操作存储（用于确认机制）
+interface PendingOperation {
+  id: string;
+  functionName: string;
+  functionArgs: any;
+  description: string;
+  createdAt: Date;
+  requesterRole?: string;
+}
+
+const pendingOperations = new Map<string, PendingOperation>();
+const OPERATION_EXPIRE_MS = 5 * 60 * 1000; // 5分钟过期
+
+// 生成唯一操作ID
+function generateOperationId(): string {
+  return `op_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
+// 清理过期操作
+function cleanupExpiredOperations() {
+  const now = Date.now();
+  for (const [id, op] of pendingOperations.entries()) {
+    if (now - op.createdAt.getTime() > OPERATION_EXPIRE_MS) {
+      pendingOperations.delete(id);
+    }
+  }
+}
+
+// 定期清理过期操作
+setInterval(cleanupExpiredOperations, 60000);
 
 // 定义可用的工具函数
 const tools = [
@@ -261,6 +292,23 @@ const tools = [
   {
     type: 'function' as const,
     function: {
+      name: 'confirm_operation',
+      description: '确认执行一个挂起的操作。当用户明确回复"确认"、"是"、"执行"后才调用此函数',
+      parameters: {
+        type: 'object',
+        properties: {
+          operationId: {
+            type: 'string',
+            description: '操作ID，从之前的回复中获取',
+          },
+        },
+        required: ['operationId'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
       name: 'get_system_info',
       description: '获取系统运行状态信息，包括CPU、内存、运行时间等（仅管理员可用）',
       parameters: {
@@ -319,7 +367,7 @@ async function queryReports(params: { status?: string; limit?: number } = {}) {
   };
 }
 
-async function updateReportStatus(params: { reportId: number; status: string; note?: string }) {
+async function updateReportStatus(params: { reportId: number; status: string; note?: string }, requesterRole?: string) {
   const { reportId, status, note } = params;
 
   // 检查举报是否存在
@@ -344,6 +392,32 @@ async function updateReportStatus(params: { reportId: number; status: string; no
       currentStatus: report.status,
     };
   }
+
+  // 生成操作描述
+  const statusLabels: Record<string, string> = {
+    resolved: '成立（通过）',
+    rejected: '驳回（拒绝）',
+    reviewing: '审核中'
+  };
+  const description = `将举报 ID ${reportId}（${report.type}）的状态从"${report.status}"更新为"${statusLabels[status] || status}"${note ? `，备注：${note}` : ''}`;
+
+  // 返回需要确认的状态
+  return {
+    needs_confirmation: true,
+    operationDescription: description,
+    operationDetails: {
+      reportId,
+      status,
+      note,
+      reporter: report.reporter?.username,
+      reportedUser: report.reported?.username,
+    },
+  };
+}
+
+// 实际执行举报状态更新
+async function executeReportStatusUpdate(params: { reportId: number; status: string; note?: string }) {
+  const { reportId, status, note } = params;
 
   // 更新举报状态
   const updateData: any = {
@@ -373,8 +447,6 @@ async function updateReportStatus(params: { reportId: number; status: string; no
       id: updatedReport.id,
       status: updatedReport.status,
       type: updatedReport.type,
-      reporter: report.reporter?.username,
-      reportedUser: report.reported?.username,
     },
   };
 }
@@ -469,59 +541,210 @@ async function queryPosts(params: { limit?: number; sortBy?: string } = {}) {
   };
 }
 
-async function executeCommand(params: { command: string }) {
+async function executeCommand(params: { command: string }, requesterRole?: string) {
   const { command } = params;
 
-  // 安全检查：只允许只读命令
-  const dangerousCommands = ['rm ', 'delete ', 'del ', 'format', 'mkfs', 'dd ', 'shutdown', 'reboot'];
-  const isDangerous = dangerousCommands.some(dc => command.toLowerCase().includes(dc));
-
-  if (isDangerous) {
+  // 权限检查：只有管理员和超级管理员可以使用命令执行功能
+  if (requesterRole !== 'admin' && requesterRole !== 'super_admin') {
     return {
-      error: '该命令存在安全风险，已被阻止',
-      command,
+      error: '权限不足：只有管理员可以使用命令执行功能',
     };
   }
 
+  // 白名单机制：只允许特定的只读诊断命令
+  const allowedCommands = [
+    'echo',
+    'pwd',
+    'ls',
+    'll',
+    'dir',
+    'whoami',
+    'node --version',
+    'node -v',
+    'npm --version',
+    'npm -v',
+    'git --version',
+    'git status',
+    'git log',
+    'ps',
+    'df',
+    'du',
+    'free',
+    'top',
+    'netstat',
+    'curl',
+    'wget',
+    'cat',
+    'head',
+    'tail',
+    'grep',
+    'find',
+    'wc',
+  ];
+
+  // 提取命令（去除参数，只保留命令名）
+  const commandParts = command.trim().split(/\s+/);
+  const baseCommand = commandParts[0].toLowerCase();
+
+  // 检查是否是允许的命令
+  const isAllowed = allowedCommands.some(allowed => {
+    if (allowed.includes(' ')) {
+      // 对于带参数的命令（如 "node --version"），检查命令是否以允许的命令开头
+      return command.toLowerCase().startsWith(allowed);
+    }
+    return baseCommand === allowed || baseCommand === commandParts[0];
+  });
+
+  if (!isAllowed) {
+    return {
+      error: '该命令不在允许列表中，只允许执行特定的只读诊断命令',
+      allowedCommands: 'echo, pwd, ls, node --version, npm --version, git status, ps, df, du, free, netstat, curl, cat, head, tail, grep, find, wc',
+    };
+  }
+
+  // 额外安全检查：禁止危险的命令组合
+  const dangerousPatterns = [
+    /\|.*rm/i,
+    /\;.*rm/i,
+    /\&&\s*rm/i,
+    /\|\s*del/i,
+    /;\s*del/i,
+    /&\s*del/i,
+    /format/i,
+    /mkfs/i,
+    /dd\s+/i,
+    /shutdown/i,
+    /reboot/i,
+    /init/i,
+    /systemctl/i,
+    /service\s+.*stop/i,
+    /kill\s+-9/i,
+    /killall/i,
+    /pkill/i,
+    /;\s*wget/i,
+    /;\s*curl.*>/i,
+    /\|\s*nc/i,
+    /\$\(/i,
+    /`.*`/i,
+    /\.\.\//i,  // 禁止路径遍历
+  ];
+
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(command)) {
+      return {
+        error: '检测到危险的命令模式，已被阻止',
+        command,
+      };
+    }
+  }
+
   try {
-    const result = execSync(command, { encoding: 'utf-8', maxBuffer: 1024 * 1024 });
+    // 使用 exec 并设置超时（5秒）
+    const result = await new Promise<string>((resolve, reject) => {
+      const childProcess = exec(command, {
+        encoding: 'utf-8',
+        maxBuffer: 512 * 1024, // 512KB 输出限制
+        timeout: 5000, // 5秒超时
+      }, (error, stdout, stderr) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(stdout);
+        }
+      });
+    });
+
     return {
       success: true,
       output: result.substring(0, 2000), // 限制输出长度
       command,
     };
   } catch (error: any) {
+    // 区分超时错误和其他错误
+    if (error.message && error.message.includes('timeout')) {
+      return {
+        success: false,
+        error: '命令执行超时（超过5秒），可能被阻止或运行时间过长',
+        command,
+      };
+    }
     return {
       success: false,
-      error: error.message,
+      error: error.message || '命令执行失败',
       command,
     };
   }
 }
 
-async function readFile(params: { filePath: string }) {
+async function readFile(params: { filePath: string }, requesterRole?: string) {
   const { filePath } = params;
 
-  // 获取项目根目录
-  const projectRoot = process.cwd();
-  const fullPath = join(projectRoot, filePath);
-
-  // 检查路径是否在项目内（防止路径遍历攻击）
-  const normalizedPath = require('path').normalize(fullPath);
-  if (!normalizedPath.startsWith(projectRoot)) {
+  // 权限检查：只有管理员和超级管理员可以读取文件
+  if (requesterRole !== 'admin' && requesterRole !== 'super_admin') {
     return {
-      error: '访问被拒绝：路径超出项目范围',
+      error: '权限不足：只有管理员可以读取文件',
     };
   }
 
-  if (!existsSync(normalizedPath)) {
+  // 获取项目根目录
+  const projectRoot = process.cwd();
+
+  // 基础文件名检查（防止空白路径）
+  const fileName = require('path').basename(filePath);
+  if (!fileName || fileName === '.' || fileName === '..') {
+    return {
+      error: '无效的文件路径',
+    };
+  }
+
+  // 构建绝对路径并规范化
+  const fullPath = require('path').resolve(projectRoot, filePath);
+  const normalizedPath = require('path').normalize(fullPath);
+
+  // 双重检查：确保最终路径在项目目录内
+  // 使用更安全的检查方式：解析符号链接并比较
+  let realPath: string;
+  try {
+    realPath = require('fs').realpathSync(normalizedPath);
+  } catch {
+    // 如果 realpathSync 失败（文件不存在或其他），使用 normalizedPath
+    realPath = normalizedPath;
+  }
+
+  const realProjectRoot = require('fs').realpathSync(projectRoot);
+
+  // 确保文件在项目目录内（支持符号链接项目目录）
+  if (!realPath.startsWith(realProjectRoot + require('path').sep) && realPath !== realProjectRoot) {
+    return {
+      error: '访问被拒绝：路径超出项目范围',
+      attemptedPath: filePath,
+    };
+  }
+
+  // 额外检查：确保路径不包含危险的遍历模式
+  if (filePath.includes('..') || filePath.includes('~')) {
+    return {
+      error: '访问被拒绝：不允许路径遍历',
+    };
+  }
+
+  if (!existsSync(realPath)) {
     return {
       error: `文件不存在: ${filePath}`,
     };
   }
 
   try {
-    const content = readFileSync(normalizedPath, 'utf-8');
+    // 检查是否是文件（不是目录）
+    const stats = require('fs').statSync(realPath);
+    if (!stats.isFile()) {
+      return {
+        error: '只能读取文件，不能读取目录',
+        path: filePath,
+      };
+    }
+
+    const content = readFileSync(realPath, 'utf-8');
     return {
       success: true,
       filePath,
@@ -573,7 +796,31 @@ async function updateUserRole(params: { userId: number; role: string }, requeste
     };
   }
 
-  // 更新用户角色
+  // 生成操作描述
+  const roleLabels: Record<string, string> = {
+    user: '普通用户',
+    reviewer: '审核员',
+    admin: '管理员'
+  };
+  const description = `将用户 ${user.username}（ID: ${userId}）的角色从"${roleLabels[user.role] || user.role}"修改为"${roleLabels[role] || role}"`;
+
+  // 返回需要确认的状态
+  return {
+    needs_confirmation: true,
+    operationDescription: description,
+    operationDetails: {
+      userId,
+      role,
+      currentRole: user.role,
+      username: user.username,
+    },
+  };
+}
+
+// 实际执行用户角色更新
+async function executeUserRoleUpdate(params: { userId: number; role: string }) {
+  const { userId, role } = params;
+
   const updatedUser = await prisma.user.update({
     where: { id: userId },
     data: { role },
@@ -623,7 +870,26 @@ async function updateUserStatus(params: { userId: number; isActive: boolean }, r
     };
   }
 
-  // 更新用户状态
+  // 生成操作描述
+  const description = `将用户 ${user.username}（ID: ${userId}）的账号${isActive ? '启用' : '禁用'}`;
+
+  // 返回需要确认的状态
+  return {
+    needs_confirmation: true,
+    operationDescription: description,
+    operationDetails: {
+      userId,
+      isActive,
+      username: user.username,
+      currentStatus: user.isActive,
+    },
+  };
+}
+
+// 实际执行用户状态更新
+async function executeUserStatusUpdate(params: { userId: number; isActive: boolean }) {
+  const { userId, isActive } = params;
+
   const updatedUser = await prisma.user.update({
     where: { id: userId },
     data: { isActive },
@@ -922,7 +1188,42 @@ const toolFunctions: Record<string, (params: any, userRole?: string) => Promise<
   get_comments: getComments,
   get_dashboard_stats: getDashboardStats,
   get_system_info: getSystemInfo,
+  confirm_operation: confirmOperation,
 };
+
+// 确认操作函数
+async function confirmOperation(params: { operationId: string }, requesterRole?: string) {
+  const { operationId } = params;
+
+  // 清理过期操作
+  cleanupExpiredOperations();
+
+  const operation = pendingOperations.get(operationId);
+  if (!operation) {
+    return {
+      success: false,
+      error: `操作已过期或不存在，请重新执行操作`,
+    };
+  }
+
+  // 删除挂起操作（防止重复执行）
+  pendingOperations.delete(operationId);
+
+  // 根据操作类型执行实际操作
+  switch (operation.functionName) {
+    case 'update_report_status':
+      return await executeReportStatusUpdate(operation.functionArgs);
+    case 'update_user_role':
+      return await executeUserRoleUpdate(operation.functionArgs);
+    case 'update_user_status':
+      return await executeUserStatusUpdate(operation.functionArgs);
+    default:
+      return {
+        success: false,
+        error: `未知的操作类型: ${operation.functionName}`,
+      };
+  }
+}
 
 /**
  * AI 对话接口 - 真正的智能体，支持函数调用
@@ -969,10 +1270,10 @@ export const chat = async (req: AuthRequest, res: Response) => {
 
 你有能力直接访问和分析项目：
 - 查询举报信息 (query_reports)
-- 更新举报状态 (update_report_status)
+- 更新举报状态 (update_report_status) - 需要用户确认
 - 查询用户信息 (query_users)
-- 更新用户角色 (update_user_role) - 仅超级管理员
-- 更新用户状态 (update_user_status) - 仅管理员
+- 更新用户角色 (update_user_role) - 需要用户确认，仅超级管理员
+- 更新用户状态 (update_user_status) - 需要用户确认，仅管理员
 - 查询动态信息 (query_posts)
 - 搜索美食动态 (search_posts) - 按关键词和地点搜索
 - 查询评论信息 (get_comments) - 查看评论详情
@@ -980,10 +1281,23 @@ export const chat = async (req: AuthRequest, res: Response) => {
 - 获取系统信息 (get_system_info) - 查看系统运行状态
 - 执行命令 (execute_command)
 - 读取文件 (read_file)
+- 确认操作 (confirm_operation) - 用户确认后执行挂起的操作
 
-当用户要求你"查看"、"列出"、"检查"、"统计"等操作时，你必须：
-1. 使用相应的工具函数获取真实数据
-2. 将获取的数据整理成清晰的格式返回给用户
+【重要】操作确认机制：
+当用户要求执行管理操作（如更新举报状态、修改用户角色、修改用户状态）时：
+1. 不要直接执行操作，而是调用相应的工具函数
+2. 工具函数会返回 needs_confirmation: true 并附带操作描述
+3. 你必须向用户展示操作计划："我计划执行以下操作：..."
+4. 询问用户确认："请问确认执行吗？"
+5. 只有当用户明确回复"确认"、"是"、"执行"时才调用 confirm_operation
+6. 如果用户回复"取消"、"否"、"不执行"，则回复"好的，操作已取消。"
+
+当用户说"确认"、"是"、"执行"等确认词时：
+1. 调用 confirm_operation 工具，传入之前返回的 operationId
+2. 根据返回结果告知用户操作是否成功
+
+当用户说"取消"、"否"、"不执行"等取消词时：
+1. 回复"好的，操作已取消。"
 
 当前用户权限：${req.user?.role || 'user'}
 当前用户ID：${req.user?.userId || 'unknown'}
@@ -1031,6 +1345,9 @@ export const chat = async (req: AuthRequest, res: Response) => {
 
           // 执行工具调用
           const toolResults: any[] = [];
+          let hasPendingConfirmation = false;
+          let pendingConfirmationResult: any = null;
+
           for (const toolCall of assistantMessage.tool_calls) {
             // 处理不同类型的 tool_call
             if (toolCall.type === 'function') {
@@ -1044,11 +1361,42 @@ export const chat = async (req: AuthRequest, res: Response) => {
                 try {
                   // 传递用户角色给工具函数（用于权限检查）
                   const result = await toolFunctions[functionName](functionArgs, req.user?.role);
-                  toolResults.push({
-                    tool_call_id: toolCall.id,
-                    role: 'tool',
-                    content: JSON.stringify(result),
-                  });
+
+                  // 检查是否需要确认
+                  if (result.needs_confirmation) {
+                    // 生成操作ID并存储挂起操作
+                    const operationId = generateOperationId();
+                    const pendingOp: PendingOperation = {
+                      id: operationId,
+                      functionName,
+                      functionArgs,
+                      description: result.operationDescription,
+                      createdAt: new Date(),
+                      requesterRole: req.user?.role,
+                    };
+                    pendingOperations.set(operationId, pendingOp);
+
+                    // 标记有挂起确认
+                    hasPendingConfirmation = true;
+                    pendingConfirmationResult = {
+                      tool_call_id: toolCall.id,
+                      role: 'tool',
+                      content: JSON.stringify({
+                        needs_confirmation: true,
+                        operationId,
+                        operationDescription: result.operationDescription,
+                        message: `我计划执行以下操作：${result.operationDescription}。请问确认执行吗？`,
+                      }),
+                    };
+                    console.log(`Tool ${functionName} requires confirmation, operation ID: ${operationId}`);
+                  } else {
+                    // 普通工具调用，直接返回结果
+                    toolResults.push({
+                      tool_call_id: toolCall.id,
+                      role: 'tool',
+                      content: JSON.stringify(result),
+                    });
+                  }
                   console.log(`Tool ${functionName} result:`, JSON.stringify(result).substring(0, 200));
                 } catch (toolError: any) {
                   console.error(`Tool ${functionName} error:`, toolError.message);
@@ -1060,6 +1408,31 @@ export const chat = async (req: AuthRequest, res: Response) => {
                 }
               }
             }
+          }
+
+          // 如果有需要确认的操作，先返回确认请求，不执行后续的 finalResponse
+          if (hasPendingConfirmation) {
+            // 只保留确认相关的工具结果
+            const confirmationToolResult = [pendingConfirmationResult];
+
+            // 将确认请求发送给 AI，让它生成确认提示
+            messages.push(assistantMessage);
+            messages.push(...confirmationToolResult);
+
+            const confirmResponse = await openai.chat.completions.create({
+              model: 'gpt-4o-mini',
+              messages,
+              temperature: 0.7,
+              max_tokens: 1000,
+            });
+
+            const aiConfirmMessage = confirmResponse.choices[0].message.content || '';
+
+            return successResponse(res, {
+              message: aiConfirmMessage,
+              needsConfirmation: true,
+              suggestedPosts: [],
+            });
           }
 
           // 第二步：将工具结果发送回 AI，让它生成最终回复
@@ -1106,9 +1479,18 @@ export const chat = async (req: AuthRequest, res: Response) => {
         }
       }
 
-      // 获取动态数据（带图片）
-      let posts = await prisma.post.findMany({
-        take: 50,
+      // 提取可能的美食关键词（从用户消息中）
+      const foodKeywords: string[] = [];
+      const commonFoods = ['火锅', '烧烤', '串串', '麻辣', '小龙虾', '烤肉', '炸鸡', '奶茶', '甜品', '面馆', '小吃', '快餐', '海鲜', '川菜', '粤菜', '湘菜', '鲁菜', '闽菜', '苏菜', '浙菜', '徽菜'];
+      for (const food of commonFoods) {
+        if (message.includes(food)) {
+          foodKeywords.push(food);
+        }
+      }
+
+      // 获取更多动态数据以提高搜索覆盖率（增加到200条）
+      let allPosts = await prisma.post.findMany({
+        take: 200,
         orderBy: [
           { likeCount: 'desc' },
           { favoriteCount: 'desc' },
@@ -1128,34 +1510,90 @@ export const chat = async (req: AuthRequest, res: Response) => {
         },
       });
 
-      // 如果用户提到了具体城市，优先搜索该城市的美食
-      let locationSpecificPosts: typeof posts = [];
-      let hasLocationData = false;
-      if (detectedCity) {
-        // 先筛选出该城市的帖子
-        locationSpecificPosts = posts.filter(p => p.address && p.address.includes(detectedCity!));
-        // 再按综合热度排序（点赞 + 收藏 * 2 + 评论 * 3）
-        locationSpecificPosts.sort((a, b) => {
-          const scoreA = (a.likeCount || 0) * 1 + (a.favoriteCount || 0) * 2 + (a.commentCount || 0) * 3;
-          const scoreB = (b.likeCount || 0) * 1 + (b.favoriteCount || 0) * 2 + (b.commentCount || 0) * 3;
-          return scoreB - scoreA;
-        });
-        if (locationSpecificPosts.length > 0) {
-          hasLocationData = true;
+      // 获取所有标签用于话题匹配
+      const allTags = await prisma.tag.findMany({
+        select: { id: true, name: true },
+      });
+      const tagMap = new Map(allTags.map(t => [t.name.toLowerCase(), t.id]));
+
+      // 对用户提到的食物关键词进行话题匹配
+      let tagMatchedPostIds: number[] = [];
+      if (foodKeywords.length > 0) {
+        for (const food of foodKeywords) {
+          const tagId = tagMap.get(food.toLowerCase());
+          if (tagId) {
+            const postTags = await prisma.postTag.findMany({
+              where: { tagId },
+              select: { postId: true },
+            });
+            tagMatchedPostIds.push(...postTags.map(pt => pt.postId));
+          }
         }
+        tagMatchedPostIds = [...new Set(tagMatchedPostIds)];
       }
 
-      // 获取所有城市列表
-      const cities = [...new Set(posts.map(p => p.address).filter(Boolean))];
+      // 获取所有城市列表（用于告诉AI平台覆盖范围）
+      const cities = [...new Set(allPosts.map(p => p.address).filter(Boolean))];
 
-      // 构建带有图片的美食列表
-      const formatPostForPrompt = (p: typeof posts[0]) => {
+      // 计算综合热度分数（点赞 + 收藏*2 + 评论*3）
+      const calculateHotScore = (p: typeof allPosts[0]) => {
+        return (p.likeCount || 0) * 1 + (p.favoriteCount || 0) * 2 + (p.commentCount || 0) * 3;
+      };
+
+      // 如果用户提到了具体城市，进行多维度搜索
+      let locationSpecificPosts: typeof allPosts = [];
+      let hasLocationData = false;
+      if (detectedCity) {
+        // 1. 精确匹配地址中包含城市的帖子
+        const addressMatches = allPosts.filter(p => p.address && p.address.includes(detectedCity!));
+
+        // 2. 如果有标签匹配的帖子，也纳入考虑
+        const tagMatches = tagMatchedPostIds.length > 0
+          ? allPosts.filter(p => tagMatchedPostIds.includes(p.id))
+          : [];
+
+        // 3. 合并去重，优先保留地址匹配的
+        const combinedMap = new Map();
+        addressMatches.forEach(p => combinedMap.set(p.id, { ...p, matchType: 'address' }));
+        tagMatches.forEach(p => {
+          if (!combinedMap.has(p.id)) {
+            combinedMap.set(p.id, { ...p, matchType: 'tag' });
+          }
+        });
+
+        locationSpecificPosts = Array.from(combinedMap.values());
+
+        // 按综合热度排序
+        locationSpecificPosts.sort((a, b) => calculateHotScore(b) - calculateHotScore(a));
+
+        hasLocationData = locationSpecificPosts.length > 0;
+      }
+
+      // 如果没有指定城市但有食物关键词，搜索相关帖子
+      let keywordMatchedPosts: typeof allPosts = [];
+      if (!detectedCity && foodKeywords.length > 0) {
+        // 搜索内容中包含关键词的帖子
+        for (const keyword of foodKeywords) {
+          const matches = allPosts.filter(p =>
+            p.content.includes(keyword) || (p.address && p.address.includes(keyword))
+          );
+          matches.forEach(p => {
+            if (!keywordMatchedPosts.find(kp => kp.id === p.id)) {
+              keywordMatchedPosts.push(p);
+            }
+          });
+        }
+        keywordMatchedPosts.sort((a, b) => calculateHotScore(b) - calculateHotScore(a));
+      }
+
+      // 格式化帖子用于AI提示
+      const formatPostForPrompt = (p: typeof allPosts[0]) => {
         const images = p.images ? JSON.parse(p.images) : [];
         const hasImage = images.length > 0 ? ' [有图片]' : ' [无图片]';
         return `${p.id}. "${p.content.substring(0, 50)}" (👍${p.likeCount || 0} ❤️${p.favoriteCount || 0} 💬${p.commentCount || 0})${hasImage} 📍${p.address || '未知位置'}`;
       };
 
-      const formatPostForResponse = (p: typeof posts[0]) => {
+      const formatPostForResponse = (p: typeof allPosts[0]) => {
         const images = p.images ? JSON.parse(p.images) : [];
         return {
           id: p.id,
@@ -1170,12 +1608,30 @@ export const chat = async (req: AuthRequest, res: Response) => {
       };
 
       // 构建系统提示词
-      const topPosts = posts.slice(0, 10);
-      const locationInfo = detectedCity
-        ? hasLocationData
-          ? `**用户询问地区：** ${detectedCity}\n**该地区美食数量：** ${locationSpecificPosts.length} 个\n**该地区热门美食：**\n${locationSpecificPosts.slice(0, 5).map(formatPostForPrompt).join('\n')}`
-          : `**用户询问地区：** ${detectedCity}\n⚠️ **注意：** 该地区暂无美食数据，小边会告知用户并尝试提供其他建议`
-        : '';
+      const topPosts = allPosts.slice(0, 10);
+      let locationInfo = '';
+
+      if (detectedCity) {
+        if (hasLocationData) {
+          locationInfo = `**用户询问地区：** ${detectedCity}\n**该地区美食数量：** ${locationSpecificPosts.length} 个\n**该地区热门美食：**\n${locationSpecificPosts.slice(0, 5).map(formatPostForPrompt).join('\n')}`;
+        } else {
+          locationInfo = `**用户询问地区：** ${detectedCity}\n⚠️ **注意：** 平台上暂时还没有【${detectedCity}】的美食信息`;
+        }
+      } else if (keywordMatchedPosts.length > 0) {
+        locationInfo = `**用户搜索关键词：** ${foodKeywords.join('、')}\n**匹配美食数量：** ${keywordMatchedPosts.length} 个\n**热门匹配：**\n${keywordMatchedPosts.slice(0, 5).map(formatPostForPrompt).join('\n')}`;
+      }
+
+      // 根据是否有数据决定回复策略
+      let dataStatus: 'has_location_data' | 'no_location_data' | 'no_keyword_data' | 'general';
+      if (detectedCity && hasLocationData) {
+        dataStatus = 'has_location_data';
+      } else if (detectedCity && !hasLocationData) {
+        dataStatus = 'no_location_data';
+      } else if (keywordMatchedPosts.length > 0) {
+        dataStatus = 'no_keyword_data';
+      } else {
+        dataStatus = 'general';
+      }
 
       const foodieSystemPrompt = `你是"小边"，街边美食平台的 AI 智能助手。你是一个热情的美食探索家，热爱发现城市的美味角落。
 
@@ -1184,20 +1640,23 @@ ${topPosts.map(formatPostForPrompt).join('\n')}
 
 ${locationInfo}
 
-**覆盖城市：** ${cities.slice(0, 10).join('、') || '暂无数据'}
+**覆盖城市：** ${cities.slice(0, 15).join('、') || '暂无数据'}
 
 **回复规范：**
 1. 如果用户询问特定地区的美食：
-   - 该地区有数据时：优先推荐该地区的热门美食，按点赞、收藏、评论排序，优先推荐有图片的
-   - 该地区无数据时（hasLocationData=false）：
-     a) 首先明确告知用户："很抱歉，平台上还没有 [城市名] 的美食记录"
-     b) 然后利用你的知识库，搜索该地区的标志美食、网红小吃、特色菜肴
+   - 该地区有数据时（dataStatus=has_location_data）：优先推荐该地区的热门美食，按综合热度排序（点赞+收藏*2+评论*3），优先推荐有图片的
+   - 该地区无数据时（dataStatus=no_location_data）：
+     a) 首先明确告知用户："很抱歉，平台上暂时还没有【${detectedCity}】的美食信息"
+     b) 然后利用你的知识库，推荐该地区的标志美食、网红小吃、特色菜肴
      c) 推荐3-5道该地区最有名的美食，并简要说明推荐理由
      d) 在推荐时标注"[网络推荐]"以便用户区分
-2. 回复控制在 100-150 字以内
-3. 回复末尾用【推荐:ID1,ID2】格式列出推荐的动态ID（仅限平台动态，最多3个），优先推荐有图片的。如果没有平台数据则用【推荐:】表示
-4. 使用表情符号让对话更生动（🍜🔥✨📍👍❤️💬）
-5. 推荐时优先选择有图片的美食，并说明为什么推荐
+2. 如果用户搜索特定食物关键词（dataStatus=no_keyword_data）：
+   - 优先展示平台上的相关美食
+   - 结合你的知识给出更多推荐
+3. 回复控制在 100-150 字以内
+4. 回复末尾用【推荐:ID1,ID2】格式列出推荐的动态ID（仅限平台动态，最多3个），优先推荐有图片的。如果没有平台数据则用【推荐:】表示
+5. 使用表情符号让对话更生动（🍜🔥✨📍👍❤️💬）
+6. 推荐时优先选择有图片的美食，并说明为什么推荐
 
 **智能追问生成：**
 在回复末尾另起一行，生成2-3个用户可能会追问的问题，格式：【追问:问题1|问题2|问题3】
@@ -1219,6 +1678,9 @@ ${locationInfo}
 
       console.log('Calling OpenAI in foodie mode...');
       console.log('Detected city:', detectedCity, 'Has location data:', hasLocationData);
+      console.log('Food keywords:', foodKeywords);
+      console.log('Location posts count:', locationSpecificPosts.length);
+      console.log('Keyword posts count:', keywordMatchedPosts.length);
 
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -1247,7 +1709,7 @@ ${locationInfo}
       const cleanResponse = aiResponse.replace(/【推荐:[^\]]*】/g, '').trim();
 
       // 获取推荐的动态完整信息（包括图片）
-      const suggestedPostsWithImages = posts
+      const suggestedPostsWithImages = allPosts
         .filter(p => suggestedPostIds.includes(p.id))
         .map(formatPostForResponse);
 
@@ -1256,6 +1718,7 @@ ${locationInfo}
         suggestedPosts: suggestedPostIds,
         locationData: hasLocationData,
         city: detectedCity,
+        dataStatus,
       });
     } catch (openaiError: any) {
       console.error('OpenAI Error in foodie mode:', openaiError.message);

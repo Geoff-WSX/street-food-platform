@@ -1,5 +1,6 @@
 import prisma from '../services/db/prisma';
 import { createNotification, NotificationType, EntityType } from './notification.service';
+import { updateTaskProgress } from './level.service';
 
 /**
  * 敏感词库 - 文字审查
@@ -106,10 +107,17 @@ export const getComments = async (postId: number, page: number = 1, pageSize: nu
   const userIds = [...new Set(comments.map(c => c.userId))];
   const users = await prisma.user.findMany({
     where: { id: { in: userIds } },
-    select: { id: true, username: true, avatar: true, avatarData: true },
+    include: { userLevel: { include: { level: true } } },
   });
 
-  const userMap = new Map(users.map(u => [u.id, u]));
+  const userMap = new Map(users.map(u => {
+    const level = u.userLevel?.level ? {
+      level: u.userLevel.level.level,
+      name: u.userLevel.level.name,
+      icon: u.userLevel.level.icon,
+    } : undefined;
+    return [u.id, { id: u.id, username: u.username, avatar: u.avatarData || u.avatar, avatarData: u.avatarData, level }];
+  }));
 
   // 获取回复数量
   const replyCounts = await Promise.all(
@@ -133,9 +141,16 @@ export const getComments = async (postId: number, page: number = 1, pageSize: nu
       const replyUserIds = [...new Set(replies.map(r => r.userId))];
       const replyUsers = await prisma.user.findMany({
         where: { id: { in: replyUserIds } },
-        select: { id: true, username: true, avatar: true, avatarData: true },
+        include: { userLevel: { include: { level: true } } },
       });
-      const replyUserMap = new Map(replyUsers.map(u => [u.id, u]));
+      const replyUserMap = new Map(replyUsers.map(u => {
+        const level = u.userLevel?.level ? {
+          level: u.userLevel.level.level,
+          name: u.userLevel.level.name,
+          icon: u.userLevel.level.icon,
+        } : undefined;
+        return [u.id, { id: u.id, username: u.username, avatar: u.avatarData || u.avatar, avatarData: u.avatarData, level }];
+      }));
 
       // 获取当前用户是否点赞了这些评论
       let likedCommentIds: number[] = [];
@@ -203,10 +218,17 @@ export const getCommentReplies = async (parentId: number, page: number = 1, page
   const userIds = [...new Set(replies.map(r => r.userId))];
   const users = await prisma.user.findMany({
     where: { id: { in: userIds } },
-    select: { id: true, username: true, avatar: true, avatarData: true },
+    include: { userLevel: { include: { level: true } } },
   });
 
-  const userMap = new Map(users.map(u => [u.id, u]));
+  const userMap = new Map(users.map(u => {
+    const level = u.userLevel?.level ? {
+      level: u.userLevel.level.level,
+      name: u.userLevel.level.name,
+      icon: u.userLevel.level.icon,
+    } : undefined;
+    return [u.id, { id: u.id, username: u.username, avatar: u.avatarData || u.avatar, avatarData: u.avatarData, level }];
+  }));
 
   // 检查点赞状态
   let likedReplyIds: number[] = [];
@@ -313,8 +335,16 @@ export const createComment = async (userId: number, data: {
   // 获取用户信息
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, username: true, avatar: true, avatarData: true },
+    include: { userLevel: { include: { level: true } } },
   });
+
+  // 处理用户等级信息
+  const level = user?.userLevel?.level ? {
+    level: user.userLevel.level.level,
+    name: user.userLevel.level.name,
+    icon: user.userLevel.level.icon,
+  } : undefined;
+  const userWithLevel = user ? { id: user.id, username: user.username, avatar: user.avatarData || user.avatar, avatarData: user.avatarData, level } : null;
 
   // 创建通知（异步执行，不影响评论创建）
   setImmediate(async () => {
@@ -344,9 +374,19 @@ export const createComment = async (userId: number, data: {
     }
   });
 
+  // 异步更新等级任务进度（评论）
+  setImmediate(async () => {
+    try {
+      const commentCount = await prisma.comment.count({ where: { userId } });
+      await updateTaskProgress(userId, 'comment_count', commentCount);
+    } catch (error) {
+      console.error('更新等级任务进度失败:', error);
+    }
+  });
+
   return {
     ...comment,
-    user: user!,
+    user: userWithLevel,
     replyToUser: replyToUserId ? { id: replyToUserId, username: (await prisma.user.findUnique({ where: { id: replyToUserId }, select: { username: true } }))!.username } : undefined,
     isLiked: false,
     likeCount: 0,

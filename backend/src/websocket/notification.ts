@@ -126,11 +126,25 @@ export async function pushFriendRequestNotification(
   });
 
   if (actor) {
+    // 存储到数据库（用于离线通知）
+    const notification = await prisma.notification.create({
+      data: {
+        userId,
+        type: NotificationType.FRIEND_REQUEST,
+        actorId,
+        entityId: actorId,
+        entityType: EntityType.USER,
+      },
+    });
+
+    // 实时推送
     sendToUser(userId, 'friend_request', {
+      id: notification.id,
       type: 'FRIEND_REQUEST',
       actor,
       message,
       content: `${actor.username} 请求添加你为好友`,
+      createdAt: notification.createdAt.toISOString(),
     });
   }
 }
@@ -145,12 +159,81 @@ export async function pushFriendAcceptedNotification(userId: number, actorId: nu
   });
 
   if (actor) {
+    // 存储到数据库（用于离线通知）
+    const notification = await prisma.notification.create({
+      data: {
+        userId,
+        type: NotificationType.FRIEND_ACCEPTED,
+        actorId,
+        entityId: actorId,
+        entityType: EntityType.USER,
+      },
+    });
+
+    // 实时推送
     sendToUser(userId, 'friend_accepted', {
+      id: notification.id,
       type: 'FRIEND_ACCEPTED',
       actor,
       content: `${actor.username} 已接受你的好友请求`,
+      createdAt: notification.createdAt.toISOString(),
     });
   }
+}
+
+/**
+ * 推送任务完成通知
+ */
+export function pushTaskCompleteNotification(userId: number, data: {
+  taskKey: string;
+  taskName: string;
+  expReward: number;
+}) {
+  // 存储到数据库（用于离线通知）
+  const notification = prisma.notification.create({
+    data: {
+      userId,
+      type: NotificationType.TASK_COMPLETE,
+      actorId: userId, // 任务完成通知没有特定 actor
+      entityId: 0,
+      entityType: EntityType.USER,
+    },
+  });
+
+  sendToUser(userId, 'notification', {
+    type: 'TASK_COMPLETE',
+    content: `完成了任务「${data.taskName}」，获得 ${data.expReward} 经验值`,
+    entityType: 'task',
+    expReward: data.expReward,
+  });
+}
+
+/**
+ * 推送升级通知
+ */
+export function pushLevelUpNotification(userId: number, data: {
+  oldLevel: number;
+  newLevel: number;
+  levelName: string;
+}) {
+  // 存储到数据库（用于离线通知）
+  prisma.notification.create({
+    data: {
+      userId,
+      type: NotificationType.LEVEL_UP,
+      actorId: userId, // 升级通知没有特定 actor
+      entityId: 0,
+      entityType: EntityType.USER,
+    },
+  });
+
+  sendToUser(userId, 'notification', {
+    type: 'LEVEL_UP',
+    content: `恭喜！你的等级提升到 Lv${data.newLevel} ${data.levelName}`,
+    entityType: 'level',
+    oldLevel: data.oldLevel,
+    newLevel: data.newLevel,
+  });
 }
 
 export default {
@@ -160,4 +243,6 @@ export default {
   pushFollowNotification,
   pushFriendRequestNotification,
   pushFriendAcceptedNotification,
+  pushTaskCompleteNotification,
+  pushLevelUpNotification,
 };

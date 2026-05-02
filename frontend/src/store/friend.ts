@@ -79,7 +79,8 @@ export const useFriendStore = create<FriendState>((set, get) => ({
   fetchReceivedRequests: async () => {
     try {
       const res = await api.getReceivedRequests();
-      const requests = res.data?.data || res.data || [];
+      // API 已经返回 r.data.data，所以 res 就是数组
+      const requests = Array.isArray(res) ? res : (res.data || []);
       set({ receivedRequests: requests, unreadRequestCount: requests.length });
     } catch (error) {
       console.error('获取收到的好友请求失败:', error);
@@ -90,7 +91,9 @@ export const useFriendStore = create<FriendState>((set, get) => ({
   fetchSentRequests: async () => {
     try {
       const res = await api.getSentRequests();
-      set({ sentRequests: res.data?.data || res.data || [] });
+      // API 已经返回 r.data.data，所以 res 就是数组
+      const requests = Array.isArray(res) ? res : (res.data || []);
+      set({ sentRequests: requests });
     } catch (error) {
       console.error('获取发出的好友请求失败:', error);
       set({ sentRequests: [] });

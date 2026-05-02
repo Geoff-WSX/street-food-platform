@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { successResponse, errorResponse } from '../utils/response';
 import prisma from '../services/db/prisma';
+import { updateTaskProgress } from '../services/level.service';
 
 // 关注用户
 export const followUser = async (req: AuthRequest, res: Response) => {
@@ -31,6 +32,16 @@ export const followUser = async (req: AuthRequest, res: Response) => {
       data: {
         followerId,
         followingId: parseInt(userId)
+      }
+    });
+
+    // 异步更新等级任务进度（关注）
+    setImmediate(async () => {
+      try {
+        const followingCount = await prisma.follow.count({ where: { followerId } });
+        await updateTaskProgress(followerId, 'following_count', followingCount);
+      } catch (error) {
+        console.error('更新等级任务进度失败:', error);
       }
     });
 

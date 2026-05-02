@@ -8,10 +8,12 @@ import {
 import { getPost, toggleLike, toggleFavorite, deletePost } from '../api/post';
 import { useAuthStore } from '../store/auth';
 import { parseImages, getAvatarUrl } from '../utils/images';
+import { useBrowseHistory } from '../hooks/useBrowseHistory';
 import type { Post } from '../types';
 import CommentSection from '../components/CommentSection';
 import MapModal from '../components/MapModal';
 import ShareModal from '../components/ShareModal';
+import FavoriteFolderSelect from '../components/FavoriteFolderSelect';
 
 const { Text, Paragraph } = Typography;
 
@@ -26,6 +28,7 @@ export default function PostDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isLoggedIn, user } = useAuthStore();
+  const { addToHistory } = useBrowseHistory();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -33,6 +36,7 @@ export default function PostDetailPage() {
   const from = (location.state as any)?.from || '/';
   const [showMapModal, setShowMapModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showFolderSelect, setShowFolderSelect] = useState(false);
 
   // 从路由 state 获取需要高亮的评论ID
   const highlightCommentId = location.state?.highlightCommentId;
@@ -47,9 +51,11 @@ export default function PostDetailPage() {
     getPost(Number(id))
       .then((data) => {
         setPost(data);
+        // 添加到浏览历史
+        addToHistory(data);
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, addToHistory]);
 
   const handleLike = async () => {
     if (!isLoggedIn) { void message.info('请先登录'); navigate('/login'); return; }
@@ -59,8 +65,24 @@ export default function PostDetailPage() {
 
   const handleFavorite = async () => {
     if (!isLoggedIn) { void message.info('请先登录'); navigate('/login'); return; }
-    const res = await toggleFavorite(Number(id));
+    // 如果已经收藏，取消收藏
+    if (post?.isFavorited) {
+      const res = await toggleFavorite(Number(id));
+      setPost((p) => p ? { ...p, isFavorited: res.favorited, favoriteCount: res.favoriteCount } : p);
+    } else {
+      // 如果没有收藏，显示文件夹选择
+      setShowFolderSelect(true);
+    }
+  };
+
+  const handleFolderConfirm = async (folderId: number | null) => {
+    const res = await toggleFavorite(Number(id), folderId);
     setPost((p) => p ? { ...p, isFavorited: res.favorited, favoriteCount: res.favoriteCount } : p);
+    if (res.favorited) {
+      void message.success('收藏成功');
+    } else {
+      void message.success('已取消收藏');
+    }
   };
 
   const handleDelete = async () => {
@@ -94,18 +116,23 @@ export default function PostDetailPage() {
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 0 80px', minHeight: '80vh' }}>
-      {/* 返回按钮 */}
+      {/* 返回按钮 - 固定在页面左上角 */}
       <Button
         icon={<ArrowLeftOutlined />}
         onClick={() => navigate(-1)}
         style={{
-          marginBottom: 20,
+          position: 'fixed',
+          top: 70,
+          left: 16,
+          zIndex: 1000,
+          marginBottom: 0,
           borderRadius: 20,
           height: 40,
           paddingLeft: 20,
           paddingRight: 20,
           fontWeight: 500,
-          border: '1px solid #e8e8e8'
+          border: '1px solid #e8e8e8',
+          background: 'var(--card-bg)',
         }}
       >
         返回
@@ -267,21 +294,38 @@ export default function PostDetailPage() {
                 onClick={() => navigate(`/profile?userId=${post.user.id}`)}
               />
               <div>
-                <Text
-                  strong
-                  style={{
-                    fontSize: 16,
-                    cursor: 'pointer',
-                    color: 'var(--text-primary)'
-                  }}
-                  onClick={() => navigate(`/profile?userId=${post.user.id}`)}
-                >
-                  {post.user.username}
-                </Text>
-                <br />
-                <Text type="secondary" style={{ fontSize: 13 }}>
-                  美食探索者
-                </Text>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Text
+                    strong
+                    style={{
+                      fontSize: 16,
+                      cursor: 'pointer',
+                      color: 'var(--text-primary)'
+                    }}
+                    onClick={() => navigate(`/profile?userId=${post.user.id}`)}
+                  >
+                    {post.user.username}
+                  </Text>
+                  {post.user.level && (
+                    <Tag
+                      style={{
+                        fontSize: 12,
+                        padding: '0 6px',
+                        borderRadius: 10,
+                        background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 179, 71, 0.05) 100%)',
+                        color: '#ff6b35',
+                        border: '1px solid rgba(255, 107, 53, 0.2)'
+                      }}
+                    >
+                      {post.user.level.icon} {post.user.level.name}
+                    </Tag>
+                  )}
+                </div>
+                {post.user.bio && (
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {post.user.bio}
+                  </Text>
+                )}
               </div>
             </div>
             {isOwner && (
@@ -431,6 +475,13 @@ export default function PostDetailPage() {
         postId={post.id}
         postContent={post.content}
         isOwnPost={post.user?.id === user?.id}
+      />
+
+      {/* 收藏文件夹选择 */}
+      <FavoriteFolderSelect
+        visible={showFolderSelect}
+        onClose={() => setShowFolderSelect(false)}
+        onConfirm={handleFolderConfirm}
       />
     </div>
   );

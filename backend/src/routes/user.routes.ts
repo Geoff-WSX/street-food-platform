@@ -23,6 +23,21 @@ router.put('/me/avatar', authenticate, (req, res, next) => {
   next();
 }, uploadAvatar, userController.updateAvatar);
 
+// GET /api/users/avatars/defaults - 获取预设头像列表
+router.get('/avatars/defaults', userController.getDefaultAvatars);
+
+// GET /api/users/me/avatars/customs - 获取自定义头像列表
+router.get('/me/avatars/customs', authenticate, userController.getCustomAvatars);
+
+// PUT /api/users/me/avatars/customs - 添加自定义头像
+router.put('/me/avatars/customs', authenticate, uploadAvatar, userController.addCustomAvatar);
+
+// DELETE /api/users/me/avatars/customs/:avatarId - 删除自定义头像
+router.delete('/me/avatars/customs/:avatarId', authenticate, userController.deleteCustomAvatar);
+
+// PUT /api/users/me/avatar/default - 设置预设头像
+router.put('/me/avatar/default', authenticate, userController.setDefaultAvatar);
+
 // PUT /api/users/me/password - 修改密码
 router.put('/me/password', authenticate, userController.changePassword);
 

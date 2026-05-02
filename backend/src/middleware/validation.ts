@@ -358,7 +358,13 @@ export const validateLogin = validate([
     .withMessage('邮箱不能为空'),
   body('password')
     .notEmpty()
-    .withMessage('密码不能为空')
+    .withMessage('密码不能为空'),
+  body('captchaId')
+    .notEmpty()
+    .withMessage('验证码ID不能为空'),
+  body('captchaCode')
+    .notEmpty()
+    .withMessage('验证码不能为空')
 ]);
 
 // 创建动态验证

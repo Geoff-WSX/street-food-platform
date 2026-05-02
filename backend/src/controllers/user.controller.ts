@@ -239,3 +239,81 @@ export const getBlockedUsers = async (req: AuthRequest, res: Response) => {
     return errorResponse(res, error.message, 'NOT_FOUND', 404);
   }
 };
+
+// 获取预设头像列表
+export const getDefaultAvatars = async (req: AuthRequest, res: Response) => {
+  try {
+    const avatars = userService.getDefaultAvatars();
+    return successResponse(res, avatars);
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'GET_AVATARS_FAILED');
+  }
+};
+
+// 设置预设头像
+export const setDefaultAvatar = async (req: AuthRequest, res: Response) => {
+  try {
+    const { avatarId } = req.body;
+    if (!avatarId) {
+      return errorResponse(res, '请选择头像', 'INVALID_PARAM');
+    }
+    const user = await userService.setDefaultAvatar(req.user!.userId, avatarId);
+    return successResponse(res, user, '头像设置成功');
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'SET_AVATAR_FAILED');
+  }
+};
+
+// 获取自定义头像列表
+export const getCustomAvatars = async (req: AuthRequest, res: Response) => {
+  try {
+    const avatars = await userService.getCustomAvatars(req.user!.userId);
+    return successResponse(res, avatars);
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'GET_CUSTOM_AVATARS_FAILED');
+  }
+};
+
+// 添加自定义头像
+export const addCustomAvatar = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.file) {
+      return errorResponse(res, '请上传头像图片', 'NO_FILE');
+    }
+
+    // 将图片转换为 Base64
+    const fs = await import('fs');
+    const imageBuffer = fs.readFileSync(req.file.path);
+
+    // 压缩图片
+    const sharp = await import('sharp');
+    const compressedImage = await sharp.default(imageBuffer)
+      .resize(400, 400, { fit: 'cover', position: 'centre' })
+      .webp({ quality: 85 })
+      .toBuffer();
+
+    const base64Image = `data:image/webp;base64,${compressedImage.toString('base64')}`;
+
+    // 删除临时文件
+    fs.unlinkSync(req.file.path);
+
+    const avatar = await userService.addCustomAvatar(req.user!.userId, base64Image);
+    return successResponse(res, avatar, '头像保存成功');
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'ADD_CUSTOM_AVATAR_FAILED');
+  }
+};
+
+// 删除自定义头像
+export const deleteCustomAvatar = async (req: AuthRequest, res: Response) => {
+  try {
+    const { avatarId } = req.params;
+    if (!avatarId) {
+      return errorResponse(res, '头像ID不能为空', 'INVALID_PARAM');
+    }
+    await userService.deleteCustomAvatar(req.user!.userId, avatarId);
+    return successResponse(res, null, '头像删除成功');
+  } catch (error: any) {
+    return errorResponse(res, error.message, 'DELETE_CUSTOM_AVATAR_FAILED');
+  }
+};

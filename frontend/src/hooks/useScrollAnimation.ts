@@ -3,16 +3,26 @@ import { useEffect, useRef, useState } from 'react';
 export function useScrollAnimation(options?: IntersectionObserverInit) {
   const ref = useRef<HTMLElement>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
+
+    // Fallback timeout - if intersection observer doesn't fire within 2 seconds,
+    // force visibility to ensure content is always shown
+    timeoutRef.current = setTimeout(() => {
+      setIsVisible(true);
+    }, 2000);
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsVisible(true);
           observer.unobserve(element);
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+          }
         }
       },
       {
@@ -26,6 +36,9 @@ export function useScrollAnimation(options?: IntersectionObserverInit) {
 
     return () => {
       observer.disconnect();
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
   }, [options]);
 

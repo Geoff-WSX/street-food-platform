@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "autoReject": true,
+  "logViolations": true,
+  "minContentLength": 1,
+  "maxContentLength": 5000,
+  "customRules": [
+    {
+      "pattern": "http[s]?://(?!example\\.com)",
+      "action": "warn",
+      "message": "请勿添加外部链接"
+    },
+    {
+      "pattern": "\\b(免费|赚钱|兼职)\\b",
+      "action": "warn",
+      "message": "此类内容可能被视为广告"
+    }
+  ]
+}

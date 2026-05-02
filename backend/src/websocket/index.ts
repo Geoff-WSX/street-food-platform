@@ -33,8 +33,14 @@ export function initWebSocket(server: Server) {
         return;
       }
 
-      // 验证 JWT
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as { userId: number };
+      // 验证 JWT - 确保使用环境变量中的密钥
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) {
+        ws.send(JSON.stringify({ type: 'error', message: '服务器配置错误：JWT_SECRET 未设置' }));
+        ws.close();
+        return;
+      }
+      const decoded = jwt.verify(token, jwtSecret) as { userId: number };
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
         select: { id: true, username: true, role: true, isActive: true },
@@ -62,6 +68,9 @@ export function initWebSocket(server: Server) {
         type: 'connected',
         data: { userId: user.id, username: user.username },
       }));
+
+      // 发送离线通知
+      await sendOfflineNotifications(user.id);
 
       // 心跳检测
       const heartbeat = setInterval(() => {
@@ -133,6 +142,89 @@ export function broadcast(type: string, data: any) {
       client.ws.send(message);
     }
   });
+}
+
+// 发送离线通知
+async function sendOfflineNotifications(userId: number) {
+  try {
+    // 获取未读通知
+    const notifications = await prisma.notification.findMany({
+      where: {
+        userId,
+        isRead: false,
+      },
+      include: {
+        actor: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true,
+            avatarData: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+      take: 50, // 最多发送50条离线通知
+    });
+
+    if (notifications.length === 0) {
+      return;
+    }
+
+    console.log(`📤 为用户 ${userId} 发送 ${notifications.length} 条离线通知`);
+
+    // 分类发送不同类型的通知
+    for (const notification of notifications) {
+      let wsType = 'notification';
+
+      if (notification.type === 'FRIEND_REQUEST') {
+        wsType = 'friend_request';
+      } else if (notification.type === 'FRIEND_ACCEPTED') {
+        wsType = 'friend_accepted';
+      }
+
+      const sent = sendToUser(userId, wsType, {
+        id: notification.id,
+        type: notification.type,
+        actor: notification.actor,
+        entityId: notification.entityId,
+        entityType: notification.entityType,
+        content: getNotificationContent(notification.type, notification.actor?.username),
+        createdAt: notification.createdAt.toISOString(),
+      });
+
+      if (sent) {
+        // 标记为已发送（可选：也可以不标记，等用户实际查看时再标记）
+        // await prisma.notification.update({ where: { id: notification.id }, data: { isRead: true } });
+      }
+    }
+  } catch (error) {
+    console.error(`发送离线通知失败 (userId: ${userId}):`, error);
+  }
+}
+
+// 获取通知内容
+function getNotificationContent(type: string, actorName?: string | null): string {
+  switch (type) {
+    case 'FRIEND_REQUEST':
+      return `${actorName || '某人'} 请求添加你为好友`;
+    case 'FRIEND_ACCEPTED':
+      return `${actorName || '某人'} 已接受你的好友请求`;
+    case 'LIKE':
+      return `${actorName || '某人'} 赞了你的动态`;
+    case 'FOLLOW':
+      return `${actorName || '某人'} 关注了你`;
+    case 'COMMENT':
+      return `${actorName || '某人'} 评论了你的动态`;
+    case 'REPLY':
+      return `${actorName || '某人'} 回复了你的评论`;
+    case 'FAVORITE':
+      return `${actorName || '某人'} 收藏了你的动态`;
+    default:
+      return `你有一条新通知`;
+  }
 }
 
 // 获取在线用户列表

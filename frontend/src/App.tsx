@@ -9,30 +9,21 @@ import SearchModal from './components/SearchModal';
 import ThemeSwitcherWrapper from './components/ThemeSwitcherWrapper';
 import HomePage from './pages/HomePage';
 import PostDetailPage from './pages/PostDetailPage';
+import SearchResultsPage from './pages/SearchResultsPage';
 import PublishModal from './components/PublishModal';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import RankingPage from './pages/RankingPage';
 import MessagesPage from './pages/MessagesPage';
 import FriendRequestsPage from './pages/FriendRequestsPage';
+import NotificationsPage from './pages/NotificationsPage';
 import { useAuthStore } from './store/auth';
 import { useThemeStore, applyTheme, applyAccessibilitySettings } from './store/theme';
 import { getMe } from './api/user';
 import { wsService, requestNotificationPermission } from './services/websocket';
 import { useScreenSize } from './hooks/useScreenSize';
 import FoodClickEffects from './components/FloatingFoodIcon';
-import './styles/designTokens.css';
-import './styles/backgrounds.css';
-import './styles/foodAnimations.css';
-import './styles/foodTheme.css';
-import './styles/urbanFoodie.css';
-import './styles/urbanInteractions.css';
-import './styles/postCardUrban.css';
-import './styles/homePage.css';
-import './styles/theme.css';
-import './styles/themeEnhancements.css';
-import './styles/themeFixes.css';
-import './styles/adminBackground.css';
+import './styles/index.css';
 
 // 懒加载大型页面
 const AdminPage = lazy(() => import('./pages/AdminPage'));
@@ -40,6 +31,9 @@ const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const AIAssistantPage = lazy(() => import('./pages/AIAssistantPage'));
 const ThemeTestPage = lazy(() => import('./pages/ThemeTestPage'));
 const AdminBackground = lazy(() => import('./components/AdminBackground'));
+const FavoritesPage = lazy(() => import('./pages/FavoritesPage'));
+const TopicsSquarePage = lazy(() => import('./pages/TopicsSquarePage'));
+const TopicDetailPage = lazy(() => import('./pages/TopicDetailPage'));
 
 const { Content } = Layout;
 
@@ -125,14 +119,23 @@ function AppContent() {
         return 'messages-page-bg';
       case '/ai':
         return 'ai-page-bg';
+      case '/favorites':
+        return 'profile-page-bg';
+      case '/search':
+        return 'home-page-bg';
       case '/login':
         return 'login-page-bg';
+      case '/topics':
+        return 'home-page-bg';
       case '/admin':
       case '/reports':
         return 'admin-page-bg';
       default:
         if (location.pathname.startsWith('/post/')) {
           return 'post-detail-bg';
+        }
+        if (location.pathname.startsWith('/topic/')) {
+          return 'home-page-bg';
         }
         return 'food-decorative-bg';
     }
@@ -174,6 +177,7 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/post/:id" element={<PostDetailPage />} />
+            <Route path="/search" element={<SearchResultsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/ranking" element={<RankingPage />} />
             <Route path="/profile" element={<ProfilePage />} />
@@ -212,6 +216,17 @@ function AppContent() {
             />
             <Route path="/friends" element={<AuthGuard><Navigate to={"/profile?tab=friends"} replace /></AuthGuard>} />
             <Route path="/friends/requests" element={<AuthGuard><FriendRequestsPage /></AuthGuard>} />
+            <Route path="/notifications" element={<AuthGuard><NotificationsPage /></AuthGuard>} />
+            <Route path="/topics" element={<TopicsSquarePage />} />
+            <Route path="/topic/:name" element={<TopicDetailPage />} />
+            <Route
+              path="/favorites"
+              element={
+                <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}><Spin size="large" /></div>}>
+                  <AuthGuard><FavoritesPage /></AuthGuard>
+                </Suspense>
+              }
+            />
           </Routes>
         </Content>
       </Layout>

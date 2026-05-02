@@ -775,3 +775,50 @@
   animation: blink 1s infinite;
   color: var(--brand-start);
 }
+
+/* ===== 动态卡片网格布局 ===== */
+.posts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-lg);
+  align-items: stretch;
+}
+
+.posts-grid > * {
+  min-height: 520px;
+  height: 100%;
+}
+
+/* 响应式 - 移动端 */
+@media (max-width: 480px) {
+  .posts-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+
+  .posts-grid > * {
+    height: auto;
+    min-height: 520px;
+  }
+}
+
+/* 响应式 - 平板 */
+@media (min-width: 481px) and (max-width: 768px) {
+  .posts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 响应式 - 小桌面 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .posts-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 响应式 - 大桌面 */
+@media (min-width: 1025px) {
+  .posts-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

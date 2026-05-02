@@ -103,15 +103,12 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--space-lg);
+  align-items: stretch;
 }
 
-.posts-grid > div {
-  display: flex;
-  height: 480px;
-}
-
-.posts-grid > div > article {
-  width: 100%;
+.posts-grid > * {
+  min-height: 520px;
+  height: 100%;
 }
 
 /* ===== 空状态 ===== */
@@ -165,8 +162,9 @@
     gap: var(--space-md);
   }
 
-  .posts-grid > div {
+  .posts-grid > * {
     height: auto;
+    min-height: 520px;
   }
 }
 

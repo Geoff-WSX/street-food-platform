@@ -8,6 +8,66 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Level {
+  id          Int     @id @default(autoincrement())
+  level       Int     @unique
+  name        String  @db.VarChar(50)
+  minExp      Int
+  maxExp      Int?
+  icon        String? @db.VarChar(500)
+  description String? @db.VarChar(255)
+  users       UserLevel[]
+
+  @@map("levels")
+}
+
+model UserLevel {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  levelId   Int
+  exp       Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level     Level    @relation(fields: [levelId], references: [id])
+  progress  UserLevelProgress[]
+
+  @@map("user_levels")
+}
+
+model LevelTask {
+  id          Int     @id @default(autoincrement())
+  taskKey     String  @unique @db.VarChar(50)
+  name        String  @db.VarChar(100)
+  description String? @db.VarChar(255)
+  expReward   Int     @default(10)
+  targetCount Int
+  icon        String? @db.VarChar(100)
+  isActive    Boolean @default(true)
+  isDaily     Boolean @default(false)  // 是否每日任务
+  resetHour   Int     @default(0)     // 每日重置小时（0-23）
+  progress    UserLevelProgress[]
+
+  @@map("level_tasks")
+}
+
+model UserLevelProgress {
+  id            Int       @id @default(autoincrement())
+  userLevelId   Int
+  levelTaskId   Int
+  currentCount  Int       @default(0)
+  completed     Boolean   @default(false)
+  completedAt   DateTime?
+  taskDate      String?   @db.VarChar(10)  // 每日任务日期，格式 YYYY-MM-DD
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  userLevel     UserLevel @relation(fields: [userLevelId], references: [id], onDelete: Cascade)
+  levelTask     LevelTask @relation(fields: [levelTaskId], references: [id])
+
+  @@unique([userLevelId, levelTaskId, taskDate])
+  @@map("user_level_progress")
+}
+
 model AdminLog {
   id          Int      @id @default(autoincrement())
   adminId     Int
@@ -68,11 +128,11 @@ model Comment {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   commentLikes  CommentLike[]
-  mentions      Mention[]
   replies       Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   parent        Comment[]     @relation("CommentReplies")
   post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mentions      Mention[]
 
   @@index([createdAt])
   @@index([parentId])
@@ -94,32 +154,33 @@ model Conversation {
 }
 
 model Favorite {
-  id        Int      @id @default(autoincrement())
+  id        Int             @id @default(autoincrement())
   userId    Int
   postId    Int
-  isPinned Boolean  @default(false)
-  category  String?  @db.VarChar(50)
+  isPinned  Boolean         @default(false)
+  category  String?         @db.VarChar(50)
+  createdAt DateTime        @default(now())
   folderId  Int?
-  createdAt DateTime @default(now())
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  folder    FavoriteFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  folder    FavoriteFolder? @relation(fields: [folderId], references: [id])
+  post      Post            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
   @@index([postId])
   @@index([userId, isPinned])
   @@index([userId, folderId])
+  @@index([folderId], map: "favorites_folderId_fkey")
   @@map("favorites")
 }
 
 model FavoriteFolder {
-  id        Int      @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   userId    Int
-  name      String   @db.VarChar(50)
-  isDefault Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String     @db.VarChar(50)
+  isDefault Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   favorites Favorite[]
 
   @@unique([userId, name])
@@ -205,12 +266,12 @@ model Post {
   isPrivate     Boolean    @default(false)
   commentCount  Int        @default(0)
   comments      Comment[]
-  tags          PostTag[]
-  mentions      Mention[]
   favorites     Favorite[]
   likes         Like[]
-  shares        Share[]
+  mentions      Mention[]
+  tags          PostTag[]
   user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shares        Share[]
 
   @@index([commentCount])
   @@index([createdAt])
@@ -221,11 +282,28 @@ model Post {
 }
 
 model Tag {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique @db.VarChar(50)
-  posts     PostTag[]
+  id    Int       @id @default(autoincrement())
+  name  String    @unique @db.VarChar(50)
+  icon  String?   @db.VarChar(500)
+  posts PostTag[]
+  follows TopicFollow[]
+
   @@index([name])
   @@map("tags")
+}
+
+model TopicFollow {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  tagId     Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tagId])
+  @@index([userId])
+  @@index([tagId])
+  @@map("topic_follows")
 }
 
 model PostTag {
@@ -234,6 +312,7 @@ model PostTag {
   createdAt DateTime @default(now())
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
   @@unique([postId, tagId])
   @@index([postId])
   @@index([tagId])
@@ -241,14 +320,14 @@ model PostTag {
 }
 
 model Share {
-  id            Int      @id @default(autoincrement())
-  postId        Int
-  userId        Int
-  type          String   @db.VarChar(20) // 'friend' | 'recommend'
-  friendId      Int?
-  createdAt     DateTime @default(now())
-  post          Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  userId    Int
+  type      String   @db.VarChar(20)
+  friendId  Int?
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId, type])
   @@index([userId])
@@ -262,9 +341,10 @@ model Mention {
   commentId Int?
   userId    Int
   createdAt DateTime @default(now())
-  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
   comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([postId])
   @@index([commentId])
   @@index([userId])
@@ -313,23 +393,23 @@ model User {
   updatedAt                                         DateTime          @updatedAt
   allowMessage                                      Boolean           @default(true)
   isActive                                          Boolean           @default(true)
-  role                                              String            @default("user") @db.VarChar(20) // user, reviewer, admin, super_admin
+  role                                              String            @default("user") @db.VarChar(20)
   wechatOpenId                                      String?           @unique @db.VarChar(100)
   wechatUnionId                                     String?           @unique @db.VarChar(100)
   followOnlyMessage                                 Boolean           @default(false)
   avatarData                                        String?           @db.Text
-  // 隐私设置
+  customAvatars                                     String?           @db.Text
   hideFollowing                                     Boolean           @default(false)
   hideFollowers                                     Boolean           @default(false)
-  hidePosts                                        Boolean           @default(false)
-  hideFavorites                                    Boolean           @default(false)
+  hidePosts                                         Boolean           @default(false)
+  hideFavorites                                     Boolean           @default(false)
   adminLogs                                         AdminLog[]
   blockedBy                                         Block[]           @relation("Block_blocked")
   blocking                                          Block[]           @relation("Block_blocker")
   commentLikes                                      CommentLike[]
   comments                                          Comment[]
-  favorites                                         Favorite[]
   favoriteFolders                                   FavoriteFolder[]
+  favorites                                         Favorite[]
   followers                                         Follow[]          @relation("Follow_follower")
   following                                         Follow[]          @relation("Follow_following")
   friend_requests_friend_requests_receiverIdTousers friend_requests[] @relation("friend_requests_receiverIdTousers")
@@ -337,6 +417,7 @@ model User {
   friendships_friendships_userId1Tousers            friendships[]     @relation("friendships_userId1Tousers")
   friendships_friendships_userId2Tousers            friendships[]     @relation("friendships_userId2Tousers")
   likes                                             Like[]
+  mentions                                          Mention[]
   messages                                          Message[]
   notificationsAsActor                              Notification[]    @relation("Notification_actor")
   notifications                                     Notification[]    @relation("Notification_user")
@@ -345,8 +426,9 @@ model User {
   reportsAsReported                                 Report[]          @relation("Report_reported")
   reportsAsReporter                                 Report[]          @relation("Report_reporter")
   reportsAsReviewer                                 Report[]          @relation("Report_reviewer")
-  mentions                                          Mention[]
   shares                                            Share[]
+  topicFollows                                      TopicFollow[]
+  userLevel                                         UserLevel?
 
   @@map("users")
 }

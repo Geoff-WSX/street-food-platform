@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Modal, Button, message, QRCode, Space, Typography, Input, List, Avatar, Divider, Spin } from 'antd';
+import { Modal, Button, message, QRCode, Space, Typography, Input, List, Avatar, Divider, Spin, Tooltip } from 'antd';
 import { LinkOutlined, CopyOutlined, CheckOutlined, QqOutlined, WechatOutlined, WeiboOutlined, StarOutlined, UserSwitchOutlined } from '@ant-design/icons';
 import { getShareFriends, shareToFriend, recommendPost, type Friend } from '../api/share';
+import { getMyLevelInfo } from '../api/level';
+import { useAuthStore } from '../store/auth';
 
 const { Text } = Typography;
 
@@ -15,6 +17,7 @@ interface Props {
 }
 
 export default function ShareModal({ visible, onClose, postId, postContent, isRecommended = false, isOwnPost = false }: Props) {
+  const { isLoggedIn } = useAuthStore();
   const [copied, setCopied] = useState(false);
   const [showFriendList, setShowFriendList] = useState(false);
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -22,6 +25,7 @@ export default function ShareModal({ visible, onClose, postId, postContent, isRe
   const [sharingToFriend, setSharingToFriend] = useState<number | null>(null);
   const [recommending, setRecommending] = useState(false);
   const [recommended, setRecommended] = useState(isRecommended);
+  const [userLevel, setUserLevel] = useState<number>(0);
 
   const shareUrl = postId ? `${window.location.origin}/post/${postId}` : window.location.href;
   const shareTitle = postContent ? `分享美食: ${postContent.slice(0, 50)}...` : '我在食遇发现了好吃的！';
@@ -35,6 +39,19 @@ export default function ShareModal({ visible, onClose, postId, postContent, isRe
   useEffect(() => {
     setRecommended(isRecommended);
   }, [isRecommended]);
+
+  // 获取用户等级信息
+  useEffect(() => {
+    if (visible && isLoggedIn) {
+      getMyLevelInfo()
+        .then((data) => {
+          setUserLevel(data?.currentLevel?.level || 0);
+        })
+        .catch(() => {
+          setUserLevel(0);
+        });
+    }
+  }, [visible, isLoggedIn]);
 
   const fetchFriends = async () => {
     setLoadingFriends(true);
@@ -246,20 +263,32 @@ export default function ShareModal({ visible, onClose, postId, postContent, isRe
 
         {/* 推荐功能 */}
         <div>
-          <Button
-            icon={<StarOutlined style={{ color: recommended ? '#faad14' : undefined }} />}
-            onClick={handleRecommend}
-            loading={recommending}
-            disabled={recommended || isOwnPost}
-            block
-            style={{
-              background: recommended ? '#fffbe6' : undefined,
-              borderColor: recommended ? '#faad14' : undefined,
-              color: recommended ? '#faad14' : undefined,
-            }}
-          >
-            {recommended ? '已推荐' : isOwnPost ? '不能推荐自己的动态' : '推荐到我的主页'}
-          </Button>
+          {userLevel >= 3 ? (
+            <Button
+              icon={<StarOutlined style={{ color: recommended ? '#faad14' : undefined }} />}
+              onClick={handleRecommend}
+              loading={recommending}
+              disabled={recommended || isOwnPost}
+              block
+              style={{
+                background: recommended ? '#fffbe6' : undefined,
+                borderColor: recommended ? '#faad14' : undefined,
+                color: recommended ? '#faad14' : undefined,
+              }}
+            >
+              {recommended ? '已推荐' : isOwnPost ? '不能推荐自己的动态' : '推荐到我的主页'}
+            </Button>
+          ) : (
+            <Tooltip title={`推荐美食需要 Lv3 美食达人（当前 Lv${userLevel || 1}）`}>
+              <Button
+                icon={<StarOutlined />}
+                disabled
+                block
+              >
+                {isOwnPost ? '不能推荐自己的动态' : '推荐到我的主页'}
+              </Button>
+            </Tooltip>
+          )}
         </div>
       </Space>
     </Modal>

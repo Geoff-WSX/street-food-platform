@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireLevel } from '../middleware/auth';
 import {
   getPostComments,
   getCommentRepliesHandler,
@@ -17,8 +17,8 @@ router.get('/posts/:postId/comments', getPostComments);
 // 获取评论的回复列表（公开）
 router.get('/comments/:commentId/replies', getCommentRepliesHandler);
 
-// 创建评论（需要登录）
-router.post('/comments', authenticate, createCommentHandler);
+// 创建评论（需要Lv2 美食学徒）
+router.post('/comments', authenticate, requireLevel(2), createCommentHandler);
 
 // 删除评论（需要登录）
 router.delete('/comments/:commentId', authenticate, deleteCommentHandler);

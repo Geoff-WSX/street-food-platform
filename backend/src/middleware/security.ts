@@ -11,11 +11,12 @@ import { Request, Response, NextFunction } from 'express';
 
 // 根据环境设置不同的限流配置
 const isTestEnv = process.env.NODE_ENV === 'test';
-const API_LIMIT = isTestEnv ? 100000 : 1000; // 测试环境大幅提高限流
+const isDevEnv = process.env.NODE_ENV === 'development';
+const API_LIMIT = isTestEnv ? 100000 : (isDevEnv ? 10000 : 1000);
 
 // 通用 API 限流（适中）
 export const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15分钟
+  windowMs: 1 * 60 * 1000, // 1分钟
   max: API_LIMIT, // 限制每个IP请求数
   message: {
     success: false,
@@ -32,7 +33,7 @@ export const apiLimiter = rateLimit({
       success: false,
       message: '请求过于频繁，请稍后再试',
       error: 'TOO_MANY_REQUESTS',
-      retryAfter: Math.round(15 * 60) // 15分钟后重试
+      retryAfter: Math.round(1 * 60) // 1分钟后重试
     });
   }
 });

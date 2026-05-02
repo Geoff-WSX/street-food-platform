@@ -3,11 +3,16 @@
 /* ===== 卡片基础样式 ===== */
 .post-card-urban {
   position: relative;
+  min-height: 520px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-card);
   border-radius: var(--radius-xl);
   overflow: hidden;
   transition: all var(--duration-normal) var(--ease-out-expo);
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .post-card-urban:hover {
@@ -121,22 +126,32 @@
 
 /* 内容区域 */
 .post-content-area {
+  flex: 1;
   padding: var(--space-md);
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
+  overflow: hidden;
+  min-height: 0;
+  max-height: 100%;
+  box-sizing: border-box;
 }
 
 /* 标题/内容文字 */
 .post-content-text {
   font-size: var(--text-md);
-  line-height: 1.6;
+  line-height: 1.5;
   color: var(--text-primary);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
   margin: 0;
+  word-break: break-word;
+  flex-shrink: 0;
+  max-height: calc(var(--text-md) * 1.5 * 3);
+  box-sizing: border-box;
 }
 
 /* 阅读统计 */
@@ -191,6 +206,7 @@
   padding-top: var(--space-sm);
   border-top: 1px solid var(--border-light);
   margin-top: auto;
+  flex-shrink: 0;
 }
 
 .post-user-avatar {
@@ -299,38 +315,48 @@
 }
 
 /* 点赞按钮 */
+button.action-btn-urban.like,
 .action-btn-urban.like {
-  color: var(--text-muted);
+  color: #ff3366 !important;
 }
 
+button.action-btn-urban.like:hover,
 .action-btn-urban.like:hover {
-  color: var(--color-like);
-  background: var(--color-like-bg);
+  color: #ff3366 !important;
+  background: rgba(255, 51, 102, 0.15);
 }
 
+button.action-btn-urban.like.active,
 .action-btn-urban.like.active {
-  color: var(--color-like);
+  color: #ff3366 !important;
 }
 
+button.action-btn-urban.like.active svg,
 .action-btn-urban.like.active svg {
+  fill: #ff3366 !important;
   animation: heartbeat 0.4s var(--ease-out-expo);
 }
 
 /* 收藏按钮 */
+button.action-btn-urban.favorite,
 .action-btn-urban.favorite {
-  color: var(--text-muted);
+  color: #ff6633 !important;
 }
 
+button.action-btn-urban.favorite:hover,
 .action-btn-urban.favorite:hover {
-  color: var(--color-favorite);
-  background: var(--color-favorite-bg);
+  color: #ff6633 !important;
+  background: rgba(255, 102, 51, 0.15);
 }
 
+button.action-btn-urban.favorite.active,
 .action-btn-urban.favorite.active {
-  color: var(--color-favorite);
+  color: #ff6633 !important;
 }
 
+button.action-btn-urban.favorite.active svg,
 .action-btn-urban.favorite.active svg {
+  fill: #ff6633 !important;
   animation: starPop 0.4s var(--ease-out-back);
 }
 

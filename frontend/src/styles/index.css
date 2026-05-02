@@ -1,0 +1,32 @@
+/* ============================================
+   Street Food Platform - Global Styles
+   Consolidated style imports for easy management
+   ============================================ */
+
+/* Design tokens must come first */
+@import './designTokens.css';
+
+/* Theme layers */
+@import './theme.css';
+@import './themeEnhancements.css';
+@import './themeFixes.css';
+
+/* Visual design */
+@import './backgrounds.css';
+@import './foodAnimations.css';
+@import './foodTheme.css';
+
+/* Component styles */
+@import './urbanFoodie.css';
+@import './urbanInteractions.css';
+@import './postCardUrban.css';
+
+/* Page styles */
+@import './homePage.css';
+@import './adminBackground.css';
+
+/* Responsive utilities */
+@import './responsive.css';
+
+/* Browse history */
+@import './browseHistory.css';

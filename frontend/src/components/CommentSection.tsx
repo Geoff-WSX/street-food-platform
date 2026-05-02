@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { List, Avatar, Button, Input, message, Typography, Divider, Popconfirm, Tag } from 'antd';
+import { List, Button, Input, message, Typography, Divider, Popconfirm, Tag } from 'antd';
 import {
-  UserOutlined, HeartOutlined, HeartFilled, MessageOutlined,
+  HeartOutlined, HeartFilled, MessageOutlined,
   DeleteOutlined, LoadingOutlined
 } from '@ant-design/icons';
 import { getComments, createComment, deleteComment, toggleCommentLike, getCommentReplies, checkContent, type Comment } from '../api/comment';
 import { useAuthStore } from '../store/auth';
 import { getErrorMessage } from '../utils/error';
-import { getAvatarUrl } from '../utils/images';
+import UserAvatar from './common/UserAvatar';
 
 const { TextArea } = Input;
 const { Text, Paragraph } = Typography;
@@ -308,11 +308,9 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
         }}
       >
         <div style={{ display: 'flex', gap: 12 }}>
-          <Avatar
-            src={getAvatarUrl(comment.user)}
-            icon={<UserOutlined />}
+          <UserAvatar
+            user={comment.user}
             size={isReply ? 32 : 40}
-            style={{ flexShrink: 0 }}
           />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -455,7 +453,7 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
       {/* 评论输入框 */}
       <div style={{ marginBottom: 24, padding: 20, background: 'var(--bg-secondary)', borderRadius: 16, border: '1px solid var(--border-color)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-          <Avatar src={getAvatarUrl(user)} icon={<UserOutlined />} size={40} style={{ border: '2px solid var(--border-color)' }} />
+          <UserAvatar user={user ?? { id: 0, username: '', avatar: null, avatarData: null }} size={40} />
           <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
             {isLoggedIn ? (
               <span>{user?.username} <Text type="secondary">，分享你的想法...</Text></span>

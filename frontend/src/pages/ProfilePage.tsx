@@ -2,16 +2,18 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Avatar, Typography, Row, Col, Button, Form, Input,
-  Upload, Spin, Empty, message, Modal, Card, Space, Tag, Select, Switch, List, Popconfirm
+  Upload, Spin, Empty, message, Modal, Card, Space, Tag, Select, Switch, List, Popconfirm, Tooltip
 } from 'antd';
-import { UserOutlined, EditOutlined, CameraOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined, TeamOutlined, FileTextOutlined, StarOutlined, PlusOutlined, SearchOutlined, DeleteOutlined } from '@ant-design/icons';
-import { getUserById, updateProfile, updateAvatar, changePassword, updateMessageSettings, updatePrivacySettings } from '../api/user';
+import { UserOutlined, EditOutlined, CameraOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined, TeamOutlined, FileTextOutlined, StarOutlined, PlusOutlined, SearchOutlined, DeleteOutlined, CaretDownOutlined } from '@ant-design/icons';
+import { getUserById, updateProfile, updateAvatar, setDefaultAvatar, getDefaultAvatars, changePassword, updateMessageSettings, updatePrivacySettings, getCustomAvatars, addCustomAvatar, deleteCustomAvatar, type DefaultAvatar, type CustomAvatar } from '../api/user';
 import { getUserPosts, getUserFavorites } from '../api/post';
-import { getRecommendedPosts } from '../api/share';
+import { getRecommendedPosts, deleteRecommend } from '../api/share';
+import { getUserFollowedTopics, type TopicRankingItem } from '../api/topic';
 import { cancelAllPendingRequests } from '../api/index';
 import { getBlockedList, unblockUser, blockUser } from '../api/block';
 import { getFollowing, getFollowers, followUser, unfollowUser } from '../api/follow';
 import { sendFriendRequest, checkFriendship } from '../api/friend';
+import { getMyLevelInfo, type UserLevelInfo } from '../api/level';
 import { useAuthStore } from '../store/auth';
 import { useFollowStore } from '../store/follow';
 import { useFriendStore } from '../store/friend';
@@ -20,12 +22,39 @@ import ChatModal from '../components/ChatModal';
 import ReportModal from '../components/ReportModal';
 import { PageLayout } from '../components/layout';
 import { StatBadge } from '../components/common/StatBadge';
+import { LevelCard } from '../components/LevelCard';
+import { LevelBadge } from '../components/LevelBadge';
+import UserAvatar from '../components/common/UserAvatar';
 import type { User, Post } from '../types';
 import { getAvatarUrl } from '../utils/images';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
+const PAGE_SIZE = 12;
+
+// 等级颜色映射
+const LEVEL_COLORS: Record<number, string> = {
+  1: '#8c8c8c',
+  2: '#52c41a',
+  3: '#1890ff',
+  4: '#722ed1',
+  5: '#fa8c16',
+  6: '#f5222d',
+};
+
+// 等级图标映射
+const LEVEL_ICONS: Record<number, string> = {
+  1: '🌱',
+  2: '🍀',
+  3: '🌸',
+  4: '⭐',
+  5: '🔥',
+  6: '👑',
+};
+
+const getLevelColor = (level: number) => LEVEL_COLORS[level] ?? '#8c8c8c';
+const getLevelIcon = (level: number) => LEVEL_ICONS[level] ?? '🌱';
 
 // 城市列表
 const CITIES = [
@@ -77,7 +106,17 @@ export default function ProfilePage() {
   const [myFavorites, setMyFavorites] = useState<Post[]>([]);
   const [recommendedPosts, setRecommendedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMorePosts, setLoadingMorePosts] = useState(false);
+  const [loadingMoreFavorites, setLoadingMoreFavorites] = useState(false);
+  const [postsHasMore, setPostsHasMore] = useState(true);
+  const [favoritesHasMore, setFavoritesHasMore] = useState(true);
+  const [postsCurrentPage, setPostsCurrentPage] = useState(1);
+  const [favoritesCurrentPage, setFavoritesCurrentPage] = useState(1);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [defaultAvatars, setDefaultAvatars] = useState<DefaultAvatar[]>([]);
+  const [customAvatars, setCustomAvatars] = useState<CustomAvatar[]>([]);
+  const [avatarTab, setAvatarTab] = useState<'system' | 'custom'>('system');
   const [pwdModalOpen, setPwdModalOpen] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [editForm] = Form.useForm();
@@ -95,6 +134,8 @@ export default function ProfilePage() {
   const [following, setFollowing] = useState<User[]>([]);
   const [followers, setFollowers] = useState<User[]>([]);
   const [followLoading, setFollowLoading] = useState(false);
+  const [followedTopics, setFollowedTopics] = useState<TopicRankingItem[]>([]);
+  const [followedTopicsLoading, setFollowedTopicsLoading] = useState(false);
   const [chatUser, setChatUser] = useState<User | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -102,6 +143,9 @@ export default function ProfilePage() {
   const [friendLoading, setFriendLoading] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [friendSearch, setFriendSearch] = useState('');
+  const [levelInfo, setLevelInfo] = useState<UserLevelInfo | null>(null);
+  const [levelLoading, setLevelLoading] = useState(false);
+  const [levelCardOpen, setLevelCardOpen] = useState(false);
 
   // 好友 store
   const {
@@ -154,7 +198,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const postsData = await getUserPosts(viewUserId, { pageSize: 50 });
+      const postsData = await getUserPosts(viewUserId, { page: 1, pageSize: PAGE_SIZE });
 
       // 再次检查请求是否过期
       if (requestId !== currentRequestIdRef.current) {
@@ -188,8 +232,11 @@ export default function ProfilePage() {
         requestId
       });
       setMyPosts(validPosts);
-      // 使用过滤后的实际数量，而不是 API 返回的 total
-      setMyPostsTotal(validPosts.length);
+      // 使用 API 返回的真实总数
+      setMyPostsTotal(postsData.pagination?.total || validPosts.length);
+      // 设置分页状态
+      setPostsHasMore(1 < (postsData.pagination?.totalPages || 1));
+      setPostsCurrentPage(1);
 
       // 获取关注和粉丝列表
       const [followingData, followersData] = await Promise.all([
@@ -232,14 +279,33 @@ export default function ProfilePage() {
       }
 
       if (isOwner && isLoggedIn) {
-        const favData = await getUserFavorites({ pageSize: 50 });
+        const favData = await getUserFavorites({ page: 1, pageSize: PAGE_SIZE });
         setMyFavorites(favData.data);
+        setFavoritesHasMore(1 < (favData.pagination?.totalPages || 1));
+        setFavoritesCurrentPage(1);
         // 获取推荐动态
         const recommendedData = await getRecommendedPosts({ pageSize: 50 });
         setRecommendedPosts(recommendedData.data);
+        // 获取关注的话题
+        setFollowedTopicsLoading(true);
+        try {
+          const topicsData = await getUserFollowedTopics();
+          setFollowedTopics(topicsData?.data || []);
+        } catch {
+          console.error('获取关注话题失败');
+        } finally {
+          setFollowedTopicsLoading(false);
+        }
         // 获取黑名单
         const blocked = await getBlockedList();
         setBlockedUsers(blocked);
+        // 获取等级信息 - 暂时禁用
+        // try {
+        //   const levelData = await getMyLevelInfo();
+        //   setLevelInfo(levelData);
+        // } catch {
+        //   console.error('获取等级信息失败');
+        // }
       }
     } finally {
       // 只有当前最新的请求才更新 loading 状态
@@ -279,6 +345,23 @@ export default function ProfilePage() {
     }
   }, [isOwner, isLoggedIn, fetchFriends]);
 
+  // 组件挂载时获取等级信息
+  useEffect(() => {
+    if (isOwner && isLoggedIn) {
+      setLevelLoading(true);
+      getMyLevelInfo()
+        .then((data) => {
+          setLevelInfo(data);
+        })
+        .catch((error) => {
+          console.error('获取等级信息失败:', error);
+        })
+        .finally(() => {
+          setLevelLoading(false);
+        });
+    }
+  }, [isOwner, isLoggedIn]);
+
   const handleEditProfile = async (values: { username: string; bio?: string }) => {
     setEditLoading(true);
     try {
@@ -304,6 +387,22 @@ export default function ProfilePage() {
       // 忽略错误
     }
     return false;
+  };
+
+  // 打开头像选择弹窗
+  const handleOpenAvatarModal = async () => {
+    try {
+      const [systemAvatars, userCustomAvatars] = await Promise.all([
+        getDefaultAvatars(),
+        getCustomAvatars()
+      ]);
+      setDefaultAvatars(systemAvatars || []);
+      setCustomAvatars(userCustomAvatars || []);
+      setAvatarTab('system');
+      setAvatarModalOpen(true);
+    } catch {
+      void message.error('加载头像列表失败');
+    }
   };
 
   const handleChangePassword = async (values: { currentPassword: string; newPassword: string }) => {
@@ -338,7 +437,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handleFollowUser = async (userId: number) => {
+  const handleFollowUser = async (userId: number, userToAdd?: User) => {
     if (!isLoggedIn) {
       void message.info('请先登录');
       return;
@@ -347,6 +446,13 @@ export default function ProfilePage() {
     try {
       await followUser(userId);
       setFollowStatus(userId, true);
+      // 如果提供了用户信息，添加到关注列表
+      if (userToAdd) {
+        setFollowing(prev => {
+          if (prev.some(u => u.id === userId)) return prev;
+          return [...prev, { ...userToAdd, id: userId }];
+        });
+      }
       void message.success('关注成功');
     } catch (error: any) {
       // If there's an error, refresh the actual follow status from server
@@ -444,6 +550,50 @@ export default function ProfilePage() {
     }
   };
 
+  const handleLoadMorePosts = async () => {
+    if (!viewUserId || loadingMorePosts || !postsHasMore) return;
+    setLoadingMorePosts(true);
+    try {
+      const nextPage = postsCurrentPage + 1;
+      const data = await getUserPosts(viewUserId, { page: nextPage, pageSize: PAGE_SIZE });
+      const validPosts = data.data.filter(p => p.user?.id === viewUserId);
+      setMyPosts(prev => [...prev, ...validPosts]);
+      setPostsCurrentPage(nextPage);
+      setPostsHasMore(nextPage < (data.pagination?.totalPages || 1));
+    } catch {
+      void message.error('加载更多动态失败');
+    } finally {
+      setLoadingMorePosts(false);
+    }
+  };
+
+  const handleLoadMoreFavorites = async () => {
+    if (!viewUserId || loadingMoreFavorites || !favoritesHasMore) return;
+    setLoadingMoreFavorites(true);
+    try {
+      const nextPage = favoritesCurrentPage + 1;
+      const data = await getUserFavorites({ page: nextPage, pageSize: PAGE_SIZE });
+      setMyFavorites(prev => [...prev, ...data.data]);
+      setFavoritesCurrentPage(nextPage);
+      setFavoritesHasMore(nextPage < (data.pagination?.totalPages || 1));
+    } catch {
+      void message.error('加载更多收藏失败');
+    } finally {
+      setLoadingMoreFavorites(false);
+    }
+  };
+
+  // 删除推荐动态
+  const handleDeleteRecommended = async (postId: number) => {
+    try {
+      await deleteRecommend(postId);
+      setRecommendedPosts(prev => prev.filter(p => p.id !== postId));
+      message.success('已从推荐中移除');
+    } catch {
+      message.error('移除失败');
+    }
+  };
+
   // 检查是否互关
   const isMutualFollow = (userId: number) => {
     return following.some(u => u.id === userId) && followers.some(u => u.id === userId);
@@ -470,11 +620,9 @@ export default function ProfilePage() {
       >
         <List.Item.Meta
           avatar={
-            <Avatar
-              src={getAvatarUrl(user)}
-              icon={<UserOutlined />}
+            <UserAvatar
+              user={user}
               size={40}
-              style={{ cursor: 'pointer', border: '2px solid #fff', boxShadow: '0 2px 8px rgba(255, 107, 53, 0.2)' }}
               onClick={() => navigate(`/profile?userId=${user.id}`)}
             />
           }
@@ -514,7 +662,7 @@ export default function ProfilePage() {
                     <Button
                       type="primary"
                       icon={<UserAddOutlined />}
-                      onClick={() => handleFollowUser(user.id)}
+                      onClick={() => handleFollowUser(user.id, user)}
                       loading={followLoading}
                       size="small"
                       style={{ borderRadius: 14, height: 28, fontSize: 12, background: 'linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%)', border: 'none' }}
@@ -573,25 +721,55 @@ export default function ProfilePage() {
   const filteredPosts = filterByCity(myPosts);
   const filteredFavorites = filterByCity(myFavorites);
 
-  const PostGrid = ({ posts }: { posts: Post[] }) => (
+  const PostGrid = ({ posts, hasMore, loadingMore, onLoadMore, onUpdate }: {
+    posts: Post[];
+    hasMore?: boolean;
+    loadingMore?: boolean;
+    onLoadMore?: () => void;
+    onUpdate?: (u: Partial<Post> & { id: number }) => void;
+  }) => (
     posts.length === 0 ? (
       <Empty
         description={selectedCity ? `${selectedCity}暂无内容` : '暂无内容'}
         style={{ padding: '32px 0' }}
       />
     ) : (
-      <Row gutter={[14, 14]}>
-        {posts.map((p) => (
-          <Col key={p.id} xs={24} sm={12} md={8} lg={6}>
-            <div style={{ height: 480, width: '100%' }}>
-              <PostCard post={p} from="/profile" onUpdate={(u) => {
-                setMyPosts((prev) => prev.map((x) => x.id === u.id ? { ...x, ...u } : x));
-                setMyFavorites((prev) => prev.map((x) => x.id === u.id ? { ...x, ...u } : x));
-              }} />
-            </div>
-          </Col>
-        ))}
-      </Row>
+      <>
+        <Row gutter={[14, 14]}>
+          {posts.map((p) => (
+            <Col key={p.id} xs={24} sm={12} md={8} lg={6}>
+              <div style={{ height: 480, width: '100%' }}>
+                <PostCard post={p} from="/profile" onUpdate={(u) => {
+                  setMyPosts((prev) => prev.map((x) => x.id === u.id ? { ...x, ...u } : x));
+                  if (onUpdate) {
+                    onUpdate(u);
+                  } else {
+                    setMyFavorites((prev) => prev.map((x) => x.id === u.id ? { ...x, ...u } : x));
+                  }
+                }} />
+              </div>
+            </Col>
+          ))}
+        </Row>
+        {hasMore && (
+          <div style={{ textAlign: 'center', padding: '24px 0' }}>
+            <Button
+              onClick={onLoadMore}
+              loading={loadingMore}
+              size="large"
+              icon={<CaretDownOutlined />}
+              style={{ minWidth: 160, borderRadius: 20, height: 44 }}
+            >
+              {loadingMore ? '加载中...' : '加载更多'}
+            </Button>
+          </div>
+        )}
+        {!hasMore && posts.length > 0 && (
+          <div style={{ textAlign: 'center', padding: '16px 0', color: '#999' }}>
+            已展示全部内容
+          </div>
+        )}
+      </>
     )
   );
 
@@ -599,7 +777,7 @@ export default function ProfilePage() {
     // 动态标签页 - 只有所有者或未隐藏动态时显示
     ...(isOwner || !profileUser?.hidePosts ? [{
       key: 'posts',
-      label: `动态 ${myPosts.length > 0 ? `(${myPosts.length})` : ''}`,
+      label: `动态 ${myPostsTotal > 0 ? `(${myPostsTotal})` : ''}`,
       children: (
         <>
           {/* 城市筛选 */}
@@ -630,7 +808,12 @@ export default function ProfilePage() {
           {!isOwner && profileUser?.hidePosts ? (
             <Empty description="该用户已隐藏动态" style={{ padding: '32px 0' }} />
           ) : (
-            <PostGrid posts={filteredPosts} />
+            <PostGrid
+              posts={filteredPosts}
+              hasMore={postsHasMore}
+              loadingMore={loadingMorePosts}
+              onLoadMore={handleLoadMorePosts}
+            />
           )}
         </>
       )
@@ -805,7 +988,20 @@ export default function ProfilePage() {
               </Space>
             </Card>
           )}
-          <PostGrid posts={filteredFavorites} />
+          <PostGrid
+            posts={filteredFavorites}
+            hasMore={favoritesHasMore}
+            loadingMore={loadingMoreFavorites}
+            onLoadMore={handleLoadMoreFavorites}
+            onUpdate={(u) => {
+              // 取消收藏时从列表中移除
+              if (u.isFavorited === false) {
+                setMyFavorites((prev) => prev.filter((x) => x.id !== u.id));
+              } else {
+                setMyFavorites((prev) => prev.map((x) => x.id === u.id ? { ...x, ...u } : x));
+              }
+            }}
+          />
         </>
       )
     }, {
@@ -838,6 +1034,30 @@ export default function ProfilePage() {
                     }}>
                       <StarOutlined /> 推荐
                     </div>
+                    {/* 删除按钮 */}
+                    <Popconfirm
+                      title="从推荐中移除"
+                      description="确定要从推荐中移除这条动态吗？"
+                      onConfirm={() => handleDeleteRecommended(post.id)}
+                      okText="确定"
+                      cancelText="取消"
+                      placement="topLeft"
+                    >
+                      <Button
+                        danger
+                        size="small"
+                        icon={<DeleteOutlined />}
+                        style={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          zIndex: 10,
+                          borderRadius: 14,
+                          width: 32,
+                          height: 28,
+                        }}
+                      />
+                    </Popconfirm>
                     <PostCard post={p} from="/profile" onUpdate={(u) => {
                       setRecommendedPosts((prev) => prev.map((x) => x.id === u.id ? { ...x, ...u } : x));
                     }} />
@@ -874,7 +1094,51 @@ export default function ProfilePage() {
           </Row>
         )
       )
-    }, {
+    },
+    ...(isOwner ? [{
+      key: 'followedTopics',
+      label: `关注话题 ${followedTopics.length > 0 ? `(${followedTopics.length})` : ''}`,
+      children: (
+        followedTopicsLoading ? (
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <Spin />
+          </div>
+        ) : followedTopics.length === 0 ? (
+          <Empty description="暂无关注的话题" style={{ padding: '32px 0' }} />
+        ) : (
+          <Row gutter={[12, 12]}>
+            {followedTopics.map(topic => (
+              <Col key={topic.id} xs={12} sm={8} md={6} lg={4}>
+                <Card
+                  hoverable
+                  style={{ borderRadius: 12, textAlign: 'center', cursor: 'pointer' }}
+                  onClick={() => navigate(`/topic/${encodeURIComponent(topic.name)}?from=profile`)}
+                  bodyStyle={{ padding: 16 }}
+                >
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>
+                    {topic.name.includes('火锅') ? '🍲' :
+                     topic.name.includes('烧烤') ? '🍖' :
+                     topic.name.includes('小吃') ? '🍡' :
+                     topic.name.includes('甜点') ? '🍰' :
+                     topic.name.includes('咖啡') ? '☕' :
+                     topic.name.includes('奶茶') ? '🧋' :
+                     topic.name.includes('海鲜') ? '🦀' :
+                     topic.name.includes('日料') ? '🍣' :
+                     topic.name.includes('川菜') ? '🌶️' :
+                     topic.name.includes('粤菜') ? '🥘' :
+                     '🏷️'}
+                  </div>
+                  <Text strong style={{ fontSize: 13, display: 'block' }}>#{topic.name}</Text>
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    {topic.postCount || 0} 动态 · {topic.followCount || 0} 关注
+                  </Text>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        )
+      )
+    }] : []), {
       key: 'settings',
       label: '设置',
       children: (
@@ -1110,6 +1374,7 @@ export default function ProfilePage() {
         <div className="profile-header-banner" />
 
         <div className="profile-avatar-section">
+          {/* 头像 */}
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <Avatar
               size={90}
@@ -1121,26 +1386,73 @@ export default function ProfilePage() {
               }}
             />
             {isOwner && (
-              <Upload
-                accept="image/*"
-                showUploadList={false}
-                beforeUpload={(file) => { void handleAvatarChange(file); return false; }}
+              <Space size={4} style={{
+                position: 'absolute',
+                bottom: 2,
+                right: -30,
+              }}>
+                <Upload
+                  accept="image/*"
+                  showUploadList={false}
+                  beforeUpload={(file) => { void handleAvatarChange(file); return false; }}
+                >
+                  <Tooltip title="上传自定义头像">
+                    <Button
+                      icon={<CameraOutlined />}
+                      size="small"
+                      shape="circle"
+                      style={{
+                        boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
+                        background: 'linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%)',
+                        border: '2px solid #fff',
+                        color: '#fff'
+                      }}
+                    />
+                  </Tooltip>
+                </Upload>
+                <Tooltip title="选择预设头像">
+                  <Button
+                    icon={<StarOutlined />}
+                    size="small"
+                    shape="circle"
+                    onClick={handleOpenAvatarModal}
+                    style={{
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
+                      background: 'linear-gradient(135deg, #722ed1 0%, #b37feb 100%)',
+                      border: '2px solid #fff',
+                      color: '#fff'
+                    }}
+                  />
+                </Tooltip>
+              </Space>
+            )}
+            {/* 等级徽章 - 显示在头像底部，与头像融为一体 */}
+            {profileUser.level && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: -12,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 2,
+                  padding: '2px 10px',
+                  height: 22,
+                  borderRadius: 11,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  background: getLevelColor(profileUser.level.level),
+                  border: '2px solid #fff',
+                  color: '#fff',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1,
+                }}
               >
-                <Button
-                  icon={<CameraOutlined />}
-                  size="small"
-                  shape="circle"
-                  style={{
-                    position: 'absolute',
-                    bottom: 2,
-                    right: 2,
-                    boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
-                    background: 'linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%)',
-                    border: '2px solid #fff',
-                    color: '#fff'
-                  }}
-                />
-              </Upload>
+                {getLevelIcon(profileUser.level.level)}Lv{profileUser.level.level}
+              </div>
             )}
           </div>
 
@@ -1149,6 +1461,24 @@ export default function ProfilePage() {
               {profileUser.username}
             </span>
           </Title>
+
+          {/* 等级详情按钮 - 所有者点击可查看详情 */}
+          {isOwner && levelInfo && levelInfo.currentLevel && !levelLoading && (
+            <div style={{ marginBottom: 8 }}>
+              <div
+                onClick={() => setLevelCardOpen(true)}
+                style={{ cursor: 'pointer', display: 'inline-block' }}
+              >
+                <LevelBadge
+                  level={levelInfo.currentLevel}
+                  exp={levelInfo.exp}
+                  expToNextLevel={levelInfo.expToNextLevel}
+                  showProgress
+                  size="small"
+                />
+              </div>
+            </div>
+          )}
 
           <Paragraph
             ellipsis={{ rows: 2 }}
@@ -1222,7 +1552,7 @@ export default function ProfilePage() {
               {!isBlocked && (
                 <Button
                   icon={followStatus[profileUser.id] ? <CheckOutlined /> : <PlusOutlined />}
-                  onClick={() => followStatus[profileUser.id] ? handleUnfollowUser(profileUser.id) : handleFollowUser(profileUser.id)}
+                  onClick={() => followStatus[profileUser.id] ? handleUnfollowUser(profileUser.id) : handleFollowUser(profileUser.id, profileUser)}
                   style={{
                     borderRadius: 18,
                     height: 36,
@@ -1353,6 +1683,201 @@ export default function ProfilePage() {
         </Form>
       </Modal>
 
+      {/* 选择预设头像弹窗 */}
+      <Modal
+        title="选择头像"
+        open={avatarModalOpen}
+        onCancel={() => setAvatarModalOpen(false)}
+        footer={null}
+        width={520}
+      >
+        <div style={{ padding: '16px 0' }}>
+          {/* Tab 切换 */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <Button
+              type={avatarTab === 'system' ? 'primary' : 'default'}
+              onClick={() => setAvatarTab('system')}
+              style={{ flex: 1, borderRadius: 8 }}
+            >
+              系统头像
+            </Button>
+            <Button
+              type={avatarTab === 'custom' ? 'primary' : 'default'}
+              onClick={() => setAvatarTab('custom')}
+              style={{ flex: 1, borderRadius: 8 }}
+            >
+              我的头像 ({customAvatars.length}/20)
+            </Button>
+          </div>
+
+          {avatarTab === 'system' ? (
+            <>
+              <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+                点击头像即可设置为自己的头像
+              </Text>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 12,
+              }}>
+                {defaultAvatars.map((avatar) => (
+                  <div
+                    key={avatar.id}
+                    onClick={async () => {
+                      try {
+                        const updated = await setDefaultAvatar(avatar.id);
+                        updateUser(updated);
+                        setProfileUser(updated);
+                        setAvatarModalOpen(false);
+                        void message.success('头像已更新');
+                      } catch {
+                        void message.error('设置头像失败');
+                      }
+                    }}
+                    style={{
+                      cursor: 'pointer',
+                      borderRadius: 12,
+                      padding: 8,
+                      border: profileUser?.avatar?.includes(avatar.id) ? '2px solid #ff6b35' : '2px solid transparent',
+                      background: profileUser?.avatar?.includes(avatar.id) ? '#fff7f3' : 'var(--bg-secondary)',
+                      transition: 'all 0.2s',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <img
+                      src={avatar.url}
+                      alt={avatar.name}
+                      style={{
+                        width: 60,
+                        height: 60,
+                        borderRadius: '50%',
+                        marginBottom: 4,
+                      }}
+                    />
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                      {avatar.emoji}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: 16, textAlign: 'center' }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  想用自定义头像？切换到「我的头像」标签上传
+                </Text>
+              </div>
+            </>
+          ) : (
+            <>
+              <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+                选择已保存的头像，或上传新头像到这里
+              </Text>
+              {/* 上传按钮 */}
+              <Upload
+                accept="image/*"
+                showUploadList={false}
+                beforeUpload={async (file) => {
+                  try {
+                    const formData = new FormData();
+                    formData.append('avatar', file);
+                    await addCustomAvatar(formData);
+                    const updated = await getCustomAvatars();
+                    setCustomAvatars(updated || []);
+                    void message.success('头像已保存到我的头像');
+                  } catch (e: any) {
+                    void message.error(e?.response?.data?.error || '保存头像失败');
+                  }
+                  return false;
+                }}
+              >
+                <Button icon={<PlusOutlined />} style={{ marginBottom: 16, borderRadius: 8 }}>
+                  上传新头像
+                </Button>
+              </Upload>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 12,
+                maxHeight: 300,
+                overflowY: 'auto',
+              }}>
+                {customAvatars.length === 0 ? (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 24, color: '#999' }}>
+                    暂无已保存的头像
+                  </div>
+                ) : (
+                  customAvatars.map((avatar) => (
+                    <div
+                      key={avatar.id}
+                      style={{
+                        position: 'relative',
+                        cursor: 'pointer',
+                        borderRadius: 12,
+                        padding: 8,
+                        border: profileUser?.avatar === avatar.data ? '2px solid #ff6b35' : '2px solid transparent',
+                        background: profileUser?.avatar === avatar.data ? '#fff7f3' : 'var(--bg-secondary)',
+                        transition: 'all 0.2s',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <img
+                        src={avatar.data}
+                        alt="自定义头像"
+                        onClick={async () => {
+                          try {
+                            // 设置自定义头像为当前头像
+                            const formData = new FormData();
+                            // 创建一个虚拟文件来触发 updateAvatar
+                            const res = await fetch(avatar.data);
+                            const blob = await res.blob();
+                            const file = new File([blob], 'avatar.webp', { type: 'image/webp' });
+                            formData.append('avatar', file);
+                            const updated = await updateAvatar(formData);
+                            updateUser(updated);
+                            setProfileUser(updated);
+                            setAvatarModalOpen(false);
+                            void message.success('头像已更新');
+                          } catch {
+                            void message.error('设置头像失败');
+                          }
+                        }}
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: '50%',
+                          marginBottom: 4,
+                        }}
+                      />
+                      <Popconfirm
+                        title="删除此头像？"
+                        onConfirm={async () => {
+                          try {
+                            await deleteCustomAvatar(avatar.id);
+                            setCustomAvatars(prev => prev.filter(a => a.id !== avatar.id));
+                            void message.success('已删除');
+                          } catch {
+                            void message.error('删除失败');
+                          }
+                        }}
+                        okText="删除"
+                        cancelText="取消"
+                      >
+                        <Button
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined />}
+                          size="small"
+                          style={{ position: 'absolute', top: 2, right: 2, padding: 2, minWidth: 20 }}
+                        />
+                      </Popconfirm>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
+
       {/* 私信弹窗 */}
       {showChatModal && chatUser && (
         <ChatModal
@@ -1371,6 +1896,12 @@ export default function ProfilePage() {
           reportedUsername={profileUser.username}
         />
       )}
+
+      {/* 等级详情弹窗 */}
+      <LevelCard
+        visible={levelCardOpen}
+        onClose={() => setLevelCardOpen(false)}
+      />
     </PageLayout>
   );
 }

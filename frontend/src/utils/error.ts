@@ -10,12 +10,17 @@ export function getErrorMessage(error: unknown): string {
         data?: {
           error?: string;
           message?: string;
+          details?: { field?: string; message: string }[];
         };
       };
     };
 
-    // 后端返回格式: { success: false, error: "错误信息", code: "..." }
+    // 后端返回格式: { success: false, error: "错误信息", code: "...", details: [...] }
     if (err.response?.data?.error) {
+      // 如果是验证错误且有 details，优先显示第一个错误详情
+      if (err.response.data.error === 'VALIDATION_ERROR' && err.response.data.details?.length) {
+        return err.response.data.details[0].message;
+      }
       return err.response.data.error;
     }
 

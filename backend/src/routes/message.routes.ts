@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as messageController from '../controllers/message.controller';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireLevel } from '../middleware/auth';
 
 const router = Router();
 
@@ -24,8 +24,8 @@ router.get('/:userId', authenticate, messageController.getMessages);
 // POST /api/messages/:userId/check - 检查是否可以发送消息
 router.post('/:userId/check', authenticate, messageController.checkCanSendMessage);
 
-// POST /api/messages/:userId - 发送消息
-router.post('/:userId', authenticate, messageController.sendMessage);
+// POST /api/messages/:userId - 发送消息（需要Lv2 美食学徒）
+router.post('/:userId', authenticate, requireLevel(2), messageController.sendMessage);
 
 // PUT /api/messages/:userId/read - 标记消息为已读
 router.put('/:userId/read', authenticate, messageController.markAsRead);

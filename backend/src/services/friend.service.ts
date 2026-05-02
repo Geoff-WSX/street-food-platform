@@ -116,21 +116,42 @@ export const getReceivedRequests = async (userId: number) => {
     },
     include: {
       users_friend_requests_senderIdTousers: {
-        select: { id: true, username: true, avatar: true, avatarData: true, bio: true },
+        include: {
+          userLevel: {
+            include: {
+              level: true,
+            },
+          },
+        },
       },
     },
     orderBy: { createdAt: 'desc' },
   });
 
-  return requests.map((r) => ({
-    id: r.id,
-    senderId: r.senderId,
-    receiverId: r.receiverId,
-    message: r.message,
-    status: r.status,
-    createdAt: r.createdAt,
-    sender: r.users_friend_requests_senderIdTousers,
-  }));
+  return requests.map((r) => {
+    const sender = r.users_friend_requests_senderIdTousers;
+    const avatar = sender.avatarData || sender.avatar;
+    const level = sender.userLevel?.level ? {
+      level: sender.userLevel.level.level,
+      name: sender.userLevel.level.name,
+      icon: sender.userLevel.level.icon,
+    } : undefined;
+    return {
+      id: r.id,
+      senderId: r.senderId,
+      receiverId: r.receiverId,
+      message: r.message,
+      status: r.status,
+      createdAt: r.createdAt,
+      sender: {
+        id: sender.id,
+        username: sender.username,
+        avatar,
+        bio: sender.bio,
+        level,
+      },
+    };
+  });
 };
 
 /**
@@ -144,21 +165,42 @@ export const getSentRequests = async (userId: number) => {
     },
     include: {
       users_friend_requests_receiverIdTousers: {
-        select: { id: true, username: true, avatar: true, avatarData: true, bio: true },
+        include: {
+          userLevel: {
+            include: {
+              level: true,
+            },
+          },
+        },
       },
     },
     orderBy: { createdAt: 'desc' },
   });
 
-  return requests.map((r) => ({
-    id: r.id,
-    senderId: r.senderId,
-    receiverId: r.receiverId,
-    message: r.message,
-    status: r.status,
-    createdAt: r.createdAt,
-    receiver: r.users_friend_requests_receiverIdTousers,
-  }));
+  return requests.map((r) => {
+    const receiver = r.users_friend_requests_receiverIdTousers;
+    const avatar = receiver.avatarData || receiver.avatar;
+    const level = receiver.userLevel?.level ? {
+      level: receiver.userLevel.level.level,
+      name: receiver.userLevel.level.name,
+      icon: receiver.userLevel.level.icon,
+    } : undefined;
+    return {
+      id: r.id,
+      senderId: r.senderId,
+      receiverId: r.receiverId,
+      message: r.message,
+      status: r.status,
+      createdAt: r.createdAt,
+      receiver: {
+        id: receiver.id,
+        username: receiver.username,
+        avatar,
+        bio: receiver.bio,
+        level,
+      },
+    };
+  });
 };
 
 /**
@@ -285,7 +327,13 @@ export const getFriends = async (
   const [friends, total] = await Promise.all([
     prisma.user.findMany({
       where,
-      select: { id: true, username: true, avatar: true, avatarData: true, bio: true, createdAt: true },
+      include: {
+        userLevel: {
+          include: {
+            level: true,
+          },
+        },
+      },
       skip,
       take: pageSize,
       orderBy: { username: 'asc' },
@@ -298,8 +346,19 @@ export const getFriends = async (
       const friendship = friendships.find(
         (fs) => fs.userId1 === f.id || fs.userId2 === f.id
       );
+      const avatar = f.avatarData || f.avatar;
+      const level = f.userLevel?.level ? {
+        level: f.userLevel.level.level,
+        name: f.userLevel.level.name,
+        icon: f.userLevel.level.icon,
+      } : undefined;
       return {
-        ...f,
+        id: f.id,
+        username: f.username,
+        avatar,
+        bio: f.bio,
+        createdAt: f.createdAt,
+        level,
         establishedAt: friendship?.createdAt,
       };
     }),
@@ -423,20 +482,41 @@ export const getFriendRecommendations = async (userId: number, limit: number = 1
   // 获取用户详情
   const users = await prisma.user.findMany({
     where: { id: { in: sortedIds } },
-    select: { id: true, username: true, avatar: true, avatarData: true, bio: true },
+    include: {
+      userLevel: {
+        include: {
+          level: true,
+        },
+      },
+    },
   });
 
   // 按推荐度排序
   return sortedIds
     .map((id) => {
       const user = users.find((u) => u.id === id);
-      return user ? { ...user, mutualCount: countMap.get(id) || 0 } : null;
+      if (!user) return null;
+      const avatar = user.avatarData || user.avatar;
+      const level = user.userLevel?.level ? {
+        level: user.userLevel.level.level,
+        name: user.userLevel.level.name,
+        icon: user.userLevel.level.icon,
+      } : undefined;
+      return {
+        id: user.id,
+        username: user.username,
+        avatar,
+        bio: user.bio,
+        level,
+        mutualCount: countMap.get(id) || 0,
+      };
     })
     .filter(Boolean) as Array<{
     id: number;
     username: string;
     avatar: string | null;
     bio: string | null;
+    level?: { level: number; name: string; icon?: string };
     mutualCount: number;
   }>;
 };

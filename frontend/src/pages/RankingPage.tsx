@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Row, Col, Card, Typography, Space, Empty, Skeleton, Button } from 'antd';
-import { StarFilled, FireOutlined, CrownOutlined } from '@ant-design/icons';
+import { Row, Col, Card, Typography, Space, Empty, Skeleton, Button, FloatButton } from 'antd';
+import { StarFilled, FireOutlined, CrownOutlined, UpOutlined, DownOutlined } from '@ant-design/icons';
 import { getPosts, getPopularTags } from '../api/post';
 import PostCard from '../components/PostCard';
 import PostFilterBar from '../components/PostFilterBar';
@@ -316,6 +316,16 @@ export default function RankingPage() {
     setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
   };
 
+  // 滚动到页面顶部
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // 滚动到页面底部
+  const scrollToBottom = () => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+  };
+
   // 过滤和排序后的动态
   const filteredPosts = sortPosts(posts.filter(post => filterByLocation(post) && filterByTag(post)));
 
@@ -485,17 +495,13 @@ export default function RankingPage() {
       ) : (
         <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 20px', position: 'relative', zIndex: 1 }}>
           {/* 美食榜列表 */}
-          <Row gutter={[18, 18]}>
+          <div className="posts-grid">
             {filteredPosts.map((post, index) => (
-              <Col key={post.id} xs={24} sm={12} md={8} lg={6} className={`stagger-fade-in delay-${Math.min(index + 1, 8)}`} style={{ display: 'flex' }}>
-                <div style={{ width: '100%', display: 'flex', position: 'relative', height: 480 }}>
-                  <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                    <PostCard post={post} from="/ranking" onUpdate={handleUpdate} showRank rank={index} />
-                  </div>
-                </div>
-              </Col>
+              <div key={post.id}>
+                <PostCard post={post} from="/ranking" onUpdate={handleUpdate} showRank rank={index} />
+              </div>
             ))}
-          </Row>
+          </div>
 
           {/* 提示 */}
           <div style={{
@@ -538,6 +544,21 @@ export default function RankingPage() {
           }
         }
       `}</style>
+
+      {/* 上下滚动按钮 */}
+      <FloatButton.Group shape="circle" style={{ right: 24, top: '50%', transform: 'translateY(-50%)', zIndex: 1002 }}>
+        <FloatButton
+          icon={<UpOutlined />}
+          onClick={scrollToTop}
+          tooltip="回到顶部"
+          style={{ marginBottom: 8 }}
+        />
+        <FloatButton
+          icon={<DownOutlined />}
+          onClick={scrollToBottom}
+          tooltip="到达底部"
+        />
+      </FloatButton.Group>
     </div>
   );
 }

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Row, Col, Empty, Typography, Space, FloatButton, Button } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
-import { getRandomPosts, getPopularTags, getPostsByTag } from '../api/post';
+import { ReloadOutlined, CaretDownOutlined } from '@ant-design/icons';
+import { getPosts, getPopularTags, getPostsByTag, getRandomPosts } from '../api/post';
 import { cancelAllPendingRequests } from '../api/index';
 import PostCard from '../components/PostCard';
 import FoodBackground from '../components/FoodBackground';
@@ -14,6 +14,7 @@ import '../styles/urbanFoodie.css';
 import '../styles/urbanInteractions.css';
 
 const { Text } = Typography;
+const PAGE_SIZE = 12;
 
 // 省市区数据
 const LOCATION_DATA = [
@@ -152,18 +153,28 @@ export default function HomePage() {
   const [popularTags, setPopularTags] = useState<{ id: number; name: string; postCount: number }[]>([]);
   const [selectedTag, setSelectedTag] = useState<string>('');
   const selectedTagRef = useRef<string>('');
+  const loadPostsRequestIdRef = useRef<number>(0);
+  const isMountedRef = useRef(true);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // 同步 selectedTag 到 ref
   useEffect(() => {
     selectedTagRef.current = selectedTag;
   }, [selectedTag]);
 
-  const loadPosts = async (showLoading = true, isRefresh = false) => {
+  const loadPosts = async (showLoading = true, isRefresh = false, page = 1) => {
     // 防止并发请求
-    if (loadInProgress) {
+    if (loadInProgress && !loadingMore) {
       console.log('🔄 请求进行中，跳过');
       return;
     }
+
+    // 使用请求ID防止重复
+    loadPostsRequestIdRef.current += 1;
 
     // 使用 ref 中的 currentTag 避免闭包问题
     const currentTag = selectedTagRef.current;
@@ -171,6 +182,8 @@ export default function HomePage() {
     // 如果是刷新操作，先清空现有数据
     if (isRefresh) {
       setPosts([]);
+      setCurrentPage(1);
+      setHasMore(true);
     }
 
     try {
@@ -178,14 +191,30 @@ export default function HomePage() {
       if (showLoading) setInitialLoading(true);
       else setRefreshing(true);
 
+      // 如果是加载更多
+      if (page > 1) {
+        setLoadingMore(true);
+      }
+
       let data: Post[];
+      let paginationInfo = { total: 0, totalPages: 0 };
+
       if (currentTag) {
-        // 话题筛选模式：获取该话题的动态
-        const result = await getPostsByTag(currentTag, { page: 1, pageSize: 20, random: true });
+        // 话题筛选模式：获取该话题的动态（分页）
+        const result = await getPostsByTag(currentTag, { page, pageSize: PAGE_SIZE, random: true });
         data = result.data;
+        paginationInfo = result.pagination || { total: 0, totalPages: 0 };
       } else {
-        // 随机推荐模式
-        data = await getRandomPosts({ limit: 20 });
+        // 刷新时随机获取推荐动态，否则分页获取
+        if (isRefresh) {
+          const result = await getRandomPosts({ limit: PAGE_SIZE });
+          data = result as Post[];
+          paginationInfo = { total: data.length, totalPages: 1 };
+        } else {
+          const result = await getPosts({ page, pageSize: PAGE_SIZE });
+          data = result.data;
+          paginationInfo = result.pagination || { total: 0, totalPages: 0 };
+        }
       }
 
       // 双重检查：确保响应回来时 selectedTag 仍然是同一个
@@ -199,39 +228,68 @@ export default function HomePage() {
         return post?.content && post?.images && images.length > 0 && post?.user?.username;
       });
 
-      // 确保最多只显示 20 条
-      if (validPosts.length > 20) {
-        console.log('📊 裁剪帖子数量:', validPosts.length, '-> 20');
-        validPosts = validPosts.slice(0, 20);
-      }
-
       // 再次检查
       if (currentTag !== selectedTagRef.current) {
         console.log('🔄 跳过过时的数据更新:', currentTag, '->', selectedTagRef.current);
         return;
       }
 
-      console.log('✅ 最终帖子数量:', validPosts.length, '话题:', currentTag);
-      setPosts(validPosts);
+      // 判断是否还有更多数据
+      setHasMore(page < paginationInfo.totalPages);
+
+      console.log('✅ 帖子数量:', validPosts.length, '话题:', currentTag, '当前页:', page, '总页数:', paginationInfo.totalPages);
+
+      // 根据是刷新还是加载更多来决定是替换还是追加
+      if (page === 1) {
+        setPosts(validPosts);
+      } else {
+        setPosts(prev => [...prev, ...validPosts]);
+      }
+      setCurrentPage(page);
     } catch (error) {
       console.error('加载动态失败:', error);
     } finally {
+      // 只有组件仍然挂载时才更新状态
+      if (!isMountedRef.current) {
+        return;
+      }
       setLoadInProgress(false);
       if (showLoading) setInitialLoading(false);
       else setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
+  const handleLoadMore = useCallback(() => {
+    if (!loadingMore && hasMore && !loadInProgress) {
+      loadPosts(false, false, currentPage + 1);
+    }
+  }, [loadingMore, hasMore, loadInProgress, currentPage]);
+
   useEffect(() => {
+    isMountedRef.current = true;
+
+    // 检查是否是从详情页返回，清除标记
+    const isReturningFromDetail = sessionStorage.getItem('returning_from_detail') === 'true';
+    if (isReturningFromDetail) {
+      sessionStorage.removeItem('returning_from_detail');
+    }
+
+    // 加载数据
     loadPosts();
+
     // 组件卸载时取消所有进行中的请求
     return () => {
+      isMountedRef.current = false;
       cancelAllPendingRequests();
     };
   }, []);
 
   useEffect(() => {
-    loadPosts(false);
+    // 重置分页状态并重新加载
+    setCurrentPage(1);
+    setHasMore(true);
+    loadPosts(false, true);
     // 获取热门话题
     getPopularTags(20).then(setPopularTags).catch(() => {});
   }, [selectedLocation, selectedTag]);
@@ -332,6 +390,22 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
+
+            {/* 加载更多按钮 */}
+            {filteredPosts.length > 0 && hasMore && (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <Button
+                  onClick={handleLoadMore}
+                  loading={loadingMore}
+                  size="large"
+                  icon={<CaretDownOutlined />}
+                  className="btn-primary"
+                  style={{ minWidth: 160, borderRadius: 20, height: 44 }}
+                >
+                  {loadingMore ? '加载中...' : '加载更多'}
+                </Button>
+              </div>
+            )}
 
             {/* 底部提示 */}
             {filteredPosts.length > 0 && (

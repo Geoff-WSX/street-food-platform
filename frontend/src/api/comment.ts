@@ -17,6 +17,11 @@ export interface Comment {
     username: string;
     avatar?: string;
     avatarData?: string;
+    level?: {
+      level: number;
+      name: string;
+      icon?: string;
+    } | null;
   };
   replyToUser?: {
     id: number;

@@ -64,15 +64,18 @@ api.interceptors.response.use(
       console.error('❌ API Error Details:', error.response?.data);
     }
 
-    // 只在已登录但 token 失效时才跳转到登录页
+    // 只在已登录但 token 失效或账号被禁用时才跳转到登录页
     const isLoginPage = window.location.pathname === '/login';
     if ((error.response?.status === 401 || error.response?.status === 403) && !isLoginPage) {
-      localStorage.removeItem('sf_token');
-      localStorage.removeItem('sf_user');
-      if (error.response?.status === 403) {
+      const errorCode = error.response?.data?.code;
+      // 只有 ACCOUNT_DISABLED 才真正禁用账号并跳转
+      if (errorCode === 'ACCOUNT_DISABLED') {
+        localStorage.removeItem('sf_token');
+        localStorage.removeItem('sf_user');
         alert('您的账号已被禁用，请联系管理员');
+        window.location.href = '/login';
       }
-      window.location.href = '/login';
+      // LEVEL_REQUIRED 等其他 403 错误不跳转，只拒绝请求让页面处理
     }
 
     return Promise.reject(error);

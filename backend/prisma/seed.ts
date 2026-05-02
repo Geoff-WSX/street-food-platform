@@ -1,10 +1,54 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { initUserLevel } from '../src/services/level.service';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('开始填充测试数据...');
+
+  // 创建等级定义（必须在初始化用户等级之前）
+  const levels = [
+    { level: 1, name: '美食新手', minExp: 0, maxExp: 100, icon: '🌱', description: '刚踏入美食世界的新手' },
+    { level: 2, name: '美食学徒', minExp: 100, maxExp: 300, icon: '🍀', description: '开始探索美食的学徒' },
+    { level: 3, name: '美食达人', minExp: 300, maxExp: 600, icon: '🌸', description: '对美食有独特见解的达人' },
+    { level: 4, name: '美食专家', minExp: 600, maxExp: 1000, icon: '⭐', description: '美食领域的专家' },
+    { level: 5, name: '美食大师', minExp: 1000, maxExp: 2000, icon: '🔥', description: '美食界的大师级人物' },
+    { level: 6, name: '美食传奇', minExp: 2000, maxExp: null, icon: '👑', description: '传奇美食家' },
+  ];
+
+  for (const lvl of levels) {
+    await prisma.level.upsert({
+      where: { level: lvl.level },
+      update: {},
+      create: lvl,
+    });
+  }
+  console.log('等级数据填充完成');
+
+  // 创建等级任务定义
+  const tasks = [
+    { taskKey: 'post_count', name: '发布动态', description: '发布至少1条美食动态，即可完成任务', expReward: 10, targetCount: 1, icon: '📝', isDaily: false },
+    { taskKey: 'received_likes', name: '获得点赞', description: '所有动态累计获得10个点赞，即可完成任务', expReward: 5, targetCount: 10, icon: '❤️', isDaily: false },
+    { taskKey: 'received_favorites', name: '获得收藏', description: '所有动态累计获得10次收藏，即可完成任务', expReward: 5, targetCount: 10, icon: '⭐', isDaily: false },
+    { taskKey: 'give_likes', name: '点赞他人', description: '累计点赞10条他人的美食动态，即可完成任务', expReward: 1, targetCount: 10, icon: '👍', isDaily: false },
+    { taskKey: 'give_favorites', name: '收藏他人', description: '累计收藏10条他人的美食动态，即可完成任务', expReward: 2, targetCount: 10, icon: '📌', isDaily: false },
+    { taskKey: 'single_post_likes', name: '单条爆款', description: '单条动态获得20个点赞，成为"爆款"即可完成任务', expReward: 50, targetCount: 20, icon: '🔥', isDaily: false },
+    { taskKey: 'following_count', name: '关注用户', description: '关注5位美食爱好者，即可完成任务', expReward: 5, targetCount: 5, icon: '👥', isDaily: false },
+    { taskKey: 'followers_count', name: '粉丝数量', description: '拥有10位粉丝关注你，即可完成任务', expReward: 10, targetCount: 10, icon: '🎉', isDaily: false },
+    { taskKey: 'comment_count', name: '评论数', description: '累计评论5条他人的美食动态，即可完成任务', expReward: 2, targetCount: 5, icon: '💬', isDaily: false },
+    // 每日任务
+    { taskKey: 'daily_view_posts', name: '浏览动态', description: '每日浏览10条美食动态，即可获得经验奖励', expReward: 5, targetCount: 10, icon: '👀', isDaily: true },
+  ];
+
+  for (const task of tasks) {
+    await prisma.levelTask.upsert({
+      where: { taskKey: task.taskKey },
+      update: { description: task.description, isDaily: task.isDaily },
+      create: task,
+    });
+  }
+  console.log('任务数据填充完成');
 
   // 创建测试用户
   const hashedPassword = await bcrypt.hash('123456', 10);
@@ -20,6 +64,9 @@ async function main() {
     },
   });
 
+  // 初始化用户等级
+  await initUserLevel(user1.id);
+
   const user2 = await prisma.user.upsert({
     where: { email: 'test2@example.com' },
     update: {},
@@ -30,6 +77,9 @@ async function main() {
       bio: '美食达人，走遍大街小巷',
     },
   });
+
+  // 初始化用户等级
+  await initUserLevel(user2.id);
 
   // 创建测试动态
   const post1 = await prisma.post.create({

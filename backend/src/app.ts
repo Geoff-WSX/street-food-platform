@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 
 import authRoutes from './routes/auth.routes';
+import captchaRoutes from './routes/captcha.routes';
 import userRoutes from './routes/user.routes';
 import postRoutes from './routes/post.routes';
 import favoriteFolderRoutes from './routes/favoriteFolder.routes';
@@ -21,7 +22,9 @@ import notificationRoutes from './routes/notification.routes';
 import searchRoutes from './routes/search.routes';
 import uploadRoutes from './routes/upload.routes';
 import tagRoutes from './routes/tag.routes';
+import topicRoutes from './routes/topic.routes';
 import shareRoutes from './routes/share.routes';
+import levelRoutes from './routes/level.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { initWebSocket } from './websocket';
 
@@ -66,6 +69,9 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ========== 路由（应用限流和安全检查）==========
+
+// 验证码路由（不需要限流）
+app.use('/api/captcha', captchaRoutes);
 
 // 认证路由（严格限流 + 登录限制）
 app.use('/api/auth', loginLimiter, authLimiter, authRoutes);
@@ -114,6 +120,12 @@ app.use('/api/search', searchLimiter, checkBlacklist, searchRoutes);
 
 // 标签路由（通用限流 + 黑名单检查）
 app.use('/api/tags', apiLimiter, checkBlacklist, tagRoutes);
+
+// 话题路由（通用限流 + 黑名单检查）
+app.use('/api/topics', apiLimiter, checkBlacklist, topicRoutes);
+
+// 等级路由（通用限流 + 黑名单检查）
+app.use('/api/levels', apiLimiter, checkBlacklist, levelRoutes);
 
 // 分享路由（通用限流 + 黑名单检查）
 app.use('/api/share', apiLimiter, checkBlacklist, shareRoutes);

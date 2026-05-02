@@ -4,6 +4,8 @@ import { generateToken } from '../utils/jwt';
 import { RegisterRequest, LoginRequest } from '../types';
 import { isValidEmail, isValidUsername, isValidPassword } from '../utils/validator';
 import axios from 'axios';
+import { initUserLevel } from './level.service';
+import { verifyCaptcha, verifyTrustedDevice, createTrustedDeviceToken } from './captcha.service';
 
 /**
  * 用户注册
@@ -60,6 +62,9 @@ export const register = async (data: RegisterRequest) => {
     },
   });
 
+  // 初始化用户等级
+  await initUserLevel(user.id);
+
   // 生成 token
   const token = generateToken({
     userId: user.id,
@@ -86,11 +91,34 @@ export const register = async (data: RegisterRequest) => {
  * 用户登录
  */
 export const login = async (data: LoginRequest) => {
-  const { email, password } = data;
+  const { email, password, captchaId, captchaCode, trustedDeviceToken, trustDevice } = data;
 
   // 验证输入
   if (!email || !password) {
     throw new Error('邮箱和密码不能为空');
+  }
+
+  let newTrustedDeviceToken: string | undefined;
+
+  // 检查信任设备令牌
+  let skipCaptchaVerification = false;
+  if (trustedDeviceToken) {
+    const trusted = verifyTrustedDevice(trustedDeviceToken);
+    if (trusted && trusted.email === email) {
+      // 信任设备有效，跳过验证码
+      skipCaptchaVerification = true;
+    }
+  }
+
+  // 需要验证验证码的情况：没有信任设备、或信任设备无效
+  if (!skipCaptchaVerification) {
+    if (!captchaId || !captchaCode) {
+      throw new Error('验证码不能为空');
+    }
+    const isCaptchaValid = verifyCaptcha(captchaId, captchaCode);
+    if (!isCaptchaValid) {
+      throw new Error('验证码错误或已过期');
+    }
   }
 
   // 查找用户
@@ -109,6 +137,11 @@ export const login = async (data: LoginRequest) => {
     throw new Error('邮箱或密码错误');
   }
 
+  // 如果选择信任此设备，创建设备令牌
+  if (trustDevice) {
+    newTrustedDeviceToken = createTrustedDeviceToken(user.id, email);
+  }
+
   // 生成 token
   const token = generateToken({
     userId: user.id,
@@ -119,6 +152,7 @@ export const login = async (data: LoginRequest) => {
 
   return {
     token,
+    trustedDeviceToken: newTrustedDeviceToken,
     user: {
       id: user.id,
       username: user.username,
@@ -164,6 +198,9 @@ export const wxLogin = async (code: string, userInfo?: any) => {
           isActive: true,
         },
       });
+
+      // 初始化用户等级
+      await initUserLevel(user.id);
     }
 
     const token = generateToken({
@@ -242,6 +279,9 @@ export const wxLogin = async (code: string, userInfo?: any) => {
           isActive: true,
         },
       });
+
+      // 初始化用户等级
+      await initUserLevel(user.id);
     }
 
     // 3. 生成 JWT token

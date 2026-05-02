@@ -1,4 +1,10 @@
 import prisma from '../services/db/prisma';
+import { cacheGet, cacheSet } from './cache';
+
+/**
+ * 热门标签缓存键
+ */
+const POPULAR_TAGS_CACHE_KEY = 'popular:tags';
 
 /**
  * 创建或获取标签
@@ -57,9 +63,17 @@ export const getPostTags = async (postId: number) => {
 };
 
 /**
- * 获取热门标签
+ * 获取热门标签（带缓存，缓存5分钟）
  */
 export const getPopularTags = async (limit: number = 20) => {
+  const cacheKey = `${POPULAR_TAGS_CACHE_KEY}:${limit}`;
+
+  // Try to get from cache
+  const cached = await cacheGet<Array<{ id: number; name: string; postCount: number }>>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const tags = await prisma.tag.findMany({
     include: {
       _count: {
@@ -72,11 +86,16 @@ export const getPopularTags = async (limit: number = 20) => {
     take: limit,
   });
 
-  return tags.map(tag => ({
+  const result = tags.map(tag => ({
     id: tag.id,
     name: tag.name,
     postCount: tag._count.posts,
   }));
+
+  // Cache for 5 minutes
+  await cacheSet(cacheKey, result, 300);
+
+  return result;
 };
 
 /**
@@ -117,7 +136,15 @@ export const getPostsByTag = async (tagName: string, page: number = 1, pageSize:
       include: {
         post: {
           include: {
-            user: { select: { id: true, username: true, avatar: true, avatarData: true } },
+            user: {
+              include: {
+                userLevel: {
+                  include: {
+                    level: true,
+                  },
+                },
+              },
+            },
             tags: {
               include: { tag: { select: { id: true, name: true } } },
             },
@@ -135,7 +162,15 @@ export const getPostsByTag = async (tagName: string, page: number = 1, pageSize:
         include: {
           post: {
             include: {
-              user: { select: { id: true, username: true, avatar: true, avatarData: true } },
+              user: {
+                include: {
+                  userLevel: {
+                    include: {
+                      level: true,
+                    },
+                  },
+                },
+              },
               tags: {
                 include: { tag: { select: { id: true, name: true } } },
               },
@@ -149,12 +184,21 @@ export const getPostsByTag = async (tagName: string, page: number = 1, pageSize:
   }
 
   return {
-    data: postTags.map(pt => ({
-      ...pt.post,
-      user: pt.post.user,
-      images: pt.post.images ? JSON.parse(pt.post.images) : [],
-      tags: pt.post.tags?.map((pst: any) => ({ id: pst.tag.id, name: pst.tag.name })) || [],
-    })),
+    data: postTags.map(pt => {
+      const user = pt.post.user;
+      const level = user?.userLevel?.level;
+      return {
+        ...pt.post,
+        user: {
+          id: user.id,
+          username: user.username,
+          avatar: user.avatarData || user.avatar,
+          level: level ? { level: level.level, name: level.name, icon: level.icon } : undefined,
+        },
+        images: pt.post.images ? JSON.parse(pt.post.images) : [],
+        tags: pt.post.tags?.map((pst: any) => ({ id: pst.tag.id, name: pst.tag.name })) || [],
+      };
+    }),
     pagination: {
       page,
       pageSize,

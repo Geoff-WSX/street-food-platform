@@ -50,17 +50,16 @@ export default function NotificationBell() {
   // 处理点击通知
   const handleNotificationClick = async (notification: NotificationType) => {
     try {
-      // 标记为已读
-      if (!notification.isRead) {
-        await markAsReadApi(notification.id);
-        markAsRead(notification.id);
-      }
-
       // 关闭下拉框
       setOpen(false);
 
       // 根据通知类型跳转
       if (notification.type === 'COMMENT' || notification.type === 'REPLY') {
+        // 标记为已读
+        if (!notification.isRead) {
+          await markAsReadApi(notification.id);
+          markAsRead(notification.id);
+        }
         // 跳转到动态详情页，并定位到评论
         const postId = notification.comment?.post.id || notification.entityId;
         navigate(`/post/${postId}`, {
@@ -69,9 +68,19 @@ export default function NotificationBell() {
           },
         });
       } else if (notification.type === 'LIKE' || notification.type === 'FAVORITE') {
+        // 标记为已读
+        if (!notification.isRead) {
+          await markAsReadApi(notification.id);
+          markAsRead(notification.id);
+        }
         // 跳转到动态详情页
         navigate(`/post/${notification.entityId}`);
       } else if (notification.type === 'COMMENT_LIKE') {
+        // 标记为已读
+        if (!notification.isRead) {
+          await markAsReadApi(notification.id);
+          markAsRead(notification.id);
+        }
         // 跳转到动态详情页，并定位到评论
         const postId = notification.comment?.post.id;
         if (postId) {
@@ -82,8 +91,27 @@ export default function NotificationBell() {
           });
         }
       } else if (notification.type === 'FOLLOW') {
+        // 标记为已读
+        if (!notification.isRead) {
+          await markAsReadApi(notification.id);
+          markAsRead(notification.id);
+        }
         // 跳转到用户主页
         navigate(`/profile?userId=${notification.actorId}`);
+      } else if (notification.type === 'FRIEND_REQUEST') {
+        // 好友请求不自动标记为已读，由用户手动处理
+        navigate('/friends/requests');
+      } else if (notification.type === 'FRIEND_ACCEPTED') {
+        // 好友接受不自动标记为已读，由用户手动处理
+        navigate(`/profile?userId=${notification.actorId}`);
+      } else if (notification.type === 'TASK_COMPLETE' || notification.type === 'LEVEL_UP') {
+        // 任务完成和升级通知，标记为已读并关闭
+        if (!notification.isRead) {
+          await markAsReadApi(notification.id);
+          markAsRead(notification.id);
+        }
+        // 导航到等级页面
+        navigate('/profile');
       }
     } catch {
       // 忽略错误
@@ -137,6 +165,10 @@ export default function NotificationBell() {
         return `${actorName} 收藏了你的动态`;
       case 'FOLLOW':
         return `${actorName} 关注了你`;
+      case 'FRIEND_REQUEST':
+        return `${actorName} 请求添加你为好友`;
+      case 'FRIEND_ACCEPTED':
+        return `${actorName} 已接受你的好友请求`;
       default:
         return '新通知';
     }
@@ -156,6 +188,10 @@ export default function NotificationBell() {
         return '⭐';
       case 'FOLLOW':
         return '👤';
+      case 'FRIEND_REQUEST':
+        return '🤝';
+      case 'FRIEND_ACCEPTED':
+        return '✅';
       default:
         return '🔔';
     }
@@ -255,6 +291,26 @@ export default function NotificationBell() {
               )}
             />
           )}
+          {/* 通知中心入口 */}
+          <div
+            style={{
+              padding: '12px 16px',
+              borderTop: '1px solid var(--border-color)',
+              textAlign: 'center',
+            }}
+          >
+            <Button
+              type="link"
+              size="small"
+              onClick={() => {
+                setOpen(false);
+                navigate('/notifications');
+              }}
+              style={{ color: 'var(--color-primary)' }}
+            >
+              查看全部通知
+            </Button>
+          </div>
         </div>
       )}
     >

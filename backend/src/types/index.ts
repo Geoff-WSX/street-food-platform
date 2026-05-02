@@ -41,6 +41,10 @@ export interface RegisterRequest {
 export interface LoginRequest {
   email: string;
   password: string;
+  captchaId: string;
+  captchaCode: string;
+  trustedDeviceToken?: string;
+  trustDevice?: boolean;
 }
 
 // 更新用户资料请求

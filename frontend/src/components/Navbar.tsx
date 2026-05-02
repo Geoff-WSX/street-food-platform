@@ -1,10 +1,11 @@
 import { Layout, Menu, Button, Avatar, Space, Dropdown, Badge, Tooltip, type MenuProps } from 'antd';
-import { HomeOutlined, PlusOutlined, UserOutlined, LogoutOutlined, TrophyOutlined, CaretDownOutlined, MessageOutlined, CrownOutlined, WarningOutlined, SearchOutlined } from '@ant-design/icons';
+import { HomeOutlined, PlusOutlined, UserOutlined, LogoutOutlined, TrophyOutlined, CaretDownOutlined, MessageOutlined, CrownOutlined, WarningOutlined, SearchOutlined, StarOutlined, FireOutlined, HistoryOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useMessageStore } from '../store/message';
 import NotificationBell from './NotificationBell';
 import ThemeSwitcher from './ThemeSwitcher';
+import BrowseHistory from './BrowseHistory';
 import { useEffect, useState } from 'react';
 import { getUnreadCount } from '../api/message';
 import { getAvatarUrl } from '../utils/images';
@@ -22,6 +23,7 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
   const { isLoggedIn, user, logout } = useAuthStore();
   const { unreadCount, setUnreadCount } = useMessageStore();
   const [scrolled, setScrolled] = useState(false);
+  const [historyVisible, setHistoryVisible] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -48,6 +50,7 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
 
   const selectedKey = location.pathname === '/' ? 'home'
     : location.pathname.startsWith('/ranking') ? 'ranking'
+    : location.pathname.startsWith('/topics') || location.pathname.startsWith('/topic') ? 'topics'
     : '';
 
   const menuItems = [
@@ -63,6 +66,12 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
       label: '美食榜',
       onClick: () => navigate('/ranking')
     },
+    {
+      key: 'topics',
+      icon: <FireOutlined />,
+      label: '话题广场',
+      onClick: () => navigate('/topics')
+    },
   ];
 
   const userMenuItems: MenuProps['items'] = [
@@ -71,6 +80,12 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
       icon: <UserOutlined />,
       label: '我的主页',
       onClick: () => navigate('/profile')
+    },
+    {
+      key: 'favorites',
+      icon: <StarOutlined />,
+      label: '我的收藏',
+      onClick: () => navigate('/favorites')
     },
     ...(user && (user.role === 'admin' || user.role === 'reviewer') ? [{
       key: 'reports',
@@ -271,6 +286,29 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
           />
         </Tooltip>
 
+        {/* 浏览历史按钮 */}
+        <Tooltip title="浏览历史">
+          <Button
+            icon={<HistoryOutlined />}
+            onClick={() => setHistoryVisible(true)}
+            style={{
+              borderRadius: '50%',
+              width: 44,
+              height: 44,
+              transition: 'all 0.3s ease',
+              border: '1px solid #e8e8e8'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#ff6b35';
+              e.currentTarget.style.color = '#ff6b35';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#e8e8e8';
+              e.currentTarget.style.color = '';
+            }}
+          />
+        </Tooltip>
+
         {/* 主题切换按钮 */}
         <ThemeSwitcher size="middle" />
 
@@ -313,6 +351,9 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
           </Button>
         )}
       </Space>
+
+      {/* 浏览历史抽屉 */}
+      <BrowseHistory visible={historyVisible} onClose={() => setHistoryVisible(false)} />
     </Header>
   );
 }

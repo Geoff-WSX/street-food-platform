@@ -3,6 +3,13 @@ import path from 'path';
 import prisma from '../services/db/prisma';
 import { CreatePostRequest, UpdatePostRequest } from '../types';
 import { addTagsToPost } from './tag.service';
+import { updateTaskProgress } from './level.service';
+import { cacheGet, cacheSet } from './cache';
+
+/**
+ * 热门帖子缓存键
+ */
+const POPULAR_POSTS_CACHE_KEY = 'popular:posts';
 
 /**
  * 处理用户头像 - 优先使用 avatarData
@@ -17,46 +24,68 @@ const processUserAvatar = (user: any) => {
 };
 
 /**
+ * 处理用户等级信息
+ */
+const processUserLevel = (user: any) => {
+  if (!user || !user.userLevel || !user.userLevel.level) {
+    return user;
+  }
+  return {
+    ...user,
+    level: {
+      level: user.userLevel.level.level,
+      name: user.userLevel.level.name,
+      icon: user.userLevel.level.icon,
+    },
+  };
+};
+
+/**
  * 敏感词配置文件路径
  */
 const SENSITIVE_WORDS_CONFIG_PATH = path.join(__dirname, '../../config/sensitiveWords.json');
 
 /**
- * 敏感词库缓存
+ * 敏感词库缓存 - 使用 Set 实现 O(1) 查找
  */
-let cachedSensitiveWords: string[] = [];
+let cachedSensitiveWords: Set<string> = new Set();
 let lastLoadTime: number = 0;
+let fileLastModified: number = 0;
 const CACHE_TTL_MS = 60 * 1000; // 缓存有效期：60秒
 
 /**
  * 加载敏感词配置（支持热更新）
- * - 缓存未过期时直接返回缓存
- * - 缓存过期或文件变化时重新加载
+ * - 缓存未过期时直接返回缓存，不检查文件
+ * - 缓存过期时检查文件是否变化，变化则重新加载
  */
-const loadSensitiveWords = (): string[] => {
+const loadSensitiveWords = (): Set<string> => {
   const now = Date.now();
 
-  // 缓存有效期检查
-  if (cachedSensitiveWords.length > 0 && (now - lastLoadTime) < CACHE_TTL_MS) {
-    // 检查文件是否被修改
-    try {
-      const stats = fs.statSync(SENSITIVE_WORDS_CONFIG_PATH);
-      if (stats.mtimeMs <= lastLoadTime) {
-        return cachedSensitiveWords;
-      }
-    } catch {
-      // 文件不存在，使用缓存
-      return cachedSensitiveWords;
-    }
+  // 缓存未过期，直接返回缓存（避免每次都 statSync）
+  if (cachedSensitiveWords.size > 0 && (now - lastLoadTime) < CACHE_TTL_MS) {
+    return cachedSensitiveWords;
   }
 
-  // 重新加载配置
+  // 缓存过期或不存在，需要检查并重新加载
   try {
+    const stats = fs.statSync(SENSITIVE_WORDS_CONFIG_PATH);
+
+    // 文件未修改，使用旧缓存（即使已过期）
+    if (stats.mtimeMs <= fileLastModified && cachedSensitiveWords.size > 0) {
+      lastLoadTime = now; // 更新加载时间以避免频繁检查
+      return cachedSensitiveWords;
+    }
+
+    // 文件已修改，重新加载
     const configData = fs.readFileSync(SENSITIVE_WORDS_CONFIG_PATH, 'utf-8');
     const config = JSON.parse(configData);
-    cachedSensitiveWords = Array.isArray(config.sensitiveWords) ? config.sensitiveWords : [];
+    const words = Array.isArray(config.sensitiveWords) ? config.sensitiveWords : [];
+
+    // 使用 Set 存储敏感词，O(1) 查找性能
+    cachedSensitiveWords = new Set(words);
     lastLoadTime = now;
-    console.log(`[SensitiveWords] Loaded ${cachedSensitiveWords.length} words`);
+    fileLastModified = stats.mtimeMs;
+    console.log(`[SensitiveWords] Loaded ${cachedSensitiveWords.size} words`);
   } catch (error) {
     console.error('[SensitiveWords] Failed to load config:', error);
     // 加载失败时保留旧缓存
@@ -67,17 +96,16 @@ const loadSensitiveWords = (): string[] => {
 
 /**
  * 检查文本是否包含敏感词
- * 使用单词边界匹配，避免误匹配
- * 支持热更新：每次检查时重新加载配置
+ * 使用 Set 进行 O(1) 查找，支持热更新
  */
 const checkContent = (text: string): { valid: boolean; violations: string[] } => {
   const violations: string[] = [];
   const sensitiveWords = loadSensitiveWords();
 
-  // 使用正则表达式进行全词匹配
+  // 使用 Set.has() 进行 O(1) 查找
   for (const word of sensitiveWords) {
-    // 创建正则，匹配敏感词（支持中文和英文）
-    const regex = new RegExp(word, 'gi');
+    // 使用单词边界匹配，避免误匹配
+    const regex = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
     if (regex.test(text)) {
       violations.push(word);
     }
@@ -136,6 +164,7 @@ export const createPost = async (userId: number, data: CreatePostRequest) => {
     },
     include: {
       user: {
+        include: { userLevel: { include: { level: true } } },
         select: { id: true, username: true, avatar: true, avatarData: true },
       },
     },
@@ -145,6 +174,18 @@ export const createPost = async (userId: number, data: CreatePostRequest) => {
   if (tags && Array.isArray(tags) && tags.length > 0) {
     await addTagsToPost(post.id, tags);
   }
+
+  // 异步更新等级任务进度（发动态）
+  setImmediate(async () => {
+    try {
+      const postCount = await prisma.post.count({
+        where: { userId, isPrivate: false },
+      });
+      await updateTaskProgress(userId, 'post_count', postCount);
+    } catch (error) {
+      console.error('更新等级任务进度失败:', error);
+    }
+  });
 
   // 获取话题标签
   const postTags = await prisma.postTag.findMany({
@@ -191,7 +232,13 @@ export const getPosts = async (page: number = 1, pageSize: number = 10, userId?:
       orderBy: { createdAt: 'desc' },
       include: {
         user: {
-          select: { id: true, username: true, avatar: true, avatarData: true },
+          include: {
+            userLevel: {
+              include: {
+                level: true,
+              },
+            },
+          },
         },
         tags: {
           include: {
@@ -205,17 +252,20 @@ export const getPosts = async (page: number = 1, pageSize: number = 10, userId?:
     prisma.post.count({ where: { isPrivate: false } }),
   ]);
 
-  let postData = posts.map((p: any) => ({
-    ...p,
-    user: processUserAvatar(p.user),
-    images: parseImages(p.images),
-    likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
-    favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
-    commentCount: typeof p.commentCount === 'number' ? p.commentCount : 0,
-    tags: p.tags?.map((pt: any) => ({ id: pt.tag.id, name: pt.tag.name })) || [],
-    isLiked: false,
-    isFavorited: false
-  }));
+  let postData = posts.map((p: any) => {
+    const processedUser = processUserLevel(processUserAvatar(p.user));
+    return {
+      ...p,
+      user: processedUser,
+      images: parseImages(p.images),
+      likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
+      favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
+      commentCount: typeof p.commentCount === 'number' ? p.commentCount : 0,
+      tags: p.tags?.map((pt: any) => ({ id: pt.tag.id, name: pt.tag.name })) || [],
+      isLiked: false,
+      isFavorited: false
+    };
+  });
 
   if (userId) {
     const postIds = posts.map(p => p.id);
@@ -257,7 +307,13 @@ export const getPostById = async (postId: number, userId?: number) => {
     where: { id: postId },
     include: {
       user: {
-        select: { id: true, username: true, avatar: true, avatarData: true },
+        include: {
+          userLevel: {
+            include: {
+              level: true,
+            },
+          },
+        },
       },
     },
   });
@@ -286,7 +342,7 @@ export const getPostById = async (postId: number, userId?: number) => {
 
   return {
     ...post,
-    user: processUserAvatar(post.user),
+    user: processUserLevel(processUserAvatar(post.user)),
     images: parseImages(post.images),
     likeCount: typeof post.likeCount === 'number' ? post.likeCount : 0,
     favoriteCount: typeof post.favoriteCount === 'number' ? post.favoriteCount : 0,
@@ -345,7 +401,13 @@ export const getUserPosts = async (
       orderBy: { createdAt: 'desc' },
       include: {
         user: {
-          select: { id: true, username: true, avatar: true, avatarData: true },
+          include: {
+            userLevel: {
+              include: {
+                level: true,
+              },
+            },
+          },
         },
       },
     }),
@@ -354,7 +416,7 @@ export const getUserPosts = async (
 
   let postData = posts.map((p: any) => ({
     ...p,
-    user: processUserAvatar(p.user),
+    user: processUserLevel(processUserAvatar(p.user)),
     images: parseImages(p.images),
     likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
     favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
@@ -486,6 +548,17 @@ export const toggleLike = async (userId: number, postId: number) => {
         data: { likeCount: { increment: 1 } },
       }),
     ]);
+
+    // 异步更新等级任务进度（点赞）
+    setImmediate(async () => {
+      try {
+        const likeCount = await prisma.like.count({ where: { userId } });
+        await updateTaskProgress(userId, 'give_likes', likeCount);
+      } catch (error) {
+        console.error('更新等级任务进度失败:', error);
+      }
+    });
+
     return { liked: true, likeCount: post.likeCount + 1 };
   }
 };
@@ -531,6 +604,17 @@ export const toggleFavorite = async (userId: number, postId: number, folderId?: 
         data: { favoriteCount: { increment: 1 } },
       }),
     ]);
+
+    // 异步更新等级任务进度（收藏）
+    setImmediate(async () => {
+      try {
+        const favoriteCount = await prisma.favorite.count({ where: { userId } });
+        await updateTaskProgress(userId, 'give_favorites', favoriteCount);
+      } catch (error) {
+        console.error('更新等级任务进度失败:', error);
+      }
+    });
+
     return { favorited: true, favoriteCount: post.favoriteCount + 1 };
   }
 };
@@ -547,8 +631,9 @@ export const getUserFavorites = async (
   const skip = (page - 1) * pageSize;
 
   const whereCondition: any = { userId };
+  // category 参数实际上传入的是 folderId，使用 folderId 过滤
   if (category) {
-    whereCondition.category = category;
+    whereCondition.folderId = parseInt(category);
   }
 
   const [favorites, total] = await Promise.all([
@@ -563,7 +648,10 @@ export const getUserFavorites = async (
       include: {
         post: {
           include: {
-            user: { select: { id: true, username: true, avatar: true, avatarData: true } },
+            user: {
+              include: { userLevel: { include: { level: true } } },
+              select: { id: true, username: true, avatar: true, avatarData: true },
+            },
           },
         },
       },
@@ -573,7 +661,7 @@ export const getUserFavorites = async (
 
   const posts = favorites.map((f: any) => ({
     ...f.post,
-    user: processUserAvatar(f.post.user),
+    user: processUserLevel(processUserAvatar(f.post.user)),
     images: parseImages(f.post.images),
     likeCount: typeof f.post.likeCount === 'number' ? f.post.likeCount : 0,
     favoriteCount: typeof f.post.favoriteCount === 'number' ? f.post.favoriteCount : 0,
@@ -661,7 +749,10 @@ export const getUserLikes = async (
       include: {
         post: {
           include: {
-            user: { select: { id: true, username: true, avatar: true, avatarData: true } },
+            user: {
+              include: { userLevel: { include: { level: true } } },
+              select: { id: true, username: true, avatar: true, avatarData: true },
+            },
           },
         },
       },
@@ -671,7 +762,7 @@ export const getUserLikes = async (
 
   const posts = likes.map((l: any) => ({
     ...l.post,
-    user: processUserAvatar(l.post.user),
+    user: processUserLevel(processUserAvatar(l.post.user)),
     images: parseImages(l.post.images),
     likeCount: typeof l.post.likeCount === 'number' ? l.post.likeCount : 0,
     favoriteCount: typeof l.post.favoriteCount === 'number' ? l.post.favoriteCount : 0,
@@ -744,7 +835,13 @@ export const getRandomPosts = async (
     where: { id: { in: selectedIds } },
     include: {
       user: {
-        select: { id: true, username: true, avatar: true, avatarData: true },
+        include: {
+          userLevel: {
+            include: {
+              level: true,
+            },
+          },
+        },
       },
       tags: {
         include: {
@@ -757,17 +854,20 @@ export const getRandomPosts = async (
     orderBy: { createdAt: 'desc' },
   });
 
-  let postData = posts.map((p: any) => ({
-    ...p,
-    user: processUserAvatar(p.user),
-    images: parseImages(p.images),
-    likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
-    favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
-    commentCount: typeof p.commentCount === 'number' ? p.commentCount : 0,
-    isLiked: false,
-    isFavorited: false,
-    tags: p.tags?.map((pt: any) => ({ id: pt.tag.id, name: pt.tag.name })) || [],
-  }));
+  let postData = posts.map((p: any) => {
+    const processedUser = processUserLevel(processUserAvatar(p.user));
+    return {
+      ...p,
+      user: processedUser,
+      images: parseImages(p.images),
+      likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
+      favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
+      commentCount: typeof p.commentCount === 'number' ? p.commentCount : 0,
+      isLiked: false,
+      isFavorited: false,
+      tags: p.tags?.map((pt: any) => ({ id: pt.tag.id, name: pt.tag.name })) || [],
+    };
+  });
 
   if (userId) {
     const postIds = posts.map(p => p.id);
@@ -791,4 +891,124 @@ export const getRandomPosts = async (
   }
 
   return { data: postData };
+};
+
+/**
+ * 获取热门帖子（带缓存，缓存5分钟）
+ * 热门帖子根据点赞数、收藏数、评论数综合计算
+ */
+export const getPopularPosts = async (limit: number = 20, userId?: number) => {
+  const cacheKey = `${POPULAR_POSTS_CACHE_KEY}:${limit}`;
+
+  // Try to get from cache
+  const cached = await cacheGet<any[]>(cacheKey);
+  if (cached) {
+    // 如果有用户ID，需要重新检查点赞和收藏状态
+    if (userId) {
+      const postIds = cached.map((p: any) => p.id);
+      const [likes, favorites] = await Promise.all([
+        prisma.like.findMany({
+          where: { userId, postId: { in: postIds } },
+        }),
+        prisma.favorite.findMany({
+          where: { userId, postId: { in: postIds } },
+        }),
+      ]);
+
+      const likedPostIds = new Set(likes.map(l => l.postId));
+      const favoritedPostIds = new Set(favorites.map(f => f.postId));
+
+      return cached.map((p: any) => ({
+        ...p,
+        isLiked: likedPostIds.has(p.id),
+        isFavorited: favoritedPostIds.has(p.id),
+      }));
+    }
+    return cached;
+  }
+
+  // 获取热门帖子：根据 (点赞数 * 3 + 收藏数 * 2 + 评论数) 排序
+  const posts = await prisma.post.findMany({
+    where: { isPrivate: false },
+    include: {
+      user: {
+        include: {
+          userLevel: {
+            include: {
+              level: true,
+            },
+          },
+        },
+      },
+      tags: {
+        include: {
+          tag: {
+            select: { id: true, name: true },
+          },
+        },
+      },
+    },
+    orderBy: {
+      // 综合热度 = likeCount * 3 + favoriteCount * 2 + commentCount
+      // 由于 Prisma 不支持计算表达式，我们先获取数据后在内存中排序
+      createdAt: 'desc',
+    },
+    take: 100, // 先获取更多数据
+  });
+
+  // 计算综合热度并排序
+  const postsWithScore = posts.map(p => ({
+    ...p,
+    score: (p.likeCount || 0) * 3 + (p.favoriteCount || 0) * 2 + (p.commentCount || 0),
+  }));
+
+  postsWithScore.sort((a, b) => b.score - a.score);
+  const sortedPosts = postsWithScore.slice(0, limit);
+
+  const postData = sortedPosts.map((p: any) => {
+    const processedUser = processUserLevel(processUserAvatar(p.user));
+    return {
+      ...p,
+      user: processedUser,
+      images: parseImages(p.images),
+      likeCount: typeof p.likeCount === 'number' ? p.likeCount : 0,
+      favoriteCount: typeof p.favoriteCount === 'number' ? p.favoriteCount : 0,
+      commentCount: typeof p.commentCount === 'number' ? p.commentCount : 0,
+      isLiked: false,
+      isFavorited: false,
+      tags: p.tags?.map((pt: any) => ({ id: pt.tag.id, name: pt.tag.name })) || [],
+    };
+  });
+
+  // 如果有用户ID，检查点赞和收藏状态
+  if (userId) {
+    const postIds = postData.map(p => p.id);
+    const [likes, favorites] = await Promise.all([
+      prisma.like.findMany({
+        where: { userId, postId: { in: postIds } },
+      }),
+      prisma.favorite.findMany({
+        where: { userId, postId: { in: postIds } },
+      }),
+    ]);
+
+    const likedPostIds = new Set(likes.map(l => l.postId));
+    const favoritedPostIds = new Set(favorites.map(f => f.postId));
+
+    const finalPostData = postData.map(p => ({
+      ...p,
+      isLiked: likedPostIds.has(p.id),
+      isFavorited: favoritedPostIds.has(p.id),
+    }));
+
+    // Cache for 5 minutes (without user-specific isLiked/isFavorited)
+    await cacheSet(cacheKey, postData, 300);
+
+    return finalPostData;
+  }
+
+  // Cache for 5 minutes
+  await cacheSet(cacheKey, postData, 300);
+
+  return postData;
 };

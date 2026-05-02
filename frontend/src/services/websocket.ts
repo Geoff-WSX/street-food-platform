@@ -1,6 +1,7 @@
 import { useNotificationStore } from '../store/notification';
 import { useMessageStore } from '../store/message';
 import { useFriendStore } from '../store/friend';
+import { message } from 'antd';
 
 type MessageType = 'notification' | 'message' | 'ping' | 'connected' | 'error' | 'friend_request' | 'friend_accepted';
 
@@ -142,6 +143,13 @@ class WebSocketService {
 
     // 增加未读计数
     notificationStore.incrementUnread();
+
+    // 显示任务完成或升级的轻提示
+    if (data.type === 'TASK_COMPLETE' || data.type === 'LEVEL_UP') {
+      if (data.content) {
+        message.success(data.content);
+      }
+    }
 
     // 显示浏览器通知
     this.showBrowserNotification(data);

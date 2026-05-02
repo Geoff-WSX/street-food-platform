@@ -216,6 +216,59 @@ export default function AIAssistantPage() {
   // 动态推荐的快捷问题
   const [quickQuestions, setQuickQuestions] = useState<string[]>(getQuickQuestions(xiaobianMode));
 
+  // 根据对话上下文生成动态 placeholder
+  const [dynamicPlaceholder, setDynamicPlaceholder] = useState('问问小边有什么好吃的...');
+
+  // 更新动态 placeholder
+  const updateDynamicPlaceholder = useCallback((userMessage: string, lastAIMessage: string) => {
+    const lowerMsg = userMessage.toLowerCase();
+    const lowerAI = lastAIMessage.toLowerCase();
+
+    // 美食模式：根据对话内容更新 placeholder
+    if (xiaobianMode === 'foodie') {
+      // 检测是否询问特定城市
+      const cityMatch = userMessage.match(/(北京|上海|广州|深圳|杭州|成都|重庆|西安|武汉|南京|苏州|天津|青岛|大连|厦门|长沙|郑州)/);
+      if (cityMatch) {
+        setDynamicPlaceholder(`问问${cityMatch[1]}的其他美食...`);
+        return;
+      }
+
+      // 检测是否询问美食类型
+      const foodTypes = ['火锅', '烧烤', '小龙虾', '面食', '米粉', '川菜', '粤菜', '湘菜', '甜点', '奶茶', '炸鸡', '烤肉', '串串'];
+      for (const food of foodTypes) {
+        if (lowerMsg.includes(food)) {
+          setDynamicPlaceholder(`再推荐一些${food}...`);
+          return;
+        }
+      }
+
+      // 如果 AI 推荐了美食，根据地址更新
+      if (lowerAI.includes('推荐')) {
+        const addrMatch = lowerAI.match(/📍([^，,]+)/);
+        if (addrMatch) {
+          setDynamicPlaceholder(`问问${addrMatch[1]}的更多美食...`);
+          return;
+        }
+      }
+
+      // 默认 placeholder
+      setDynamicPlaceholder('问问小边有什么好吃的...');
+    } else {
+      // 管理模式
+      if (lowerMsg.includes('举报')) {
+        setDynamicPlaceholder('查看或处理其他举报...');
+      } else if (lowerMsg.includes('用户')) {
+        setDynamicPlaceholder('查询或管理其他用户...');
+      } else if (lowerMsg.includes('数据') || lowerMsg.includes('统计')) {
+        setDynamicPlaceholder('查看其他数据统计...');
+      } else if (lowerMsg.includes('bug') || lowerMsg.includes('错误')) {
+        setDynamicPlaceholder('排查其他问题...');
+      } else {
+        setDynamicPlaceholder('还有什么需要管理的...');
+      }
+    }
+  }, [xiaobianMode]);
+
   // 切换小边身份模式
   const handleModeSwitch = useCallback((newMode: XiaobianMode) => {
     setXiaobianMode(newMode);
@@ -635,6 +688,9 @@ export default function AIAssistantPage() {
       };
       setMessages((prev) => [...prev, aiMessage]);
 
+      // 更新动态 placeholder
+      updateDynamicPlaceholder(userMessage, aiMessage.content);
+
       // 根据对话内容生成推荐的后续问题
       const followUpQuestions = generateFollowUpQuestions(userMessage, aiMessage.content);
       setQuickQuestions(followUpQuestions);
@@ -903,19 +959,33 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
                     onMouseEnter={handleMouseEnter}
                     onMouseLeave={handleMouseLeave}
                   >
-                    <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 }}>
-                      <MessageOutlined style={{ marginRight: 8, opacity: 0.6 }} />
-                      {session.title}
+                    <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <MessageOutlined style={{ marginRight: 0, opacity: 0.6, flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.title}</span>
                     </div>
-                    <Button
-                      type="text"
-                      icon={<DeleteOutlined />}
-                      size="small"
-                      onClick={(e) => handleDeleteSession(session.id, e)}
-                      style={{ color: 'var(--text-secondary)', opacity: 0, transition: 'opacity 0.2s', minWidth: 'auto' }}
-                      onMouseEnter={handleDeleteMouseEnter}
-                      onMouseLeave={handleDeleteMouseLeave}
-                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                      <Tooltip title="删除此对话">
+                        <Button
+                          type="text"
+                          icon={<DeleteOutlined />}
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            Modal.confirm({
+                              title: '确认删除',
+                              content: `确定要删除对话"${session.title}"吗？此操作不可恢复。`,
+                              okText: '删除',
+                              cancelText: '取消',
+                              okButtonProps: { danger: true },
+                              onOk: () => handleDeleteSession(session.id, e),
+                            });
+                          }}
+                          style={{ color: 'var(--text-secondary)', opacity: 0.6, transition: 'opacity 0.2s', minWidth: 'auto' }}
+                          onMouseEnter={handleDeleteMouseEnter}
+                          onMouseLeave={handleDeleteMouseLeave}
+                        />
+                      </Tooltip>
+                    </div>
                   </div>
                 );
               }}
@@ -1064,7 +1134,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
 
           <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-color)', background: 'var(--navbar-bg)', flexShrink: 0 }}>
             <Space.Compact style={{ width: '100%' }}>
-              <Input ref={inputRef} size="large" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onPressEnter={() => handleSend()} placeholder="问问小边..." disabled={loading} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '6px 0 0 6px', fontSize: 14 }} />
+              <Input ref={inputRef} size="large" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onPressEnter={() => handleSend()} placeholder={dynamicPlaceholder} disabled={loading} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '6px 0 0 6px', fontSize: 14 }} />
               <Button type="primary" size="large" icon={<SendOutlined />} onClick={() => handleSend()} loading={loading} style={{ background: 'var(--color-primary)', border: 'none', borderRadius: '0 6px 6px 0' }}>
                 发送
               </Button>

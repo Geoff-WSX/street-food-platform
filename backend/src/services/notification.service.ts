@@ -10,6 +10,10 @@ export enum NotificationType {
   COMMENT_LIKE = 'COMMENT_LIKE', // 点赞了我的评论
   FAVORITE = 'FAVORITE',     // 收藏了我的动态
   FOLLOW = 'FOLLOW',         // 关注了我
+  FRIEND_REQUEST = 'FRIEND_REQUEST', // 好友请求
+  FRIEND_ACCEPTED = 'FRIEND_ACCEPTED', // 好友请求被接受
+  TASK_COMPLETE = 'TASK_COMPLETE', // 任务完成
+  LEVEL_UP = 'LEVEL_UP',     // 等级提升
 }
 
 /**

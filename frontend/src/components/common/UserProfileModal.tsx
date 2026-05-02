@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Avatar, Typography, message, Popconfirm } from 'antd';
-import { UserOutlined, PlusOutlined, CheckOutlined, MessageOutlined, StopOutlined, UserAddOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { Card, Button, Typography, message, Popconfirm } from 'antd';
+import { PlusOutlined, CheckOutlined, MessageOutlined, StopOutlined, UserAddOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { followUser, unfollowUser } from '../../api/follow';
 import { blockUser } from '../../api/block';
 import { sendFriendRequest, checkFriendship } from '../../api/friend';
 import { useAuthStore } from '../../store/auth';
 import { useFollowStore } from '../../store/follow';
-import { getAvatarUrl } from '../../utils/images';
+import UserAvatar from './UserAvatar';
 
 const { Text } = Typography;
 
@@ -15,7 +15,9 @@ interface User {
   id: number;
   username: string;
   avatar?: string;
+  avatarData?: string;
   bio?: string;
+  level?: { level: number; name: string; icon?: string };
 }
 
 interface UserProfileModalProps {
@@ -190,17 +192,11 @@ export function UserProfileModal({ user, visible, onClose, onOpenChat }: UserPro
             padding: '0 16px',
           }}
         >
-          <Avatar
-            src={getAvatarUrl(user)}
-            icon={<UserOutlined />}
+          <UserAvatar
+            user={user}
             size={90}
-            style={{
-              marginBottom: 12,
-              border: '4px solid #fff',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            }}
           />
-          <Typography.Title level={4} style={{ margin: '0 0 4px 0', fontSize: 20, lineHeight: 1.3 }}>
+          <Typography.Title level={4} style={{ margin: '8px 0 4px 0', fontSize: 20, lineHeight: 1.3 }}>
             <span
               style={{
                 background: 'linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%)',
