@@ -230,14 +230,8 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
 
     const firstImage = images[0];
 
-    // 如果是完整 URL，直接返回
-    if (firstImage.startsWith('http://') || firstImage.startsWith('https://')) {
-      return firstImage;
-    }
-
-    // 处理相对路径
-    const filename = firstImage.split('/').pop() || firstImage;
-    return `/uploads/posts/${filename}`;
+    // CDN URL 或旧数据相对路径，直接返回
+    return firstImage;
   };
 
   // 动态列表

@@ -129,10 +129,11 @@ function validateSchema<T>(schema: z.ZodSchema<T>, data: unknown, errorMessage: 
   const result = schema.safeParse(data);
   if (!result.success) {
     console.error(`❌ ${errorMessage}:`, result.error.issues);
-    console.error('📊 实际数据:', JSON.stringify(data, null, 2).slice(0, 500));
+    // 只记录字段名，不记录实际数据值
+    const fieldNames = Object.keys(data as object).join(', ');
+    console.error('📊 数据字段:', fieldNames);
     throw new Error(`${errorMessage}: ${result.error.issues[0]?.message || '验证失败'}`);
   }
-  console.log(`✅ 数据验证通过: ${errorMessage.replace('验证失败', '')}`);
   return result.data;
 }
 

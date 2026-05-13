@@ -5,6 +5,16 @@ import { message } from 'antd';
 
 type MessageType = 'notification' | 'message' | 'ping' | 'connected' | 'error' | 'friend_request' | 'friend_accepted';
 
+export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'reconnect_failed';
+
+interface ConnectionEvent {
+  status: ConnectionStatus;
+  reconnectAttempts?: number;
+  maxReconnectAttempts?: number;
+}
+
+type ConnectionListener = (event: ConnectionEvent) => void;
+
 interface NotificationData {
   id: number;
   type: string;
@@ -33,10 +43,27 @@ interface WebSocketMessage {
 class WebSocketService {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private maxReconnectAttempts = 8;
   private reconnectDelay = 1000;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private isConnecting = false;
+  private connectionListeners: Set<ConnectionListener> = new Set();
+
+  // 添加连接状态监听器
+  addConnectionListener(listener: ConnectionListener): () => void {
+    this.connectionListeners.add(listener);
+    return () => this.connectionListeners.delete(listener);
+  }
+
+  // 触发连接状态事件
+  private emitConnectionStatus(status: ConnectionStatus) {
+    const event: ConnectionEvent = {
+      status,
+      reconnectAttempts: this.reconnectAttempts,
+      maxReconnectAttempts: this.maxReconnectAttempts,
+    };
+    this.connectionListeners.forEach((listener) => listener(event));
+  }
 
   // 初始化 WebSocket 连接
   connect(token: string) {
@@ -45,11 +72,15 @@ class WebSocketService {
     }
 
     this.isConnecting = true;
+    this.emitConnectionStatus('connecting');
 
     // 构建 WebSocket URL
+    const wsBaseUrl = import.meta.env.VITE_WS_BASE_URL;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws?token=${token}`;
+    const wsUrl = wsBaseUrl
+      ? `${wsBaseUrl}/ws?token=${token}`
+      : `${protocol}//${host}/ws?token=${token}`;
 
     try {
       this.ws = new WebSocket(wsUrl);
@@ -58,6 +89,7 @@ class WebSocketService {
         console.log('🔌 WebSocket 已连接');
         this.reconnectAttempts = 0;
         this.isConnecting = false;
+        this.emitConnectionStatus('connected');
         this.startPingInterval();
       };
 
@@ -74,6 +106,7 @@ class WebSocketService {
         console.log('❌ WebSocket 已断开:', event.code, event.reason);
         this.isConnecting = false;
         this.stopPingInterval();
+        this.emitConnectionStatus('disconnected');
         this.attemptReconnect(token);
       };
 
@@ -241,6 +274,7 @@ class WebSocketService {
   private attemptReconnect(token: string) {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.log('WebSocket 重连次数已达上限');
+      this.emitConnectionStatus('reconnect_failed');
       return;
     }
 
@@ -248,6 +282,7 @@ class WebSocketService {
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
 
     console.log(`WebSocket 尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})，等待 ${delay}ms`);
+    this.emitConnectionStatus('reconnecting');
 
     setTimeout(() => {
       this.connect(token);
@@ -257,10 +292,12 @@ class WebSocketService {
   // 断开连接
   disconnect() {
     this.stopPingInterval();
+    this.reconnectAttempts = this.maxReconnectAttempts; // 防止重连
     if (this.ws) {
       this.ws.close(1000, '用户断开连接');
       this.ws = null;
     }
+    this.emitConnectionStatus('disconnected');
   }
 
   // 获取连接状态

@@ -5,7 +5,9 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 
 import authRoutes from './routes/auth.routes';
+import phoneAuthRoutes from './routes/phoneAuth.routes';
 import captchaRoutes from './routes/captcha.routes';
+import smsRoutes from './routes/sms.routes';
 import userRoutes from './routes/user.routes';
 import postRoutes from './routes/post.routes';
 import favoriteFolderRoutes from './routes/favoriteFolder.routes';
@@ -62,11 +64,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // 请求体清理（防止注入攻击）
 app.use(sanitizeBody);
 
-// 静态文件（上传的图片）
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
-// 静态文件（上传的图片）
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// 静态文件（开发环境本地图片，生产环境使用七牛云 CDN）
+if (process.env.NODE_ENV === 'development') {
+  app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+}
 
 // ========== 路由（应用限流和安全检查）==========
 
@@ -75,6 +76,12 @@ app.use('/api/captcha', captchaRoutes);
 
 // 认证路由（严格限流 + 登录限制）
 app.use('/api/auth', loginLimiter, authLimiter, authRoutes);
+
+// 手机号认证路由（登录限制）
+app.use('/api/auth', loginLimiter, phoneAuthRoutes);
+
+// 短信路由（登录限制 + 限流）
+app.use('/api/sms', loginLimiter, smsRoutes);
 
 // 用户路由（通用限流 + 黑名单检查）
 app.use('/api/users', apiLimiter, checkBlacklist, userRoutes);

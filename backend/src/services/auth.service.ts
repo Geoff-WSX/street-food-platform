@@ -1,11 +1,12 @@
 import bcrypt from 'bcrypt';
 import prisma from '../services/db/prisma';
 import { generateToken } from '../utils/jwt';
-import { RegisterRequest, LoginRequest } from '../types';
+import { RegisterRequest, LoginRequest, PhoneRegisterRequest, PhoneLoginRequest } from '../types';
 import { isValidEmail, isValidUsername, isValidPassword } from '../utils/validator';
 import axios from 'axios';
 import { initUserLevel } from './level.service';
-import { verifyCaptcha, verifyTrustedDevice, createTrustedDeviceToken } from './captcha.service';
+import { verifyCaptcha } from './captcha.service';
+import { verifySmsCode } from './sms.service';
 
 /**
  * 用户注册
@@ -91,34 +92,20 @@ export const register = async (data: RegisterRequest) => {
  * 用户登录
  */
 export const login = async (data: LoginRequest) => {
-  const { email, password, captchaId, captchaCode, trustedDeviceToken, trustDevice } = data;
+  const { email, password, captchaId, captchaCode } = data;
 
   // 验证输入
   if (!email || !password) {
     throw new Error('邮箱和密码不能为空');
   }
 
-  let newTrustedDeviceToken: string | undefined;
-
-  // 检查信任设备令牌
-  let skipCaptchaVerification = false;
-  if (trustedDeviceToken) {
-    const trusted = verifyTrustedDevice(trustedDeviceToken);
-    if (trusted && trusted.email === email) {
-      // 信任设备有效，跳过验证码
-      skipCaptchaVerification = true;
-    }
+  // 验证验证码
+  if (!captchaId || !captchaCode) {
+    throw new Error('验证码不能为空');
   }
-
-  // 需要验证验证码的情况：没有信任设备、或信任设备无效
-  if (!skipCaptchaVerification) {
-    if (!captchaId || !captchaCode) {
-      throw new Error('验证码不能为空');
-    }
-    const isCaptchaValid = verifyCaptcha(captchaId, captchaCode);
-    if (!isCaptchaValid) {
-      throw new Error('验证码错误或已过期');
-    }
+  const isCaptchaValid = verifyCaptcha(captchaId, captchaCode);
+  if (!isCaptchaValid) {
+    throw new Error('验证码错误或已过期');
   }
 
   // 查找用户
@@ -137,11 +124,6 @@ export const login = async (data: LoginRequest) => {
     throw new Error('邮箱或密码错误');
   }
 
-  // 如果选择信任此设备，创建设备令牌
-  if (trustDevice) {
-    newTrustedDeviceToken = createTrustedDeviceToken(user.id, email);
-  }
-
   // 生成 token
   const token = generateToken({
     userId: user.id,
@@ -152,7 +134,6 @@ export const login = async (data: LoginRequest) => {
 
   return {
     token,
-    trustedDeviceToken: newTrustedDeviceToken,
     user: {
       id: user.id,
       username: user.username,
@@ -308,4 +289,159 @@ export const wxLogin = async (code: string, userInfo?: any) => {
     console.error('微信登录服务错误:', error);
     throw error;
   }
+};
+
+/**
+ * 手机号注册
+ */
+export const phoneRegister = async (data: PhoneRegisterRequest) => {
+  const { username, phone, password, smsCode } = data;
+
+  // 验证输入
+  if (!username || !phone || !password) {
+    throw new Error('用户名、手机号和密码不能为空');
+  }
+
+  // 验证手机号格式
+  if (!/^1[3-9]\d{9}$/.test(phone)) {
+    throw new Error('手机号格式不正确');
+  }
+
+  if (!isValidUsername(username)) {
+    throw new Error('用户名必须是3-20个字符，只能包含字母数字和下划线');
+  }
+
+  if (!isValidPassword(password)) {
+    throw new Error('密码至少需要6个字符');
+  }
+
+  // 验证短信验证码
+  if (!smsCode) {
+    throw new Error('短信验证码不能为空');
+  }
+  const isSmsValid = verifySmsCode(phone, smsCode);
+  if (!isSmsValid) {
+    throw new Error('短信验证码错误或已过期');
+  }
+
+  // 检查用户名和手机号是否已存在
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      OR: [{ username }, { phone }],
+    },
+  });
+
+  if (existingUser) {
+    if (existingUser.username === username) {
+      throw new Error('用户名已被使用');
+    }
+    if (existingUser.phone === phone) {
+      throw new Error('手机号已被注册');
+    }
+  }
+
+  // 加密密码
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // 生成默认头像
+  const defaultAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
+
+  // 创建用户
+  const user = await prisma.user.create({
+    data: {
+      username,
+      phone,
+      password: hashedPassword,
+      avatar: defaultAvatar,
+      // 手机号注册用户生成随机邮箱
+      email: `phone_${phone}@temp.dev`,
+    },
+  });
+
+  // 初始化用户等级
+  await initUserLevel(user.id);
+
+  // 生成 token
+  const token = generateToken({
+    userId: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+  });
+
+  return {
+    token,
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      avatar: user.avatar,
+      bio: user.bio,
+      role: user.role,
+      createdAt: user.createdAt,
+    },
+  };
+};
+
+/**
+ * 手机号登录
+ */
+export const phoneLogin = async (data: PhoneLoginRequest) => {
+  const { phone, password, smsCode } = data;
+
+  // 验证输入
+  if (!phone || !password) {
+    throw new Error('手机号和密码不能为空');
+  }
+
+  // 验证手机号格式
+  if (!/^1[3-9]\d{9}$/.test(phone)) {
+    throw new Error('手机号格式不正确');
+  }
+
+  // 验证短信验证码
+  if (!smsCode) {
+    throw new Error('短信验证码不能为空');
+  }
+  const isSmsValid = verifySmsCode(phone, smsCode);
+  if (!isSmsValid) {
+    throw new Error('短信验证码错误或已过期');
+  }
+
+  // 查找用户
+  const user = await prisma.user.findUnique({
+    where: { phone },
+  });
+
+  if (!user) {
+    throw new Error('手机号或密码错误');
+  }
+
+  // 验证密码
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+
+  if (!isPasswordValid) {
+    throw new Error('手机号或密码错误');
+  }
+
+  // 生成 token
+  const token = generateToken({
+    userId: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+  });
+
+  return {
+    token,
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      avatar: user.avatar,
+      bio: user.bio,
+      role: user.role,
+      createdAt: user.createdAt,
+    },
+  };
 };

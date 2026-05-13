@@ -55,26 +55,25 @@ export function getImageCount(images: string | string[] | undefined | null): num
 
 /**
  * 获取用户头像 URL
- * 优先使用 avatarData (Base64)，其次使用 avatar (路径)
+ * 优先使用 avatarData (CDN URL 或 Base64)，其次使用 avatar (路径)
  * @param user - 用户对象
- * @returns 头像 URL 或 Base64 数据
+ * @returns 头像 URL
  */
 export function getAvatarUrl(user: { avatar?: string | null; avatarData?: string | null; username?: string } | undefined | null): string {
   if (!user) return 'https://api.dicebear.com/7.x/avataaars/svg?seed=default';
 
-  // 优先使用 Base64 数据
+  // 优先使用 avatarData（CDN URL 或 Base64）
   if (user.avatarData && user.avatarData.trim()) {
     return user.avatarData;
   }
 
-  // 使用路径
+  // 使用 avatar（预设 ID 或完整 URL）
   if (user.avatar && user.avatar.trim()) {
-    // 如果是完整的 URL 或 Base64，直接返回
     if (user.avatar.startsWith('http') || user.avatar.startsWith('data:')) {
       return user.avatar;
     }
-    // 否则拼接后端地址
-    return `http://localhost:3000${user.avatar}`;
+    // 旧数据相对路径，直接返回（开发环境通过 Vite 代理访问）
+    return user.avatar;
   }
 
   // 默认头像

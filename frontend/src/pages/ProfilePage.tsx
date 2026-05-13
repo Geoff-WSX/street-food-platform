@@ -1813,21 +1813,21 @@ export default function ProfilePage() {
                         cursor: 'pointer',
                         borderRadius: 12,
                         padding: 8,
-                        border: profileUser?.avatar === avatar.data ? '2px solid #ff6b35' : '2px solid transparent',
-                        background: profileUser?.avatar === avatar.data ? '#fff7f3' : 'var(--bg-secondary)',
+                        border: profileUser?.avatar === avatar.url ? '2px solid #ff6b35' : '2px solid transparent',
+                        background: profileUser?.avatar === avatar.url ? '#fff7f3' : 'var(--bg-secondary)',
                         transition: 'all 0.2s',
                         textAlign: 'center',
                       }}
                     >
                       <img
-                        src={avatar.data}
+                        src={avatar.url}
                         alt="自定义头像"
                         onClick={async () => {
                           try {
                             // 设置自定义头像为当前头像
                             const formData = new FormData();
                             // 创建一个虚拟文件来触发 updateAvatar
-                            const res = await fetch(avatar.data);
+                            const res = await fetch(avatar.url);
                             const blob = await res.blob();
                             const file = new File([blob], 'avatar.webp', { type: 'image/webp' });
                             formData.append('avatar', file);

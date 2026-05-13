@@ -175,7 +175,7 @@ export default function PublishModal({ open, onClose }: Props) {
         console.log('定位成功:', latitude, longitude);
 
         try {
-          const response = await fetch(`http://localhost:3000/api/posts/address/location?lat=${latitude}&lng=${longitude}`);
+          const response = await fetch(`/api/posts/address/location?lat=${latitude}&lng=${longitude}`);
           const data = await response.json();
 
           if (data.success && data.data && data.data.address) {

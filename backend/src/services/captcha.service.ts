@@ -4,9 +4,6 @@ import crypto from 'crypto';
 // 存储验证码（生产环境应该用 Redis）
 const captchaStore = new Map<string, { code: string; expiresAt: number }>();
 
-// 存储信任设备令牌（7天有效期）
-const trustedDeviceStore = new Map<string, { userId: number; email: string; expiresAt: number }>();
-
 /**
  * 生成验证码
  */
@@ -60,54 +57,15 @@ export const verifyCaptcha = (id: string, code: string): boolean => {
 };
 
 /**
- * 验证信任设备令牌
- */
-export const verifyTrustedDevice = (token: string): { userId: number; email: string } | null => {
-  const trusted = trustedDeviceStore.get(token);
-
-  if (!trusted) {
-    return null;
-  }
-
-  // 检查是否过期
-  if (Date.now() > trusted.expiresAt) {
-    trustedDeviceStore.delete(token);
-    return null;
-  }
-
-  return { userId: trusted.userId, email: trusted.email };
-};
-
-/**
- * 创建立信任设备令牌
- */
-export const createTrustedDeviceToken = (userId: number, email: string): string => {
-  const token = crypto.randomUUID();
-  const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7天有效期
-
-  trustedDeviceStore.set(token, {
-    userId,
-    email,
-    expiresAt,
-  });
-
-  return token;
-};
-
-/**
  * 清理过期验证码（定时任务）
  */
 export const cleanupExpiredCaptchas = () => {
   const now = Date.now();
+
+  // 清理过期验证码
   for (const [id, captcha] of captchaStore.entries()) {
     if (now > captcha.expiresAt) {
       captchaStore.delete(id);
-    }
-  }
-  // 清理过期信任设备
-  for (const [token, trusted] of trustedDeviceStore.entries()) {
-    if (now > trusted.expiresAt) {
-      trustedDeviceStore.delete(token);
     }
   }
 };

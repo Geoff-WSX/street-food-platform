@@ -4,8 +4,9 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Level {
@@ -169,7 +170,7 @@ model Favorite {
   @@index([postId])
   @@index([userId, isPinned])
   @@index([userId, folderId])
-  @@index([folderId], map: "favorites_folderId_fkey")
+  @@index([folderId])
   @@map("favorites")
 }
 
@@ -244,7 +245,7 @@ model Notification {
   actor      User     @relation("Notification_actor", fields: [actorId], references: [id], onDelete: Cascade)
   user       User     @relation("Notification_user", fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([actorId], map: "notifications_actorId_fkey")
+  @@index([actorId])
   @@index([userId, createdAt])
   @@index([userId, isRead])
   @@index([userId, type])
@@ -386,6 +387,7 @@ model User {
   id                                                Int               @id @default(autoincrement())
   username                                          String            @unique @db.VarChar(50)
   email                                             String            @unique @db.VarChar(100)
+  phone                                             String?           @unique @db.VarChar(20)
   password                                          String            @db.VarChar(255)
   avatar                                            String?           @db.VarChar(500)
   bio                                               String?           @db.Text

@@ -37,14 +37,32 @@ export interface RegisterRequest {
   password: string;
 }
 
+// 手机号注册请求
+export interface PhoneRegisterRequest {
+  username: string;
+  phone: string;
+  password: string;
+  smsCode: string;
+}
+
 // 用户登录请求
 export interface LoginRequest {
   email: string;
   password: string;
   captchaId: string;
   captchaCode: string;
-  trustedDeviceToken?: string;
-  trustDevice?: boolean;
+}
+
+// 手机号登录请求
+export interface PhoneLoginRequest {
+  phone: string;
+  password: string;
+  smsCode: string;
+}
+
+// 发送短信验证码请求
+export interface SendSmsCodeRequest {
+  phone: string;
 }
 
 // 更新用户资料请求
