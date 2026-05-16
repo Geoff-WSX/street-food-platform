@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { Form, Input, Button, message, Divider, Typography } from 'antd';
-import { MailOutlined, LockOutlined, UserOutlined, FireOutlined, RocketOutlined, ReloadOutlined, PhoneOutlined, MessageOutlined } from '@ant-design/icons';
+import { useState, useEffect } from 'react';
+import { Form, Input, Button, message, Divider, Typography, Modal } from 'antd';
+import { MailOutlined, LockOutlined, UserOutlined, FireOutlined, RocketOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { login, register, getCaptcha, phoneLogin, phoneRegister, sendSmsCode, type CaptchaData } from '../api/auth';
+import { login, register, getCaptcha, type CaptchaData } from '../api/auth';
 import { useAuthStore } from '../store/auth';
 import { useThemeStore } from '../store/theme';
 import { getErrorMessage } from '../utils/error';
@@ -12,8 +12,6 @@ import { getAnimationStyle, getRandomFoods } from '../utils/foodAnimations';
 
 const { Text } = Typography;
 
-type AuthMethod = 'email' | 'phone';
-
 export default function LoginPage() {
   const navigate = useNavigate();
   const loginStore = useAuthStore((s) => s.login);
@@ -21,13 +19,9 @@ export default function LoginPage() {
   const isDark = themeMode === 'dark';
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
-  const [authMethod, setAuthMethod] = useState<AuthMethod>('email');
   const [captcha, setCaptcha] = useState<CaptchaData | null>(null);
   const [captchaLoading, setCaptchaLoading] = useState(false);
-  const [smsLoading, setSmsLoading] = useState(false);
-  const [smsCooldown, setSmsCooldown] = useState(0);
-  const [phoneValue, setPhoneValue] = useState('');
-  const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [warningVisible, setWarningVisible] = useState(false);
   const [screenSize, setScreenSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -54,53 +48,14 @@ export default function LoginPage() {
     }
   };
 
-  // 发送短信验证码
-  const handleSendSms = async (phone: string) => {
-    if (!phone) {
-      void message.error('请输入手机号');
-      return;
-    }
-    if (!/^1[3-9]\d{9}$/.test(phone)) {
-      void message.error('手机号格式不正确');
-      return;
-    }
-    setSmsLoading(true);
-    try {
-      await sendSmsCode(phone);
-      void message.success('验证码已发送');
-      setSmsCooldown(60);
-      // 清除之前的定时器
-      if (cooldownTimerRef.current) {
-        clearInterval(cooldownTimerRef.current);
-      }
-      cooldownTimerRef.current = setInterval(() => {
-        setSmsCooldown((prev) => {
-          if (prev <= 1) {
-            if (cooldownTimerRef.current) {
-              clearInterval(cooldownTimerRef.current);
-              cooldownTimerRef.current = null;
-            }
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } catch (error: unknown) {
-      const errorMsg = getErrorMessage(error);
-      void message.error(errorMsg);
-    } finally {
-      setSmsLoading(false);
-    }
-  };
-
   // 组件卸载时清理定时器
   useEffect(() => {
-    return () => {
-      if (cooldownTimerRef.current) {
-        clearInterval(cooldownTimerRef.current);
-        cooldownTimerRef.current = null;
-      }
-    };
+    // 检查是否首次访问
+    const hasVisited = localStorage.getItem('login_page_visited');
+    if (!hasVisited) {
+      setWarningVisible(true);
+      localStorage.setItem('login_page_visited', 'true');
+    }
   }, []);
 
   // 初始化验证码
@@ -146,47 +101,10 @@ export default function LoginPage() {
     }
   };
 
-  const handlePhoneLogin = async (values: { phone: string; password: string; smsCode: string }) => {
-    setLoading(true);
-    try {
-      const res = await phoneLogin({
-        phone: values.phone,
-        password: values.password,
-        smsCode: values.smsCode,
-      });
-      loginStore(res.token, res.user);
-      navigate('/');
-    } catch (error: unknown) {
-      const errorMsg = getErrorMessage(error);
-      void message.error(errorMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleRegister = async (values: { username: string; email: string; password: string }) => {
     setLoading(true);
     try {
       const res = await register(values);
-      loginStore(res.token, res.user);
-      navigate('/');
-    } catch (error: unknown) {
-      const errorMsg = getErrorMessage(error);
-      void message.error(errorMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePhoneRegister = async (values: { username: string; phone: string; password: string; smsCode: string }) => {
-    setLoading(true);
-    try {
-      const res = await phoneRegister({
-        username: values.username,
-        phone: values.phone,
-        password: values.password,
-        smsCode: values.smsCode,
-      });
       loginStore(res.token, res.user);
       navigate('/');
     } catch (error: unknown) {
@@ -307,6 +225,30 @@ export default function LoginPage() {
         </>
       )}
 
+      {/* 测试网站警告弹窗 */}
+      <Modal
+        title={<span style={{ color: '#ff4d4f' }}>⚠️ 测试网站提示</span>}
+        open={warningVisible}
+        onOk={() => setWarningVisible(false)}
+        onCancel={() => setWarningVisible(false)}
+        okText="我已知晓"
+        cancelText={null}
+        centered
+        width={400}
+      >
+        <div style={{ fontSize: 14, lineHeight: 1.8 }}>
+          <p>👋 欢迎访问「食遇」测试网站！</p>
+          <p style={{ color: '#ff4d4f', fontWeight: 600 }}>⚠️ 请勿输入真实个人信息！</p>
+          <ul style={{ paddingLeft: 20, margin: '10px 0' }}>
+            <li>不要使用真实手机号码</li>
+            <li>不要输入真实密码</li>
+            <li>不要上传真实头像照片</li>
+            <li>发布内容时不要包含真实位置</li>
+          </ul>
+          <p style={{ color: '#666', fontSize: 13 }}>本平台仍在测试阶段，所有数据可能会被随时清除。</p>
+        </div>
+      </Modal>
+
       {/* 主卡片 */}
       <div
         style={{
@@ -400,74 +342,6 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* 认证方式切换 - 集成到表单内的小型切换器 */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            marginBottom: screenSize.isMobile ? 14 : 16,
-          }}
-        >
-          <div
-            style={{
-              display: 'inline-flex',
-              background: isDark ? 'rgba(50,50,80,0.6)' : 'rgba(240,235,250,0.8)',
-              borderRadius: 20,
-              padding: 3,
-              gap: 2,
-            }}
-          >
-            <button
-              onClick={() => setAuthMethod('email')}
-              style={{
-                padding: screenSize.isSmallMobile ? '6px 14px' : '8px 20px',
-                border: 'none',
-                borderRadius: 18,
-                background: authMethod === 'email'
-                  ? (isDark ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#fff')
-                  : 'transparent',
-                color: authMethod === 'email'
-                  ? (isDark ? '#fff' : '#764ba2')
-                  : (isDark ? 'rgba(255,255,255,0.7)' : '#764ba2'),
-                fontSize: screenSize.isSmallMobile ? 12 : 13,
-                fontWeight: authMethod === 'email' ? 600 : 500,
-                cursor: 'pointer',
-                transition: 'all 0.25s ease',
-                boxShadow: authMethod === 'email' ? '0 2px 8px rgba(102, 126, 234, 0.35)' : 'none',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-              }}
-            >
-              <MailOutlined /> 邮箱
-            </button>
-            <button
-              onClick={() => setAuthMethod('phone')}
-              style={{
-                padding: screenSize.isSmallMobile ? '6px 14px' : '8px 20px',
-                border: 'none',
-                borderRadius: 18,
-                background: authMethod === 'phone'
-                  ? (isDark ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#fff')
-                  : 'transparent',
-                color: authMethod === 'phone'
-                  ? (isDark ? '#fff' : '#764ba2')
-                  : (isDark ? 'rgba(255,255,255,0.7)' : '#764ba2'),
-                fontSize: screenSize.isSmallMobile ? 12 : 13,
-                fontWeight: authMethod === 'phone' ? 600 : 500,
-                cursor: 'pointer',
-                transition: 'all 0.25s ease',
-                boxShadow: authMethod === 'phone' ? '0 2px 8px rgba(102, 126, 234, 0.35)' : 'none',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-              }}
-            >
-              <PhoneOutlined /> 手机
-            </button>
-          </div>
-        </div>
-
         {/* 表单卡片 */}
         <div
           style={{
@@ -509,7 +383,7 @@ export default function LoginPage() {
           )}
 
           {/* 邮箱登录表单 */}
-          {authMethod === 'email' && isLogin && (
+          {isLogin && (
             <Form layout="vertical" onFinish={handleLogin} className="form-fade-in">
               <Form.Item
                 name="email"
@@ -614,7 +488,7 @@ export default function LoginPage() {
           )}
 
           {/* 邮箱注册表单 */}
-          {authMethod === 'email' && !isLogin && (
+          {!isLogin && (
             <Form layout="vertical" onFinish={handleRegister} className="form-fade-in">
               <Form.Item
                 name="username"
@@ -670,233 +544,6 @@ export default function LoginPage() {
                     fontSize: screenSize.isSmallMobile ? 13 : 14,
                   }}
                 />
-              </Form.Item>
-              <Form.Item style={{ marginBottom: 6 }}>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={loading}
-                  block
-                  size={screenSize.isSmallMobile ? 'middle' : 'large'}
-                  icon={screenSize.isSmallMobile ? undefined : <FireOutlined />}
-                  style={{
-                    height: screenSize.isSmallMobile ? 38 : screenSize.isMobile ? 42 : 46,
-                    borderRadius: screenSize.isMobile ? 8 : 10,
-                    fontSize: screenSize.isSmallMobile ? 14 : 15,
-                    fontWeight: 600,
-                    background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                    border: 'none',
-                    boxShadow: '0 8px 24px rgba(245, 87, 108, 0.4)',
-                  }}
-                >
-                  立即注册
-                </Button>
-              </Form.Item>
-            </Form>
-          )}
-
-          {/* 手机号登录表单 */}
-          {authMethod === 'phone' && isLogin && (
-            <Form layout="vertical" onFinish={handlePhoneLogin} className="form-fade-in">
-              <Form.Item
-                name="phone"
-                rules={[
-                  { required: true, message: '请输入手机号' },
-                  { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确' },
-                ]}
-                style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
-              >
-                <Input
-                  size={screenSize.isSmallMobile ? 'middle' : 'large'}
-                  prefix={<PhoneOutlined style={{ color: '#bfbfbf' }} />}
-                  placeholder="手机号"
-                  maxLength={11}
-                  value={phoneValue}
-                  onChange={(e) => setPhoneValue(e.target.value)}
-                  style={{
-                    borderRadius: screenSize.isMobile ? 8 : 10,
-                    padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
-                    fontSize: screenSize.isSmallMobile ? 13 : 14,
-                  }}
-                />
-              </Form.Item>
-              <Form.Item
-                name="password"
-                rules={[{ required: true, message: '请输入密码' }]}
-                style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
-              >
-                <Input.Password
-                  size={screenSize.isSmallMobile ? 'middle' : 'large'}
-                  prefix={<LockOutlined style={{ color: '#bfbfbf' }} />}
-                  placeholder="密码"
-                  style={{
-                    borderRadius: screenSize.isMobile ? 8 : 10,
-                    padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
-                    fontSize: screenSize.isSmallMobile ? 13 : 14,
-                  }}
-                />
-              </Form.Item>
-              <Form.Item
-                name="smsCode"
-                rules={[{ required: true, message: '请输入短信验证码' }]}
-                style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
-              >
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Input
-                    size={screenSize.isSmallMobile ? 'middle' : 'large'}
-                    prefix={<MessageOutlined style={{ color: '#bfbfbf' }} />}
-                    placeholder="短信验证码"
-                    maxLength={6}
-                    style={{
-                      flex: 1,
-                      borderRadius: screenSize.isMobile ? 8 : 10,
-                      padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
-                      fontSize: screenSize.isSmallMobile ? 13 : 14,
-                    }}
-                  />
-                  <Button
-                    loading={smsLoading}
-                    disabled={smsCooldown > 0 || smsLoading}
-                    onClick={() => void handleSendSms(phoneValue)}
-                    style={{
-                      borderRadius: screenSize.isMobile ? 8 : 10,
-                      height: screenSize.isSmallMobile ? 38 : screenSize.isMobile ? 42 : 46,
-                      background: smsCooldown > 0 ? '#f0f0f0' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      border: 'none',
-                      color: smsCooldown > 0 ? '#666' : '#fff',
-                      fontSize: screenSize.isSmallMobile ? 12 : 13,
-                      fontWeight: 600,
-                      boxShadow: smsCooldown > 0 ? 'none' : '0 4px 12px rgba(102, 126, 234, 0.3)',
-                    }}
-                  >
-                    {smsCooldown > 0 ? `${smsCooldown}s` : '获取验证码'}
-                  </Button>
-                </div>
-              </Form.Item>
-              <Form.Item style={{ marginBottom: 6 }}>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={loading}
-                  block
-                  size={screenSize.isSmallMobile ? 'middle' : 'large'}
-                  icon={screenSize.isSmallMobile ? undefined : <RocketOutlined />}
-                  style={{
-                    height: screenSize.isSmallMobile ? 38 : screenSize.isMobile ? 42 : 46,
-                    borderRadius: screenSize.isMobile ? 8 : 10,
-                    fontSize: screenSize.isSmallMobile ? 14 : 15,
-                    fontWeight: 600,
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    border: 'none',
-                    boxShadow: '0 8px 24px rgba(102, 126, 234, 0.4)',
-                  }}
-                >
-                  登录
-                </Button>
-              </Form.Item>
-            </Form>
-          )}
-
-          {/* 手机号注册表单 */}
-          {authMethod === 'phone' && !isLogin && (
-            <Form layout="vertical" onFinish={handlePhoneRegister} className="form-fade-in">
-              <Form.Item
-                name="username"
-                style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
-                rules={[
-                  { required: true, message: '请输入用户名' },
-                  { min: 3, max: 20, message: '用户名长度为3-20个字符' },
-                  { pattern: /^[a-zA-Z0-9_]+$/, message: '仅支持字母、数字、下划线' },
-                ]}
-              >
-                <Input
-                  size={screenSize.isSmallMobile ? 'middle' : 'large'}
-                  prefix={<UserOutlined style={{ color: '#bfbfbf' }} />}
-                  placeholder="用户名"
-                  style={{
-                    borderRadius: screenSize.isMobile ? 8 : 10,
-                    padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
-                    fontSize: screenSize.isSmallMobile ? 13 : 14,
-                  }}
-                />
-              </Form.Item>
-              <Form.Item
-                name="phone"
-                rules={[
-                  { required: true, message: '请输入手机号' },
-                  { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确' },
-                ]}
-                style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
-              >
-                <Input
-                  size={screenSize.isSmallMobile ? 'middle' : 'large'}
-                  prefix={<PhoneOutlined style={{ color: '#bfbfbf' }} />}
-                  placeholder="手机号"
-                  maxLength={11}
-                  value={phoneValue}
-                  onChange={(e) => setPhoneValue(e.target.value)}
-                  style={{
-                    borderRadius: screenSize.isMobile ? 8 : 10,
-                    padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
-                    fontSize: screenSize.isSmallMobile ? 13 : 14,
-                  }}
-                />
-              </Form.Item>
-              <Form.Item
-                name="password"
-                style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
-                rules={[
-                  { required: true, message: '请输入密码' },
-                  { min: 6, message: '密码至少6位' },
-                ]}
-              >
-                <Input.Password
-                  size={screenSize.isSmallMobile ? 'middle' : 'large'}
-                  prefix={<LockOutlined style={{ color: '#bfbfbf' }} />}
-                  placeholder="密码（至少6位）"
-                  style={{
-                    borderRadius: screenSize.isMobile ? 8 : 10,
-                    padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
-                    fontSize: screenSize.isSmallMobile ? 13 : 14,
-                  }}
-                />
-              </Form.Item>
-              <Form.Item
-                name="smsCode"
-                rules={[{ required: true, message: '请输入短信验证码' }]}
-                style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
-              >
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Input
-                    size={screenSize.isSmallMobile ? 'middle' : 'large'}
-                    prefix={<MessageOutlined style={{ color: '#bfbfbf' }} />}
-                    placeholder="短信验证码"
-                    maxLength={6}
-                    style={{
-                      flex: 1,
-                      borderRadius: screenSize.isMobile ? 8 : 10,
-                      padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
-                      fontSize: screenSize.isSmallMobile ? 13 : 14,
-                    }}
-                  />
-                  <Button
-                    loading={smsLoading}
-                    disabled={smsCooldown > 0 || smsLoading}
-                    onClick={() => void handleSendSms(phoneValue)}
-                    style={{
-                      borderRadius: screenSize.isMobile ? 8 : 10,
-                      height: screenSize.isSmallMobile ? 38 : screenSize.isMobile ? 42 : 46,
-                      background: smsCooldown > 0 ? '#f0f0f0' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                      border: 'none',
-                      color: smsCooldown > 0 ? '#666' : '#fff',
-                      fontSize: screenSize.isSmallMobile ? 12 : 13,
-                      fontWeight: 600,
-                      boxShadow: smsCooldown > 0 ? 'none' : '0 4px 12px rgba(245, 87, 108, 0.3)',
-                    }}
-                  >
-                    {smsCooldown > 0 ? `${smsCooldown}s` : '获取验证码'}
-                  </Button>
-                </div>
               </Form.Item>
               <Form.Item style={{ marginBottom: 6 }}>
                 <Button
