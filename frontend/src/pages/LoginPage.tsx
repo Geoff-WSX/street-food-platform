@@ -243,7 +243,6 @@ export default function LoginPage() {
             <li>不要使用真实手机号码</li>
             <li>不要输入真实密码</li>
             <li>不要上传真实头像照片</li>
-            <li>发布内容时不要包含真实位置</li>
           </ul>
           <p style={{ color: '#666', fontSize: 13 }}>本平台仍在测试阶段，所有数据可能会被随时清除。</p>
         </div>
