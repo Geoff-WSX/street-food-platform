@@ -18,7 +18,7 @@ router.get('/popular', optionalAuth, postController.getPopularPosts);
 
 // POST /api/posts - 发布动态（需登录）
 // 支持两种方式：1. multipart/form-data 上传图片 2. JSON 格式传递图片 URL
-router.post('/', authenticate, validateCreatePost, uploadPostImages, postController.createPost);
+router.post('/', authenticate, uploadPostImages, validateCreatePost, postController.createPost);
 
 // GET /api/posts/favorites - 获取我的收藏（需登录）
 router.get('/favorites', authenticate, paginationRules, postController.getUserFavorites);
