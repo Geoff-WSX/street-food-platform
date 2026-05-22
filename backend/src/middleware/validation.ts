@@ -74,22 +74,7 @@ export const postContentRules = [
         }
       }
 
-      // 检查 SQL 注入模式
-      const sqlPatterns = [
-        /(\bunion\b.*\bselect\b)/gi,
-        /(\bdrop\b.*\btable\b)/gi,
-        /(\bdelete\b.*\bfrom\b)/gi,
-        /(\binsert\b.*\binto\b)/gi,
-        /(\bupdate\b.*\bset\b)/gi,
-        /(--)|(#)|(\/\*)|(\*\/)/g
-      ];
-
-      for (const pattern of sqlPatterns) {
-        if (pattern.test(content)) {
-          throw new Error('内容包含非法字符');
-        }
-      }
-
+      // SQL 注入防护由 Prisma 参数化查询保证，无需额外检测
       return true;
     })
 ];

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import * as qiniu from 'qiniu';
 
 const ACCESS_KEY = process.env.QINIU_ACCESS_KEY || '';
@@ -22,11 +23,13 @@ function getPublicUrl(key: string): string {
 }
 
 async function uploadBuffer(key: string, buffer: Buffer): Promise<string> {
+  // 创建 buffer 副本避免被修改
+  const bufferCopy = Buffer.from(buffer);
   const token = generateUploadToken();
   const extra = new qiniu.form_up.PutExtra();
 
   return new Promise((resolve, reject) => {
-    formUploader.put(token, key, buffer, extra, (err, body, info) => {
+    formUploader.put(token, key, bufferCopy, extra, (err, body, info) => {
       if (err) {
         reject(err);
         return;

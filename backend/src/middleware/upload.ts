@@ -54,14 +54,17 @@ export async function processPostImageUpload(file: Express.Multer.File): Promise
   const random = Math.round(Math.random() * 1e9);
   const baseKey = `posts/${ts}-${random}`;
 
+  // 创建 buffer 副本避免被修改
+  const inputBuffer = Buffer.from(file.buffer);
+
   // 原图 — 最大 1920px, 质量 80
-  const originalBuffer = await sharp(file.buffer)
+  const originalBuffer = await sharp(inputBuffer)
     .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
     .webp({ quality: 80 })
     .toBuffer();
 
   // 缩略图 — 400px, 质量 70
-  const thumbnailBuffer = await sharp(file.buffer)
+  const thumbnailBuffer = await sharp(inputBuffer)
     .resize(400, 400, { fit: 'cover', position: 'centre' })
     .webp({ quality: 70 })
     .toBuffer();
