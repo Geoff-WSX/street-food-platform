@@ -162,9 +162,19 @@ export const createPost = async (userId: number, data: CreatePostRequest) => {
       longitude,
       isPrivate: isPrivate || false,
     },
-    include: {
+    select: {
+      id: true,
+      content: true,
+      images: true,
+      address: true,
+      latitude: true,
+      longitude: true,
+      isPrivate: true,
+      likeCount: true,
+      favoriteCount: true,
+      commentCount: true,
+      createdAt: true,
       user: {
-        include: { userLevel: { include: { level: true } } },
         select: { id: true, username: true, avatar: true, avatarData: true },
       },
     },
@@ -502,15 +512,18 @@ export const updatePost = async (
 
 /**
  * 删除动态
+ * 超级管理员和管理员可以删除任意动态，普通用户只能删除自己的动态
  */
-export const deletePost = async (postId: number, userId: number) => {
+export const deletePost = async (postId: number, userId: number, userRole?: string) => {
   const post = await prisma.post.findUnique({ where: { id: postId } });
 
   if (!post) {
     throw new Error('动态不存在');
   }
 
-  if (post.userId !== userId) {
+  // 管理员和超级管理员可以删除任意动态
+  const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+  if (!isAdmin && post.userId !== userId) {
     throw new Error('无权删除此动态');
   }
 
@@ -649,8 +662,15 @@ export const getUserFavorites = async (
         post: {
           include: {
             user: {
-              include: { userLevel: { include: { level: true } } },
-              select: { id: true, username: true, avatar: true, avatarData: true },
+              select: {
+                id: true,
+                username: true,
+                avatar: true,
+                avatarData: true,
+                userLevel: {
+                  select: { level: true },
+                },
+              },
             },
           },
         },
@@ -750,8 +770,15 @@ export const getUserLikes = async (
         post: {
           include: {
             user: {
-              include: { userLevel: { include: { level: true } } },
-              select: { id: true, username: true, avatar: true, avatarData: true },
+              select: {
+                id: true,
+                username: true,
+                avatar: true,
+                avatarData: true,
+                userLevel: {
+                  select: { level: true },
+                },
+              },
             },
           },
         },

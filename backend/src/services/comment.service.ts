@@ -416,7 +416,8 @@ export const deleteComment = async (commentId: number, userId: number, userRole:
   const canDelete =
     comment.userId === userId ||
     comment.post.userId === userId ||
-    userRole === 'admin';
+    userRole === 'admin' ||
+    userRole === 'super_admin';
 
   if (!canDelete) {
     throw new Error('无权删除此评论');

@@ -116,7 +116,7 @@ export const deletePost = async (req: AuthRequest, res: Response) => {
     if (isNaN(postId)) {
       return errorResponse(res, '无效的动态ID', 'INVALID_PARAM');
     }
-    const result = await postService.deletePost(postId, req.user!.userId);
+    const result = await postService.deletePost(postId, req.user!.userId, req.user!.role);
     return successResponse(res, result, '删除成功');
   } catch (error: any) {
     return errorResponse(res, error.message, 'DELETE_FAILED');
