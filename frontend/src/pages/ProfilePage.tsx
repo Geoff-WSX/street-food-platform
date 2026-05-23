@@ -8,7 +8,6 @@ import { UserOutlined, EditOutlined, CameraOutlined, EnvironmentOutlined, Logout
 import { getUserById, updateProfile, updateAvatar, setDefaultAvatar, getDefaultAvatars, changePassword, updateMessageSettings, updatePrivacySettings, getCustomAvatars, addCustomAvatar, deleteCustomAvatar, type DefaultAvatar, type CustomAvatar } from '../api/user';
 import { getUserPosts, getUserFavorites } from '../api/post';
 import { getRecommendedPosts, deleteRecommend } from '../api/share';
-import { getUserFollowedTopics, type TopicRankingItem } from '../api/topic';
 import { cancelAllPendingRequests } from '../api/index';
 import { getBlockedList, unblockUser, blockUser } from '../api/block';
 import { getFollowing, getFollowers, followUser, unfollowUser } from '../api/follow';
@@ -134,8 +133,6 @@ export default function ProfilePage() {
   const [following, setFollowing] = useState<User[]>([]);
   const [followers, setFollowers] = useState<User[]>([]);
   const [followLoading, setFollowLoading] = useState(false);
-  const [followedTopics, setFollowedTopics] = useState<TopicRankingItem[]>([]);
-  const [followedTopicsLoading, setFollowedTopicsLoading] = useState(false);
   const [chatUser, setChatUser] = useState<User | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -286,16 +283,6 @@ export default function ProfilePage() {
         // 获取推荐动态
         const recommendedData = await getRecommendedPosts({ pageSize: 50 });
         setRecommendedPosts(recommendedData.data);
-        // 获取关注的话题
-        setFollowedTopicsLoading(true);
-        try {
-          const topicsData = await getUserFollowedTopics();
-          setFollowedTopics(topicsData?.data || []);
-        } catch {
-          console.error('获取关注话题失败');
-        } finally {
-          setFollowedTopicsLoading(false);
-        }
         // 获取黑名单
         const blocked = await getBlockedList();
         setBlockedUsers(blocked);
@@ -1095,50 +1082,7 @@ export default function ProfilePage() {
         )
       )
     },
-    ...(isOwner ? [{
-      key: 'followedTopics',
-      label: `关注话题 ${followedTopics.length > 0 ? `(${followedTopics.length})` : ''}`,
-      children: (
-        followedTopicsLoading ? (
-          <div style={{ textAlign: 'center', padding: 40 }}>
-            <Spin />
-          </div>
-        ) : followedTopics.length === 0 ? (
-          <Empty description="暂无关注的话题" style={{ padding: '32px 0' }} />
-        ) : (
-          <Row gutter={[12, 12]}>
-            {followedTopics.map(topic => (
-              <Col key={topic.id} xs={12} sm={8} md={6} lg={4}>
-                <Card
-                  hoverable
-                  style={{ borderRadius: 12, textAlign: 'center', cursor: 'pointer' }}
-                  onClick={() => navigate(`/topic/${encodeURIComponent(topic.name)}?from=profile`)}
-                  bodyStyle={{ padding: 16 }}
-                >
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>
-                    {topic.name.includes('火锅') ? '🍲' :
-                     topic.name.includes('烧烤') ? '🍖' :
-                     topic.name.includes('小吃') ? '🍡' :
-                     topic.name.includes('甜点') ? '🍰' :
-                     topic.name.includes('咖啡') ? '☕' :
-                     topic.name.includes('奶茶') ? '🧋' :
-                     topic.name.includes('海鲜') ? '🦀' :
-                     topic.name.includes('日料') ? '🍣' :
-                     topic.name.includes('川菜') ? '🌶️' :
-                     topic.name.includes('粤菜') ? '🥘' :
-                     '🏷️'}
-                  </div>
-                  <Text strong style={{ fontSize: 13, display: 'block' }}>#{topic.name}</Text>
-                  <Text type="secondary" style={{ fontSize: 11 }}>
-                    {topic.postCount || 0} 动态 · {topic.followCount || 0} 关注
-                  </Text>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        )
-      )
-    }] : []), {
+    {
       key: 'settings',
       label: '设置',
       children: (

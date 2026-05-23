@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Modal, Form, Input, Button, Upload, message, Typography, Space, Tag } from 'antd';
+import { Modal, Form, Input, Button, Upload, message, Typography, Space } from 'antd';
 import { PlusOutlined, EnvironmentOutlined, LoadingOutlined, CloseOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { createPost } from '../api/post';
@@ -44,8 +44,6 @@ export default function PublishModal({ open, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState('');
 
   // AI 文案生成状态 - 合并为单个状态对象
   const [aiState, setAiState] = useState({
@@ -63,8 +61,6 @@ export default function PublishModal({ open, onClose }: Props) {
       form.resetFields();
       setFileList([]);
       setIsPrivate(false);
-      setTags([]);
-      setTagInput('');
       // 只在有值时才更新，避免不必要的重渲染
       if (aiState.keywords !== '' || aiState.generatedCopy !== '') {
         setAiState({ keywords: '', isGenerating: false, generatedCopy: '' });
@@ -115,8 +111,8 @@ export default function PublishModal({ open, onClose }: Props) {
     }
   }, [aiState.generatedCopy, form, handleGenerateCopy]);
 
-  // 获取当前位置 - 改进版，支持多次尝试
-  const getCurrentLocation = useCallback(() => {
+  // 获取当前位置 - 改进版，支持权限检查和多次尝试
+  const getCurrentLocation = useCallback(async () => {
     setLocationLoading(true);
     void message.loading({ content: '正在获取位置，请稍候...', key: 'location', duration: 0 });
 
@@ -126,56 +122,58 @@ export default function PublishModal({ open, onClose }: Props) {
       return;
     }
 
-    // 首先尝试高精度定位
-    const tryHighAccuracyLocation = () => {
-      return new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          resolve,
-          reject,
-          {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0
-          }
-        );
-      });
-    };
+    // 检查定位权限状态
+    let permissionStatus: PermissionState = 'prompt';
+    try {
+      const result = await navigator.permissions.query({ name: 'geolocation' });
+      permissionStatus = result.state;
+    } catch {
+      // 浏览器不支持 permissions API，继续尝试
+    }
 
-    // 如果高精度失败，尝试低精度
-    const tryLowAccuracyLocation = () => {
-      return new Promise<GeolocationPosition>((resolve, reject) => {
+    // 如果已经明确拒绝，给出提示
+    if (permissionStatus === 'denied') {
+      void message.warning({
+        content: '定位权限已被拒绝，请手动输入地址或点击浏览器地址栏左侧的锁定图标允许定位',
+        key: 'location',
+        duration: 5
+      });
+      setLocationLoading(false);
+      return;
+    }
+
+    // 尝试高精度定位
+    const tryLocation = (highAccuracy: boolean): Promise<GeolocationPosition> => {
+      return new Promise((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(
           resolve,
           reject,
           {
-            enableHighAccuracy: false,
+            enableHighAccuracy: highAccuracy,
             timeout: 15000,
-            maximumAge: 300000
+            maximumAge: highAccuracy ? 0 : 300000
           }
         );
       });
     };
 
     // 执行定位
-    (async () => {
+    try {
+      let position: GeolocationPosition;
+      let isHighAccuracy = true;
+
       try {
-        let position: GeolocationPosition;
+        position = await tryLocation(true);
+      } catch {
+        isHighAccuracy = false;
+        position = await tryLocation(false);
+      }
 
-        try {
-          // 尝试高精度定位
-          position = await tryHighAccuracyLocation();
-          console.log('高精度定位成功');
-        } catch {
-          // 高精度失败，尝试低精度
-          console.log('高精度定位失败，尝试低精度');
-          position = await tryLowAccuracyLocation();
-        }
+      const { latitude, longitude } = position.coords;
+      console.log(isHighAccuracy ? '高精度定位成功' : '低精度定位成功', latitude, longitude);
 
-        const { latitude, longitude } = position.coords;
-        console.log('定位成功:', latitude, longitude);
-
-        try {
-          const response = await fetch(`/api/posts/address/location?lat=${latitude}&lng=${longitude}`);
+      try {
+        const response = await fetch(`/api/posts/address/location?lat=${latitude}&lng=${longitude}`);
           const data = await response.json();
 
           if (data.success && data.data && data.data.address) {
@@ -211,26 +209,23 @@ export default function PublishModal({ open, onClose }: Props) {
         }
       } catch (error) {
         const geolocationError = error as GeolocationPositionError;
-        let errorMsg = '获取位置失败';
+        let errorMsg = '获取位置失败，请手动输入地址';
         switch (geolocationError.code) {
           case GeolocationPositionError.PERMISSION_DENIED:
-            errorMsg = '定位权限被拒绝，请在浏览器设置中允许定位';
+            errorMsg = '定位权限被拒绝，请手动输入地址或点击浏览器地址栏左侧图标允许定位';
             break;
           case GeolocationPositionError.POSITION_UNAVAILABLE:
             errorMsg = '无法获取位置信息，请检查网络和GPS是否开启';
             break;
           case GeolocationPositionError.TIMEOUT:
-            errorMsg = '定位超时，请确保在空旷处重试';
+            errorMsg = '定位超时，请确保在空旷处或室外重试';
             break;
-          default:
-            errorMsg = `定位失败：${geolocationError.message || '未知错误'}`;
         }
         void message.error({ content: errorMsg, key: 'location', duration: 4 });
       } finally {
         setLocationLoading(false);
       }
-    })();
-  }, [form]);
+  }, []);
 
   const handleSubmit = async (values: { content: string; address?: string }) => {
     if (fileList.length === 0) {
@@ -255,10 +250,6 @@ export default function PublishModal({ open, onClose }: Props) {
       formData.append('content', values.content);
       if (values.address) formData.append('address', values.address);
       formData.append('isPrivate', isPrivate ? 'true' : 'false');
-      // 添加话题标签
-      if (tags.length > 0) {
-        formData.append('tags', JSON.stringify(tags));
-      }
       fileList.forEach((f) => {
         if (f.originFileObj) formData.append('images', f.originFileObj);
       });
@@ -267,32 +258,12 @@ export default function PublishModal({ open, onClose }: Props) {
       form.resetFields();
       setFileList([]);
       setIsPrivate(false);
-      setTags([]);
-      setTagInput('');
       setAiState({ keywords: '', isGenerating: false, generatedCopy: '' });
       onClose();
       navigate(`/post/${post.id}`);
     } finally {
       setLoading(false);
     }
-  };
-
-  // 添加话题标签
-  const handleAddTag = () => {
-    const tag = tagInput.trim().replace(/#/g, '');
-    if (tag && !tags.includes(tag) && tags.length < 5) {
-      setTags([...tags, tag]);
-      setTagInput('');
-    } else if (tags.includes(tag)) {
-      void message.warning('该话题已添加');
-    } else if (tags.length >= 5) {
-      void message.warning('最多添加5个话题');
-    }
-  };
-
-  // 移除话题标签
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter(t => t !== tagToRemove));
   };
 
   return (
@@ -382,37 +353,6 @@ export default function PublishModal({ open, onClose }: Props) {
             </Space>
           </div>
         )}
-
-        {/* 话题标签 */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ marginBottom: 8 }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>添加话题（选填，最多5个）</Text>
-          </div>
-          <Space.Compact style={{ width: '100%' }}>
-            <Input
-              placeholder="输入话题名称，如：火锅、烧烤..."
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onPressEnter={handleAddTag}
-              maxLength={20}
-            />
-            <Button type="primary" onClick={handleAddTag}>添加</Button>
-          </Space.Compact>
-          {tags.length > 0 && (
-            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {tags.map(tag => (
-                <Tag
-                  key={tag}
-                  closable
-                  onClose={() => handleRemoveTag(tag)}
-                  style={{ marginRight: 0 }}
-                >
-                  #{tag}
-                </Tag>
-              ))}
-            </div>
-          )}
-        </div>
 
         {/* 位置信息 */}
         <Form.Item name="address" style={{ marginBottom: 12 }}>

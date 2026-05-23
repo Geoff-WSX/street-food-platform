@@ -1,5 +1,5 @@
 import { Layout, Menu, Button, Avatar, Space, Dropdown, Badge, Tooltip, type MenuProps } from 'antd';
-import { HomeOutlined, PlusOutlined, UserOutlined, LogoutOutlined, TrophyOutlined, CaretDownOutlined, MessageOutlined, CrownOutlined, WarningOutlined, SearchOutlined, StarOutlined, FireOutlined, HistoryOutlined } from '@ant-design/icons';
+import { HomeOutlined, PlusOutlined, UserOutlined, LogoutOutlined, TrophyOutlined, CaretDownOutlined, MessageOutlined, CrownOutlined, WarningOutlined, SearchOutlined, StarOutlined, HistoryOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useMessageStore } from '../store/message';
@@ -50,7 +50,6 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
 
   const selectedKey = location.pathname === '/' ? 'home'
     : location.pathname.startsWith('/ranking') ? 'ranking'
-    : location.pathname.startsWith('/topics') || location.pathname.startsWith('/topic') ? 'topics'
     : '';
 
   const menuItems = [
@@ -65,12 +64,6 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
       icon: <TrophyOutlined />,
       label: '美食榜',
       onClick: () => navigate('/ranking')
-    },
-    {
-      key: 'topics',
-      icon: <FireOutlined />,
-      label: '话题广场',
-      onClick: () => navigate('/topics')
     },
   ];
 
