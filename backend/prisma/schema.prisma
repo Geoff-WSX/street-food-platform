@@ -387,7 +387,6 @@ model User {
   id                                                Int               @id @default(autoincrement())
   username                                          String            @unique @db.VarChar(50)
   email                                             String            @unique @db.VarChar(100)
-  phone                                             String?           @unique @db.VarChar(20)
   password                                          String            @db.VarChar(255)
   avatar                                            String?           @db.VarChar(500)
   bio                                               String?           @db.Text
