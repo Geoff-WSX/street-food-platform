@@ -5,9 +5,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 
 import authRoutes from './routes/auth.routes';
-import phoneAuthRoutes from './routes/phoneAuth.routes';
 import captchaRoutes from './routes/captcha.routes';
-import smsRoutes from './routes/sms.routes';
 import userRoutes from './routes/user.routes';
 import postRoutes from './routes/post.routes';
 import favoriteFolderRoutes from './routes/favoriteFolder.routes';
@@ -77,11 +75,7 @@ app.use('/api/captcha', captchaRoutes);
 // 认证路由（严格限流 + 登录限制）
 app.use('/api/auth', progressiveLoginLimiter, authLimiter, authRoutes);
 
-// 手机号认证路由（登录限制）
-app.use('/api/auth', progressiveLoginLimiter, phoneAuthRoutes);
-
 // 短信路由（登录限制 + 限流）
-app.use('/api/sms', progressiveLoginLimiter, smsRoutes);
 
 // 用户路由（通用限流 + 黑名单检查）
 app.use('/api/users', apiLimiter, checkBlacklist, userRoutes);
