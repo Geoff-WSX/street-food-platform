@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Row, Col, Card, Typography, Space, Empty, Skeleton, Button, FloatButton } from 'antd';
 import { StarFilled, FireOutlined, CrownOutlined, UpOutlined, DownOutlined } from '@ant-design/icons';
-import { getPosts, getPopularTags } from '../api/post';
+import { getPosts } from '../api/post';
 import PostCard from '../components/PostCard';
 import PostFilterBar from '../components/PostFilterBar';
 import FoodBackground from '../components/FoodBackground';
@@ -238,12 +238,9 @@ export default function RankingPage() {
   const [loading, setLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('combined');
-  const [popularTags, setPopularTags] = useState<{ id: number; name: string; postCount: number }[]>([]);
-  const [selectedTag, setSelectedTag] = useState<string>('');
 
   useEffect(() => {
     fetchPosts();
-    fetchPopularTags();
   }, []);
 
   const fetchPosts = async () => {
@@ -255,15 +252,6 @@ export default function RankingPage() {
       // 忽略错误
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchPopularTags = async () => {
-    try {
-      const data = await getPopularTags(20);
-      setPopularTags(data || []);
-    } catch {
-      // 忽略错误
     }
   };
 
@@ -285,13 +273,6 @@ export default function RankingPage() {
       // 选了省市区
       return address.includes(parts[0]) && address.includes(parts[1]) && address.includes(parts[2]);
     }
-  };
-
-  // 根据话题过滤
-  const filterByTag = (post: Post) => {
-    if (!selectedTag) return true;
-    if (!post.tags || post.tags.length === 0) return false;
-    return post.tags.some(t => t.name === selectedTag);
   };
 
   // 排序动态
@@ -327,7 +308,7 @@ export default function RankingPage() {
   };
 
   // 过滤和排序后的动态
-  const filteredPosts = sortPosts(posts.filter(post => filterByLocation(post) && filterByTag(post)));
+  const filteredPosts = sortPosts(posts.filter(post => filterByLocation(post)));
 
   if (loading) {
     return (
@@ -381,9 +362,6 @@ export default function RankingPage() {
         <PostFilterBar
           selectedLocation={selectedLocation}
           onLocationChange={setSelectedLocation}
-          selectedTag={selectedTag}
-          onTagChange={setSelectedTag}
-          popularTags={popularTags}
           locationTreeData={LOCATION_DATA}
           variant="ranking"
           showStats={false}
