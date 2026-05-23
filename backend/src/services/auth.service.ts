@@ -62,8 +62,12 @@ export const register = async (data: RegisterRequest) => {
     },
   });
 
-  // 初始化用户等级
-  await initUserLevel(user.id);
+  // 初始化用户等级（失败不影响注册）
+  try {
+    await initUserLevel(user.id);
+  } catch (error) {
+    console.error('初始化用户等级失败:', error);
+  }
 
   // 生成 token
   const token = generateToken({
