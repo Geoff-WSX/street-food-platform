@@ -23,7 +23,7 @@ export default defineConfig({
   // 生产环境 API 配置
   define: {
     'import.meta.env.VITE_API_BASE_URL': JSON.stringify(
-      process.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+      process.env.VITE_API_BASE_URL || '/api'
     ),
   },
   optimizeDeps: {
