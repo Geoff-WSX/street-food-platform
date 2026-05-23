@@ -68,11 +68,13 @@ interface LoginAttempt {
 // 存储登录尝试记录：key = email 或 IP
 const loginAttempts = new Map<string, LoginAttempt>();
 
-// 渐进式锁定时间（分钟）：第1次5分钟，第2次15分钟，第3次及以上30分钟
+// 渐进式锁定时间（分钟）：第6次5分钟，第7次15分钟，第8次及以上30分钟
+// 前5次失败不锁定，只记录
 const getLockoutMinutes = (attemptCount: number): number => {
-  if (attemptCount === 1) return 5;
-  if (attemptCount === 2) return 15;
-  return 30; // 第3次及以上
+  if (attemptCount === 6) return 5;
+  if (attemptCount === 7) return 15;
+  if (attemptCount >= 8) return 30;
+  return 0; // 前5次不锁定
 };
 
 // 清理过期记录（每小时）
@@ -141,11 +143,18 @@ export const recordLoginFailure = (req: Request) => {
 
   attempt.count += 1;
   attempt.lastAttempt = Date.now();
-  attempt.lockoutUntil = Date.now() + getLockoutMinutes(attempt.count) * 60 * 1000;
+
+  // 计算锁定时间（前5次不锁定）
+  const lockoutMinutes = getLockoutMinutes(attempt.count);
+  if (lockoutMinutes > 0) {
+    attempt.lockoutUntil = Date.now() + lockoutMinutes * 60 * 1000;
+    console.log(`[LoginAttempt] ${key} 失败尝试: ${attempt.count}次, 锁定${lockoutMinutes}分钟`);
+  } else {
+    attempt.lockoutUntil = 0; // 前5次不锁定
+    console.log(`[LoginAttempt] ${key} 失败尝试: ${attempt.count}/5 (还可尝试${5 - attempt.count}次)`);
+  }
 
   loginAttempts.set(key, attempt);
-
-  console.log(`[LoginAttempt] ${key} 失败尝试: ${attempt.count}次, 锁定${getLockoutMinutes(attempt.count)}分钟`);
 };
 
 // 记录登录成功
