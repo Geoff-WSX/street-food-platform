@@ -58,20 +58,108 @@ export const authLimiter = rateLimit({
   }
 });
 
-// 登录接口限流（适中）
-export const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15分钟
-  max: 10, // 15分钟内最多10次登录尝试
-  skipSuccessfulRequests: true,
-  handler: (req: Request, res: Response) => {
-    res.status(429).json({
+// ========== 登录尝试追踪（渐进式锁定）==========
+interface LoginAttempt {
+  count: number;
+  lastAttempt: number;
+  lockoutUntil: number;
+}
+
+// 存储登录尝试记录：key = email 或 IP
+const loginAttempts = new Map<string, LoginAttempt>();
+
+// 渐进式锁定时间（分钟）：第1次5分钟，第2次15分钟，第3次及以上30分钟
+const getLockoutMinutes = (attemptCount: number): number => {
+  if (attemptCount === 1) return 5;
+  if (attemptCount === 2) return 15;
+  return 30; // 第3次及以上
+};
+
+// 清理过期记录（每小时）
+const cleanupExpiredAttempts = () => {
+  const now = Date.now();
+  for (const [key, attempt] of loginAttempts.entries()) {
+    if (attempt.lockoutUntil > 0 && attempt.lockoutUntil < now) {
+      // 锁定已过期，重置计数
+      if (attempt.count > 0) {
+        attempt.count = 0;
+      }
+    }
+    // 如果24小时内没有尝试，删除记录
+    if (now - attempt.lastAttempt > 24 * 60 * 60 * 1000) {
+      loginAttempts.delete(key);
+    }
+  }
+};
+
+// 每小时清理一次
+setInterval(cleanupExpiredAttempts, 60 * 60 * 1000);
+
+// 渐进式登录限制中间件
+export const progressiveLoginLimiter = (req: Request, res: Response, next: NextFunction) => {
+  // 从请求体获取 email，如果还没有可以先用 IP
+  const ip = req.ip || 'unknown';
+  const email = req.body?.email;
+
+  // 如果没有 email，只有 IP，记录 IP 的尝试
+  const key = email || ip;
+
+  const now = Date.now();
+  let attempt = loginAttempts.get(key);
+
+  // 如果没有记录，或锁定已过期，创建新记录
+  if (!attempt || (attempt.lockoutUntil > 0 && attempt.lockoutUntil < now)) {
+    attempt = { count: 0, lastAttempt: now, lockoutUntil: 0 };
+  }
+
+  // 检查是否在锁定中
+  if (attempt.lockoutUntil > now) {
+    const remainingSeconds = Math.ceil((attempt.lockoutUntil - now) / 1000);
+    const remainingMinutes = Math.ceil(remainingSeconds / 60);
+    return res.status(429).json({
       success: false,
-      message: '登录尝试过多，请15分钟后再试，或联系管理员重置密码',
+      message: `登录尝试过多，请在 ${remainingMinutes} 分钟后重试，或联系管理员重置密码`,
       error: 'TOO_MANY_LOGIN_ATTEMPTS',
-      retryAfter: Math.round(15 * 60)
+      retryAfter: remainingSeconds,
+      attemptCount: attempt.count
     });
   }
-});
+
+  // 将尝试信息附加到请求对象，供登录成功后清除使用
+  (req as any).loginAttemptKey = key;
+  (req as any).loginAttemptRecord = attempt;
+
+  next();
+};
+
+// 记录登录失败
+export const recordLoginFailure = (req: Request) => {
+  const key = (req as any).loginAttemptKey;
+  const attempt = (req as any).loginAttemptRecord;
+
+  if (!key || !attempt) return;
+
+  attempt.count += 1;
+  attempt.lastAttempt = Date.now();
+  attempt.lockoutUntil = Date.now() + getLockoutMinutes(attempt.count) * 60 * 1000;
+
+  loginAttempts.set(key, attempt);
+
+  console.log(`[LoginAttempt] ${key} 失败尝试: ${attempt.count}次, 锁定${getLockoutMinutes(attempt.count)}分钟`);
+};
+
+// 记录登录成功
+export const recordLoginSuccess = (req: Request) => {
+  const key = (req as any).loginAttemptKey;
+
+  if (key && loginAttempts.has(key)) {
+    // 只重置计数，不完全删除记录
+    const attempt = loginAttempts.get(key)!;
+    attempt.count = 0;
+    attempt.lockoutUntil = 0;
+    loginAttempts.set(key, attempt);
+  }
+};
 
 // 上传接口限流
 export const uploadLimiter = rateLimit({

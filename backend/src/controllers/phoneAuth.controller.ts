@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { phoneRegister, phoneLogin } from '../services/auth.service';
 import { PhoneRegisterRequest, PhoneLoginRequest } from '../types';
 import { successResponse, errorResponse } from '../utils/response';
+import { recordLoginSuccess, recordLoginFailure } from '../middleware/security';
 
 /**
  * 手机号注册
@@ -23,8 +24,10 @@ export const phoneLoginController = async (req: Request, res: Response) => {
   try {
     const data = req.body as PhoneLoginRequest;
     const result = await phoneLogin(data);
+    recordLoginSuccess(req);
     return successResponse(res, result, '登录成功');
   } catch (error: any) {
+    recordLoginFailure(req);
     return errorResponse(res, error.message, 'PHONE_LOGIN_ERROR');
   }
 };

@@ -35,7 +35,7 @@ import {
   applySecurityMiddleware,
   apiLimiter,
   authLimiter,
-  loginLimiter,
+  progressiveLoginLimiter,
   uploadLimiter,
   aiLimiter,
   searchLimiter,
@@ -75,13 +75,13 @@ if (process.env.NODE_ENV === 'development') {
 app.use('/api/captcha', captchaRoutes);
 
 // 认证路由（严格限流 + 登录限制）
-app.use('/api/auth', loginLimiter, authLimiter, authRoutes);
+app.use('/api/auth', progressiveLoginLimiter, authLimiter, authRoutes);
 
 // 手机号认证路由（登录限制）
-app.use('/api/auth', loginLimiter, phoneAuthRoutes);
+app.use('/api/auth', progressiveLoginLimiter, phoneAuthRoutes);
 
 // 短信路由（登录限制 + 限流）
-app.use('/api/sms', loginLimiter, smsRoutes);
+app.use('/api/sms', progressiveLoginLimiter, smsRoutes);
 
 // 用户路由（通用限流 + 黑名单检查）
 app.use('/api/users', apiLimiter, checkBlacklist, userRoutes);
