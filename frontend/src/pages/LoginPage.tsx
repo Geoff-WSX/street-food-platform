@@ -230,6 +230,8 @@ export default function LoginPage() {
         cancelText={null}
         centered
         width={400}
+        zIndex={9999}
+        maskStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
       >
         <div style={{ fontSize: 14, lineHeight: 1.8 }}>
           <p>👋 欢迎访问「食遇」测试网站！</p>
