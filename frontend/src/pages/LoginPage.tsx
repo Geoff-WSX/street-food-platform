@@ -8,9 +8,13 @@ import { useThemeStore } from '../store/theme';
 import { getErrorMessage } from '../utils/error';
 import FoodBackground from '../components/FoodBackground';
 import ThemeSwitcher from '../components/ThemeSwitcher';
+import WelcomeModal from '../components/WelcomeModal';
 import { getAnimationStyle, getRandomFoods } from '../utils/foodAnimations';
 
 const { Text } = Typography;
+
+// localStorage key for welcome modal
+const WELCOME_MODAL_KEY = 'shiyu_welcome_shown';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -22,6 +26,7 @@ export default function LoginPage() {
   const [captcha, setCaptcha] = useState<CaptchaData | null>(null);
   const [captchaLoading, setCaptchaLoading] = useState(false);
   const [warningVisible, setWarningVisible] = useState(false);
+  const [welcomeVisible, setWelcomeVisible] = useState(false);
   const [screenSize, setScreenSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -84,7 +89,14 @@ export default function LoginPage() {
         captchaCode: values.captchaCode || '',
       });
       loginStore(res.token, res.user);
-      navigate('/');
+      // 检查是否显示过欢迎弹窗
+      const hasShownWelcome = localStorage.getItem(WELCOME_MODAL_KEY);
+      if (!hasShownWelcome) {
+        localStorage.setItem(WELCOME_MODAL_KEY, 'true');
+        setWelcomeVisible(true);
+      } else {
+        navigate('/');
+      }
     } catch (error: unknown) {
       const errorMsg = getErrorMessage(error);
       if (errorMsg.includes('验证码')) {
@@ -101,7 +113,14 @@ export default function LoginPage() {
     try {
       const res = await register(values);
       loginStore(res.token, res.user);
-      navigate('/');
+      // 检查是否显示过欢迎弹窗
+      const hasShownWelcome = localStorage.getItem(WELCOME_MODAL_KEY);
+      if (!hasShownWelcome) {
+        localStorage.setItem(WELCOME_MODAL_KEY, 'true');
+        setWelcomeVisible(true);
+      } else {
+        navigate('/');
+      }
     } catch (error: unknown) {
       const errorMsg = getErrorMessage(error);
       void message.error(errorMsg);
@@ -244,6 +263,15 @@ export default function LoginPage() {
           <p style={{ color: '#666', fontSize: 13 }}>本平台仍在测试阶段，所有数据可能会被随时清除。</p>
         </div>
       </Modal>
+
+      {/* 欢迎弹窗 */}
+      <WelcomeModal
+        open={welcomeVisible}
+        onClose={() => {
+          setWelcomeVisible(false);
+          navigate('/');
+        }}
+      />
 
       {/* 主卡片 */}
       <div

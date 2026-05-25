@@ -4,7 +4,7 @@ import {
   Avatar, Typography, Row, Col, Button, Form, Input,
   Upload, Spin, Empty, message, Modal, Card, Space, Tag, Select, Switch, List, Popconfirm, Tooltip
 } from 'antd';
-import { UserOutlined, EditOutlined, CameraOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined, TeamOutlined, FileTextOutlined, StarOutlined, PlusOutlined, SearchOutlined, DeleteOutlined, CaretDownOutlined } from '@ant-design/icons';
+import { UserOutlined, EditOutlined, CameraOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined, TeamOutlined, FileTextOutlined, StarOutlined, PlusOutlined, SearchOutlined, DeleteOutlined, CaretDownOutlined, RocketOutlined } from '@ant-design/icons';
 import { getUserById, updateProfile, updateAvatar, setDefaultAvatar, getDefaultAvatars, changePassword, updateMessageSettings, updatePrivacySettings, getCustomAvatars, addCustomAvatar, deleteCustomAvatar, type DefaultAvatar, type CustomAvatar } from '../api/user';
 import { getUserPosts, getUserFavorites } from '../api/post';
 import { getRecommendedPosts, deleteRecommend } from '../api/share';
@@ -19,6 +19,7 @@ import { useFriendStore } from '../store/friend';
 import PostCard from '../components/PostCard';
 import ChatModal from '../components/ChatModal';
 import ReportModal from '../components/ReportModal';
+import WelcomeModal from '../components/WelcomeModal';
 import { PageLayout } from '../components/layout';
 import { StatBadge } from '../components/common/StatBadge';
 import { LevelCard } from '../components/LevelCard';
@@ -143,6 +144,7 @@ export default function ProfilePage() {
   const [levelInfo, setLevelInfo] = useState<UserLevelInfo | null>(null);
   const [levelLoading, setLevelLoading] = useState(false);
   const [levelCardOpen, setLevelCardOpen] = useState(false);
+  const [welcomeVisible, setWelcomeVisible] = useState(false);
 
   // 好友 store
   const {
@@ -1301,6 +1303,23 @@ export default function ProfilePage() {
               />
             )}
           </Card>
+
+          {/* 关于平台 */}
+          <Card title="关于平台" size="small" style={{ borderRadius: 8 }}>
+            <Space direction="vertical" style={{ width: '100%' }} size={8}>
+              <Button
+                icon={<RocketOutlined />}
+                onClick={() => setWelcomeVisible(true)}
+                style={{ borderRadius: 8, height: 40 }}
+                block
+              >
+                查看网站介绍
+              </Button>
+              <Text type="secondary" style={{ fontSize: 11, display: 'block', textAlign: 'center' }}>
+                了解「食遇」平台功能和使用方法
+              </Text>
+            </Space>
+          </Card>
         </Space>
       )
     }] : []),
@@ -1845,6 +1864,12 @@ export default function ProfilePage() {
       <LevelCard
         visible={levelCardOpen}
         onClose={() => setLevelCardOpen(false)}
+      />
+
+      {/* 欢迎弹窗 */}
+      <WelcomeModal
+        open={welcomeVisible}
+        onClose={() => setWelcomeVisible(false)}
       />
 
       <style>{`
