@@ -48,6 +48,8 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 var(--space-md);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ===== 筛选栏 ===== */
@@ -191,16 +193,20 @@
   .home-page-container {
     min-height: calc(100vh - 60px);
     overflow-x: hidden;
+    width: 100vw;
   }
 
   .home-content {
     overflow-x: hidden;
     max-width: 100vw;
+    padding: 0 12px;
+    box-sizing: border-box;
   }
 
   .posts-grid {
     overflow-x: hidden;
     max-width: 100%;
+    grid-template-columns: repeat(2, 1fr) !important;
   }
 
   .home-header {
@@ -229,6 +235,26 @@
   .refresh-button {
     width: 48px !important;
     height: 48px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-content {
+    padding: 0 8px;
+  }
+
+  .filter-bar {
+    padding: var(--space-xs) var(--space-xs);
+  }
+
+  .posts-grid {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-sm);
+  }
+
+  .posts-grid > * {
+    height: auto !important;
+    min-height: 400px;
   }
 }
 

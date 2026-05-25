@@ -475,15 +475,31 @@ export default function PostDetailPage() {
             border-radius: 12px !important;
           }
           .post-detail-container {
-            padding: 16px 8px 60px !important;
+            padding: 12px 8px 60px !important;
+          }
+          .post-detail-back-btn {
+            top: 65px !important;
+            left: 8px !important;
+            height: 36px !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            font-size: 13px !important;
           }
           .post-action-buttons {
             gap: 8px !important;
             padding: 12px !important;
+            flex-wrap: wrap !important;
           }
           .post-action-btn {
             height: 42px !important;
             font-size: 13px !important;
+            flex: 1 !important;
+            min-width: calc(50% - 4px) !important;
+          }
+          .post-action-btn:last-child {
+            flex: 100% !important;
+            width: 100% !important;
+            min-width: 100% !important;
           }
         }
         @media (max-width: 480px) {
@@ -492,26 +508,12 @@ export default function PostDetailPage() {
             gap: 6px !important;
           }
           .post-detail-back-btn {
-            top: 70px !important;
+            top: 65px !important;
             left: 8px !important;
-            height: 36px !important;
-            padding-left: 12px !important;
-            padding-right: 12px !important;
-            font-size: 13px !important;
-          }
-          .post-action-buttons {
-            flex-wrap: wrap !important;
-            gap: 8px !important;
-            padding: 12px !important;
-          }
-          .post-action-btn {
-            min-width: calc(50% - 4px) !important;
-            flex: none !important;
-            width: calc(50% - 4px) !important;
-            height: 40px !important;
-          }
-          .post-action-btn:last-child {
-            width: 100% !important;
+            height: 34px !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+            font-size: 12px !important;
           }
         }
       `}</style>

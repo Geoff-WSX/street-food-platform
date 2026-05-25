@@ -1447,7 +1447,7 @@ export default function ProfilePage() {
 
           {/* 操作按钮 */}
           {!isOwner && profileUser && (
-            <Space size={8} style={{ marginTop: 16 }} wrap>
+            <Space size={8} style={{ marginTop: 16 }} wrap className="profile-action-buttons">
               {/* 好友按钮 */}
               {isBlocked ? (
                 <Button icon={<StopOutlined />} disabled style={{ borderRadius: 18, height: 36 }}>
@@ -1532,7 +1532,7 @@ export default function ProfilePage() {
           )}
 
           {isOwner && (
-            <Space size={8} style={{ marginTop: 16 }}>
+            <Space size={8} style={{ marginTop: 16 }} wrap className="profile-action-buttons">
               <Button
                 icon={<EditOutlined />}
                 onClick={() => {
@@ -1846,6 +1846,35 @@ export default function ProfilePage() {
         visible={levelCardOpen}
         onClose={() => setLevelCardOpen(false)}
       />
+
+      <style>{`
+        @media (max-width: 768px) {
+          .profile-stats-row {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+            justify-content: center !important;
+          }
+          .profile-action-buttons {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+          }
+          .profile-action-buttons .ant-btn {
+            height: 36px !important;
+            font-size: 13px !important;
+            padding: 0 12px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .profile-avatar-section {
+            padding: 0 12px !important;
+          }
+          .profile-action-buttons .ant-btn {
+            height: 32px !important;
+            font-size: 12px !important;
+            padding: 0 8px !important;
+          }
+        }
+      `}</style>
     </PageLayout>
   );
 }
