@@ -111,15 +111,17 @@ export default function PostDetailPage() {
   if (!post) return <div style={{ textAlign: 'center', marginTop: 80 }}>动态不存在</div>;
 
   const isOwner = user?.id === post.user.id;
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
   const liked = post.isLiked ?? false;
   const favorited = post.isFavorited ?? false;
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 0 80px', minHeight: '80vh' }}>
+    <div className="post-detail-container" style={{ maxWidth: 900, margin: '0 auto', padding: '24px 0 80px', minHeight: '80vh' }}>
       {/* 返回按钮 - 固定在页面左上角 */}
       <Button
         icon={<ArrowLeftOutlined />}
         onClick={() => navigate(-1)}
+        className="post-detail-back-btn"
         style={{
           position: 'fixed',
           top: 70,
@@ -152,7 +154,7 @@ export default function PostDetailPage() {
         {processedImages.length > 0 && (
           <div style={{ marginBottom: 32 }}>
             <Image.PreviewGroup>
-              <div style={{
+              <div className="post-detail-images" style={{
                 display: 'grid',
                 gridTemplateColumns: processedImages.length === 1 ? '1fr' : processedImages.length === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
                 gap: 16
@@ -328,7 +330,7 @@ export default function PostDetailPage() {
                 )}
               </div>
             </div>
-            {isOwner && (
+            {(isOwner || isAdmin) && (
               <Popconfirm
                 title="确定删除这条动态？"
                 onConfirm={handleDelete}
@@ -353,7 +355,7 @@ export default function PostDetailPage() {
           </div>
 
           {/* 操作按钮 */}
-          <div style={{
+          <div className="post-action-buttons" style={{
             display: 'flex',
             gap: 16,
             padding: '20px',
@@ -364,6 +366,7 @@ export default function PostDetailPage() {
               size="large"
               icon={liked ? <HeartFilled style={{ color: '#ff4d4f' }} /> : <HeartOutlined />}
               onClick={handleLike}
+              className="post-action-btn"
               style={{
                 flex: 1,
                 height: 48,
@@ -381,6 +384,7 @@ export default function PostDetailPage() {
               size="large"
               icon={favorited ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />}
               onClick={handleFavorite}
+              className="post-action-btn"
               style={{
                 flex: 1,
                 height: 48,
@@ -398,6 +402,7 @@ export default function PostDetailPage() {
               size="large"
               icon={<ShareAltOutlined />}
               onClick={() => setShowShareModal(true)}
+              className="post-action-btn"
               style={{
                 flex: 1,
                 height: 48,
@@ -456,6 +461,58 @@ export default function PostDetailPage() {
         .ant-image-preview-img {
           max-height: 80vh !important;
           object-fit: contain;
+        }
+        /* 响应式图片网格 */
+        .post-detail-images {
+          width: 100%;
+        }
+        @media (max-width: 768px) {
+          .post-detail-images {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+          }
+          .post-detail-images > div {
+            border-radius: 12px !important;
+          }
+          .post-detail-container {
+            padding: 16px 8px 60px !important;
+          }
+          .post-action-buttons {
+            gap: 8px !important;
+            padding: 12px !important;
+          }
+          .post-action-btn {
+            height: 42px !important;
+            font-size: 13px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .post-detail-images {
+            grid-template-columns: 1fr !important;
+            gap: 6px !important;
+          }
+          .post-detail-back-btn {
+            top: 70px !important;
+            left: 8px !important;
+            height: 36px !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            font-size: 13px !important;
+          }
+          .post-action-buttons {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+            padding: 12px !important;
+          }
+          .post-action-btn {
+            min-width: calc(50% - 4px) !important;
+            flex: none !important;
+            width: calc(50% - 4px) !important;
+            height: 40px !important;
+          }
+          .post-action-btn:last-child {
+            width: 100% !important;
+          }
         }
       `}</style>
 

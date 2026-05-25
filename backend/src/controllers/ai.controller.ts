@@ -8,19 +8,17 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import os from 'os';
 
-// 初始化 OpenAI 客户端（支持代理和自定义 baseURL）
+// 初始化 DeepSeek 客户端（使用 OpenAI SDK，兼容 DeepSeek API）
 function createOpenAIClient() {
   const openaiConfig: any = {
-    apiKey: process.env.OPENAI_API_KEY || '',
-    timeout: 60000, // 60秒超时
-    maxRetries: 1, // 最多重试1次
+    apiKey: process.env.DEEPSEEK_API_KEY || '',
+    timeout: 60000,
+    maxRetries: 1,
   };
 
-  // 如果配置了自定义的 API 端点（比如使用中转服务）
-  if (process.env.OPENAI_BASE_URL && process.env.OPENAI_BASE_URL !== 'https://api.openai.com/v1') {
-    openaiConfig.baseURL = process.env.OPENAI_BASE_URL;
-    console.log('Using custom baseURL:', process.env.OPENAI_BASE_URL);
-  }
+  // DeepSeek API 端点
+  openaiConfig.baseURL = 'https://api.deepseek.com';
+  console.log('Using DeepSeek API');
 
   return new OpenAI(openaiConfig);
 }
@@ -1237,7 +1235,7 @@ export const chat = async (req: AuthRequest, res: Response) => {
     console.log('User Role:', req.user?.role);
     console.log('Mode:', mode);
     console.log('Message:', message);
-    console.log('Has API Key:', !!process.env.OPENAI_API_KEY);
+    console.log('Has API Key:', !!process.env.DEEPSEEK_API_KEY);
 
     if (!message || typeof message !== 'string') {
       return errorResponse(res, '请输入有效的消息', 'INVALID_MESSAGE');
@@ -1251,9 +1249,9 @@ export const chat = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('OpenAI API Key not configured');
-      return errorResponse(res, '请配置 OPENAI_API_KEY 环境变量', 'MISSING_API_KEY', 500);
+    if (!process.env.DEEPSEEK_API_KEY) {
+      console.error('DeepSeek API Key not configured');
+      return errorResponse(res, '请配置 DEEPSEEK_API_KEY 环境变量', 'MISSING_API_KEY', 500);
     }
 
     // 管理模式：使用函数调用执行实际操作
@@ -1330,7 +1328,7 @@ export const chat = async (req: AuthRequest, res: Response) => {
       try {
         // 第一步：调用 OpenAI，让 AI 决定是否需要使用工具
         const response = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+          model: 'deepseek-v4-flash',
           messages,
           tools,
           temperature: 0.7,
@@ -1420,7 +1418,7 @@ export const chat = async (req: AuthRequest, res: Response) => {
             messages.push(...confirmationToolResult);
 
             const confirmResponse = await openai.chat.completions.create({
-              model: 'gpt-4o-mini',
+              model: 'deepseek-v4-flash',
               messages,
               temperature: 0.7,
               max_tokens: 1000,
@@ -1440,7 +1438,7 @@ export const chat = async (req: AuthRequest, res: Response) => {
           messages.push(...toolResults);
 
           const finalResponse = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
+            model: 'deepseek-v4-flash',
             messages,
             temperature: 0.7,
             max_tokens: 2000,
@@ -1683,7 +1681,7 @@ ${locationInfo}
       console.log('Keyword posts count:', keywordMatchedPosts.length);
 
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'deepseek-v4-flash',
         messages,
         temperature: 0.7,
         max_tokens: 600,

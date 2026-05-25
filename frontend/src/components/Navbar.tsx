@@ -119,10 +119,11 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
         transition: 'all 0.3s ease',
         borderBottom: '1px solid var(--navbar-border)'
       }}
-      className={scrolled ? 'navbar-scrolled' : ''}
+      className={`navbar-container ${scrolled ? 'navbar-scrolled' : ''}`}
     >
       {/* Logo */}
       <div
+        className="navbar-logo"
         style={{
           fontSize: 24,
           fontWeight: 700,
@@ -137,7 +138,7 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
         onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
         onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
       >
-        <span style={{
+        <span className="navbar-emoji" style={{
           fontSize: 32,
           background: 'linear-gradient(135deg, #ff6b35 0%, #ffb347 100%)',
           WebkitBackgroundClip: 'text',
@@ -151,7 +152,8 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
           fontSize: 22,
-          fontWeight: 800
+          fontWeight: 800,
+          whiteSpace: 'nowrap'
         }}>食遇</span>
       </div>
 
@@ -195,7 +197,7 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
       />
 
       {/* 用户区域 */}
-      <Space size={16}>
+      <Space size={16} className="navbar-actions">
         {/* 发布按钮 */}
         {isLoggedIn && (
           <Button
@@ -347,6 +349,53 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
 
       {/* 浏览历史抽屉 */}
       <BrowseHistory visible={historyVisible} onClose={() => setHistoryVisible(false)} />
+
+      <style>{`
+        @media (max-width: 768px) {
+          .navbar-container {
+            padding: 0 12px !important;
+            height: 60px !important;
+          }
+          .navbar-container .navbar-logo {
+            margin-right: 16px !important;
+          }
+          .navbar-container .navbar-logo span:last-child {
+            font-size: 18px !important;
+          }
+          .navbar-actions {
+            gap: 8px !important;
+          }
+          .navbar-actions .ant-btn-lg,
+          .navbar-actions .ant-btn {
+            height: 36px !important;
+            padding: 0 10px !important;
+            font-size: 13px !important;
+          }
+          .navbar-actions .ant-btn-circle {
+            width: 36px !important;
+            height: 36px !important;
+          }
+        }
+        @media (max-width: 576px) {
+          .navbar-container {
+            padding: 0 8px !important;
+          }
+          .navbar-container .navbar-logo .navbar-emoji {
+            font-size: 24px !important;
+          }
+          .navbar-container .navbar-logo span:last-child {
+            display: none !important;
+          }
+          .navbar-actions {
+            gap: 4px !important;
+          }
+        }
+        @media (max-width: 420px) {
+          .navbar-container .navbar-logo .navbar-emoji {
+            font-size: 20px !important;
+          }
+        }
+      `}</style>
     </Header>
   );
 }

@@ -186,6 +186,41 @@
   }
 }
 
+/* ===== 移动端优化 ===== */
+@media (max-width: 768px) {
+  .home-page-container {
+    min-height: calc(100vh - 60px);
+  }
+
+  .home-header {
+    padding: var(--space-lg) var(--space-sm) var(--space-md);
+  }
+
+  .filter-bar {
+    padding: var(--space-sm) var(--space-sm);
+    margin-bottom: var(--space-md);
+    border-radius: 12px;
+  }
+
+  .filter-bar .ant-select {
+    width: 100% !important;
+  }
+
+  .empty-state {
+    padding: var(--space-xl) var(--space-md);
+  }
+
+  .footer-tip {
+    margin-top: var(--space-lg);
+    padding: var(--space-md) 0;
+  }
+
+  .refresh-button {
+    width: 48px !important;
+    height: 48px !important;
+  }
+}
+
 /* ===== 暗色模式 ===== */
 .dark .home-page-container {
   background: var(--bg-primary-dark);

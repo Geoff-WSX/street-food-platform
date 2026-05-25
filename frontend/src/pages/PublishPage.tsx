@@ -28,7 +28,7 @@ export default function PublishPage() {
     setPreviewImage(file.url || (file.originFileObj && URL.createObjectURL(file.originFileObj)) || '');
   };
 
-  const getCurrentLocation = () => {
+  const getCurrentLocation = async () => {
     setLocationLoading(true);
     void message.loading({ content: '正在获取位置，请稍候...', key: 'location', duration: 0 });
 
@@ -38,6 +38,30 @@ export default function PublishPage() {
       return;
     }
 
+    // 检查定位权限状态
+    let permissionStatus: PermissionState = 'prompt';
+    try {
+      const result = await navigator.permissions.query({ name: 'geolocation' });
+      permissionStatus = result.state;
+      result.addEventListener('change', () => {
+        permissionStatus = result.state;
+      });
+    } catch {
+      // 浏览器不支持 permissions API，继续尝试获取位置
+    }
+
+    // 如果已经明确拒绝，显示手动输入提示
+    if (permissionStatus === 'denied') {
+      void message.warning({
+        content: '定位权限已被拒绝，请手动输入地址或清除浏览器设置中的定位限制',
+        key: 'location',
+        duration: 4
+      });
+      setLocationLoading(false);
+      return;
+    }
+
+    // 权限为 prompt 时，浏览器会弹出授权请求
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
@@ -80,7 +104,7 @@ export default function PublishPage() {
         let errorMsg = '获取位置失败';
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            errorMsg = '定位权限被拒绝，请在浏览器设置中允许定位';
+            errorMsg = '定位权限被拒绝，请手动输入地址或重试';
             break;
           case error.POSITION_UNAVAILABLE:
             errorMsg = '无法获取位置信息，请检查网络和GPS是否开启';

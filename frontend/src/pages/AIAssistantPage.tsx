@@ -101,6 +101,31 @@ const typingAnimationStyle = `
     0%, 60%, 100% { transform: translateY(0); }
     30% { transform: translateY(-4px); }
   }
+  @media (max-width: 768px) {
+    .ai-session-panel {
+      position: fixed !important;
+      left: 0 !important;
+      top: 120px !important;
+      bottom: 60px !important;
+      width: 260px !important;
+      z-index: 1000 !important;
+      transform: translateX(-100%) !important;
+      transition: transform 0.3s ease !important;
+    }
+    .ai-session-panel.ai-session-panel-open {
+      transform: translateX(0) !important;
+    }
+    .ai-session-panel:not(.ai-session-panel-open) {
+      transform: translateX(-100%) !important;
+    }
+    .ai-suggestions-panel,
+    .ai-suggestions-toggle {
+      display: none !important;
+    }
+    .ai-main-content {
+      width: 100% !important;
+    }
+  }
 `;
 
 export default function AIAssistantPage() {
@@ -128,7 +153,7 @@ export default function AIAssistantPage() {
       return null;
     }
   });
-  const [showSessionPanel, setShowSessionPanel] = useState(true);
+  const [showSessionPanel, setShowSessionPanel] = useState(false);
 
   // 当前会话状态 - 从保存的会话中初始化
   const getInitialState = () => {
@@ -921,9 +946,9 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
       </div>
 
       {/* 主内容区域 */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }} className="ai-main-content">
         {/* 左侧会话列表 */}
-        <div style={{ width: showSessionPanel ? 260 : 0, background: 'var(--bg-secondary)', borderRight: showSessionPanel ? '1px solid var(--border-color)' : 'none', transition: 'width 0.2s', overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div style={{ width: showSessionPanel ? 260 : 0, background: 'var(--bg-secondary)', borderRight: showSessionPanel ? '1px solid var(--border-color)' : 'none', transition: 'width 0.2s', overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0 }} className={`ai-session-panel ${showSessionPanel ? 'ai-session-panel-open' : ''}`}>
           <div style={{ padding: '12px' }}>
             <Button type="primary" icon={<PlusOutlined />} onClick={handleNewChat} style={{ width: '100%', height: 36, background: 'var(--navbar-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13 }}>
               新建对话
@@ -1144,7 +1169,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
 
         {/* 右侧推荐区域 */}
         {showSuggestions ? (
-          <div style={{ width: 360, background: 'var(--card-bg)', borderLeft: '1px solid var(--border-color)', transition: 'width 0.3s', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ width: 360, background: 'var(--card-bg)', borderLeft: '1px solid var(--border-color)', transition: 'width 0.3s', flexShrink: 0, display: 'flex', flexDirection: 'column' }} className="ai-suggestions-panel">
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', flexShrink: 0 }}>
               <Space>
                 <BulbOutlined style={{ color: 'var(--color-warning)' }} />
@@ -1254,7 +1279,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
             </div>
           </div>
         ) : (
-          <div style={{ width: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} className="ai-suggestions-toggle">
             {suggestedPosts.length > 0 && (
               <Tooltip title="展开推荐列表" placement="left">
                 <Button

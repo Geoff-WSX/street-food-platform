@@ -39,7 +39,7 @@ export default function PostFilterBar({
   };
 
   return (
-    <div className={`filter-bar ${isHome ? 'card-trendy' : ''} stagger-fade-in delay-2`}
+    <div className={`filter-bar post-filter-bar ${isHome ? 'card-trendy' : ''} stagger-fade-in delay-2`}
       style={isHome ? {} : {
         background: 'var(--card-bg)',
         borderRadius: 16,
@@ -49,7 +49,7 @@ export default function PostFilterBar({
         marginBottom: 24,
       }}
     >
-      <Space size={isHome ? 10 : 12} wrap>
+      <Space size={isHome ? 10 : 12} wrap className="filter-bar-space">
         {/* 地区 */}
         <div style={{ ...labelStyle, background: locationLabelBg }}>
           <EnvironmentOutlined style={{ color: locationLabelColor, fontSize: 14 }} />
@@ -60,6 +60,7 @@ export default function PostFilterBar({
           onChange={onLocationChange}
           treeData={locationTreeData}
           placeholder={isHome ? '选择地区发现美食' : '选择地区'}
+          className="filter-location-select"
           style={{ width: isHome ? 200 : 180 }}
           size="large"
           allowClear
@@ -93,6 +94,21 @@ export default function PostFilterBar({
           </>
         )}
       </Space>
+
+      <style>{`
+        @media (max-width: 576px) {
+          .post-filter-bar {
+            padding: 12px !important;
+          }
+          .filter-bar-space {
+            width: 100% !important;
+          }
+          .filter-location-select {
+            width: 100% !important;
+            min-width: unset !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

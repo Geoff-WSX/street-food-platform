@@ -71,6 +71,13 @@
     padding: 8px 12px !important;
     font-size: 13px !important;
   }
+
+  /* 响应式容器 */
+  .post-detail-container,
+  .publish-container {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -111,6 +118,19 @@
   .bg-decoration,
   .floating-element {
     opacity: 0.5 !important;
+  }
+
+  /* 小屏幕按钮调整 */
+  .ant-btn {
+    height: 36px !important;
+    padding: 0 12px !important;
+    font-size: 13px !important;
+  }
+
+  /* 小屏幕输入框 */
+  .ant-input,
+  .ant-select-selector {
+    font-size: 14px !important;
   }
 }
 
