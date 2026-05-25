@@ -48,14 +48,9 @@ export default function LoginPage() {
     }
   };
 
-  // 组件卸载时清理定时器
+  // 每次打开登录页都显示测试网站警告
   useEffect(() => {
-    // 检查是否首次访问
-    const hasVisited = localStorage.getItem('login_page_visited');
-    if (!hasVisited) {
-      setWarningVisible(true);
-      localStorage.setItem('login_page_visited', 'true');
-    }
+    setWarningVisible(true);
   }, []);
 
   // 初始化验证码
