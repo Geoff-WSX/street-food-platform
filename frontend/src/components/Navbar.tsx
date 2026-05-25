@@ -121,14 +121,15 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          padding: isMobile ? '0 12px' : '0 32px',
+          padding: `0 clamp(8px, 3vw, 32px)`,
           background: 'var(--navbar-bg)',
           backdropFilter: scrolled ? 'blur(10px)' : 'none',
           boxShadow: scrolled ? 'var(--shadow-1)' : 'none',
           position: 'sticky',
           top: 0,
           zIndex: 100,
-          height: isMobile ? 60 : 70,
+          height: 'clamp(56px, 6vw, 70px)',
+          maxHeight: '70px',
           transition: 'all 0.3s ease',
           borderBottom: '1px solid var(--navbar-border)'
         }}
@@ -138,9 +139,9 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
         <div
           className="navbar-logo"
           style={{
-            fontSize: 24,
+            fontSize: 'clamp(16px, 2vw, 24px)',
             fontWeight: 700,
-            marginRight: isMobile ? 8 : 50,
+            marginRight: 'clamp(8px, 5vw, 50px)',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -153,7 +154,7 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
           onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
           <span className="navbar-emoji" style={{
-            fontSize: isMobile ? 24 : 32,
+            fontSize: 'clamp(20px, 3vw, 32px)',
             background: 'linear-gradient(135deg, #ff6b35 0%, #ffb347 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -166,7 +167,7 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-              fontSize: 22,
+              fontSize: 'clamp(16px, 2vw, 22px)',
               fontWeight: 800,
               whiteSpace: 'nowrap'
             }}>食遇</span>
@@ -624,36 +625,62 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
       </Drawer>
 
       <style>{`
+        /* Navbar 流体响应式样式 */
+        .navbar-container {
+          padding: 0 clamp(8px, 3vw, 32px) !important;
+          height: clamp(56px, 6vw, 70px) !important;
+          transition: all 0.3s ease;
+        }
+
+        .navbar-logo {
+          margin-right: clamp(8px, 5vw, 50px) !important;
+          font-size: clamp(16px, 2vw, 24px) !important;
+        }
+
+        .navbar-logo .navbar-emoji {
+          font-size: clamp(20px, 3vw, 32px) !important;
+        }
+
+        .navbar-actions {
+          gap: clamp(8px, 1.5vw, 16px) !important;
+        }
+
+        .navbar-actions-mobile {
+          gap: clamp(4px, 1vw, 8px) !important;
+        }
+
+        .navbar-actions-mobile .ant-btn {
+          width: clamp(32px, 4vw, 36px) !important;
+          height: clamp(32px, 4vw, 36px) !important;
+        }
+
+        .mobile-menu-drawer .ant-drawer-body {
+          padding: 0 !important;
+        }
+
+        /* 移动端菜单项 */
         @media (max-width: 768px) {
           .navbar-container {
-            padding: 0 12px !important;
-            height: 60px !important;
-          }
-          .navbar-container .navbar-logo {
-            margin-right: 8px !important;
-          }
-          .navbar-actions-mobile {
-            gap: 4px !important;
+            padding: 0 clamp(8px, 2vw, 12px) !important;
           }
         }
-        @media (max-width: 576px) {
-          .navbar-container {
-            padding: 0 8px !important;
-          }
-          .navbar-container .navbar-logo .navbar-emoji {
-            font-size: 24px !important;
-          }
-        }
+
+        /* 超小屏幕 */
         @media (max-width: 420px) {
-          .navbar-container .navbar-logo .navbar-emoji {
+          .navbar-logo .navbar-emoji {
             font-size: 20px !important;
           }
+
           .navbar-actions-mobile {
             gap: 2px !important;
           }
         }
-        .mobile-menu-drawer .ant-drawer-body {
-          padding: 0 !important;
+
+        /* 大屏幕优化 */
+        @media (min-width: 1400px) {
+          .navbar-container {
+            padding: 0 48px !important;
+          }
         }
       `}</style>
     </>
