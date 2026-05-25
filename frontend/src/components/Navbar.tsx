@@ -27,10 +27,10 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
   const [mobileMenuVisible, setMobileMenuVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // 检测移动端
+  // 检测移动端/平板端
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
+      setIsMobile(window.innerWidth <= 1024);
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -121,14 +121,14 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          padding: `0 clamp(8px, 3vw, 32px)`,
+          padding: `0 clamp(6px, 2vw, 24px)`,
           background: 'var(--navbar-bg)',
           backdropFilter: scrolled ? 'blur(10px)' : 'none',
           boxShadow: scrolled ? 'var(--shadow-1)' : 'none',
           position: 'sticky',
           top: 0,
           zIndex: 100,
-          height: 'clamp(56px, 6vw, 70px)',
+          height: 'clamp(52px, 5vw, 70px)',
           maxHeight: '70px',
           transition: 'all 0.3s ease',
           borderBottom: '1px solid var(--navbar-border)'
@@ -139,13 +139,13 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
         <div
           className="navbar-logo"
           style={{
-            fontSize: 'clamp(16px, 2vw, 24px)',
+            fontSize: 'clamp(14px, 1.5vw, 20px)',
             fontWeight: 700,
-            marginRight: 'clamp(8px, 5vw, 50px)',
+            marginRight: 'clamp(4px, 2vw, 24px)',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
+            gap: 'clamp(4px, 0.5vw, 8px)',
             transition: 'transform 0.3s ease',
             flexShrink: 0
           }}
@@ -154,24 +154,22 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
           onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
           <span className="navbar-emoji" style={{
-            fontSize: 'clamp(20px, 3vw, 32px)',
+            fontSize: 'clamp(18px, 2.5vw, 28px)',
             background: 'linear-gradient(135deg, #ff6b35 0%, #ffb347 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
             filter: 'drop-shadow(0 2px 4px rgba(255, 107, 53, 0.3))'
           }}>🍜</span>
-          {!isMobile && (
-            <span style={{
-              background: 'linear-gradient(135deg, #ff6b35 0%, #ffb347 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              fontSize: 'clamp(16px, 2vw, 22px)',
-              fontWeight: 800,
-              whiteSpace: 'nowrap'
-            }}>食遇</span>
-          )}
+          <span style={{
+            background: 'linear-gradient(135deg, #ff6b35 0%, #ffb347 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            fontSize: 'clamp(14px, 1.5vw, 20px)',
+            fontWeight: 800,
+            whiteSpace: 'nowrap'
+          }}>食遇</span>
         </div>
 
         {/* 桌面端导航菜单 */}
@@ -627,22 +625,22 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
       <style>{`
         /* Navbar 流体响应式样式 */
         .navbar-container {
-          padding: 0 clamp(8px, 3vw, 32px) !important;
-          height: clamp(56px, 6vw, 70px) !important;
+          padding: 0 clamp(6px, 2vw, 24px) !important;
+          height: clamp(52px, 5vw, 70px) !important;
           transition: all 0.3s ease;
         }
 
         .navbar-logo {
-          margin-right: clamp(8px, 5vw, 50px) !important;
-          font-size: clamp(16px, 2vw, 24px) !important;
+          margin-right: clamp(4px, 2vw, 24px) !important;
+          font-size: clamp(14px, 1.5vw, 20px) !important;
         }
 
         .navbar-logo .navbar-emoji {
-          font-size: clamp(20px, 3vw, 32px) !important;
+          font-size: clamp(18px, 2.5vw, 28px) !important;
         }
 
         .navbar-actions {
-          gap: clamp(8px, 1.5vw, 16px) !important;
+          gap: clamp(6px, 1vw, 12px) !important;
         }
 
         .navbar-actions-mobile {
@@ -658,15 +656,15 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
           padding: 0 !important;
         }
 
-        /* 移动端菜单项 */
-        @media (max-width: 768px) {
+        /* 平板端 (1024px) 隐藏横向菜单 */
+        @media (max-width: 1024px) {
           .navbar-container {
-            padding: 0 clamp(8px, 2vw, 12px) !important;
+            padding: 0 clamp(6px, 2vw, 12px) !important;
           }
         }
 
         /* 超小屏幕 */
-        @media (max-width: 420px) {
+        @media (max-width: 480px) {
           .navbar-logo .navbar-emoji {
             font-size: 20px !important;
           }
