@@ -56,17 +56,17 @@ export default function PostFilterBar({
           <Text strong style={{ fontSize: 13, color: locationLabelColor }}>地区</Text>
         </div>
         <TreeSelect
-          value={selectedLocation}
+          value={selectedLocation || undefined}
           onChange={onLocationChange}
           treeData={locationTreeData}
           placeholder={isHome ? '选择地区发现美食' : '选择地区'}
           className="filter-location-select"
-          style={{ width: isHome ? 200 : 180 }}
+          style={{ width: '100%', minWidth: isHome ? 140 : 120 }}
           size="large"
           allowClear
           showSearch
           treeDefaultExpandAll={false}
-          dropdownStyle={{ minWidth: 200 }}
+          dropdownStyle={{ minWidth: 160 }}
         />
         {selectedLocation && (
           <Tag

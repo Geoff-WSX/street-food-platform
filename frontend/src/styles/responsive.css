@@ -177,6 +177,44 @@ body {
   max-width: min(calc(100vw - 32px), 320px) !important;
 }
 
+/* ===== TreeSelect 地区选择器适配 ===== */
+.filter-location-select {
+  min-width: 120px !important;
+  flex: 1;
+}
+
+.filter-location-select .ant-select-selector {
+  height: auto !important;
+  min-height: 40px !important;
+  padding: 4px 12px !important;
+}
+
+.filter-location-select.ant-select-lg .ant-select-selector {
+  height: 40px !important;
+}
+
+@media (max-width: 768px) {
+  .filter-location-select {
+    min-width: 100px !important;
+  }
+
+  .filter-location-select .ant-select-selector {
+    min-height: 36px !important;
+    padding: 2px 8px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .filter-location-select {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  .ant-tree-select-dropdown {
+    max-width: calc(100vw - 32px) !important;
+  }
+}
+
 .ant-picker {
   width: 100% !important;
 }
