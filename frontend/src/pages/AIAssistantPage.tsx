@@ -102,15 +102,19 @@ const typingAnimationStyle = `
     30% { transform: translateY(-4px); }
   }
   @media (max-width: 768px) {
+    .ai-page-container {
+      top: 60px !important;
+    }
     .ai-session-panel {
       position: fixed !important;
       left: 0 !important;
-      top: 120px !important;
-      bottom: 60px !important;
-      width: 260px !important;
-      z-index: 1000 !important;
+      top: 60px !important;
+      bottom: 0 !important;
+      width: 280px !important;
+      z-index: 1001 !important;
       transform: translateX(-100%) !important;
       transition: transform 0.3s ease !important;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.15) !important;
     }
     .ai-session-panel.ai-session-panel-open {
       transform: translateX(0) !important;
@@ -124,6 +128,11 @@ const typingAnimationStyle = `
     }
     .ai-main-content {
       width: 100% !important;
+      flex: 1 !important;
+    }
+    .ai-chat-container {
+      width: 100% !important;
+      flex: 1 !important;
     }
   }
 `;
@@ -904,7 +913,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
         overflow: 'hidden',
         background: 'var(--bg-primary)',
         zIndex: 1000
-      }}>
+      }} className="ai-page-container">
       {/* 顶部导航栏 */}
       <div style={{ height: 50, background: 'var(--navbar-bg)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 12, flexShrink: 0 }}>
         <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(fromPath)} style={{ color: 'var(--text-primary)' }} title="返回" />
@@ -1025,7 +1034,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
         </div>
 
         {/* 中间聊天区域 */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--bg-primary)', overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--bg-primary)', overflow: 'hidden' }} className="ai-chat-container">
           <div ref={messagesContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {messages.map((msg, index) => {
               const messageStatus = (msg as MessageWithStatus).status;

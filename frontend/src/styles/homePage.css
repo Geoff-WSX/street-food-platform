@@ -190,6 +190,17 @@
 @media (max-width: 768px) {
   .home-page-container {
     min-height: calc(100vh - 60px);
+    overflow-x: hidden;
+  }
+
+  .home-content {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  .posts-grid {
+    overflow-x: hidden;
+    max-width: 100%;
   }
 
   .home-header {

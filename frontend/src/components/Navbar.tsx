@@ -357,23 +357,26 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
             height: 60px !important;
           }
           .navbar-container .navbar-logo {
-            margin-right: 16px !important;
+            margin-right: 12px !important;
           }
           .navbar-container .navbar-logo span:last-child {
-            font-size: 18px !important;
+            display: none !important;
           }
           .navbar-actions {
-            gap: 8px !important;
+            gap: 6px !important;
           }
           .navbar-actions .ant-btn-lg,
           .navbar-actions .ant-btn {
-            height: 36px !important;
-            padding: 0 10px !important;
-            font-size: 13px !important;
+            height: 34px !important;
+            padding: 0 8px !important;
+            font-size: 12px !important;
           }
           .navbar-actions .ant-btn-circle {
-            width: 36px !important;
-            height: 36px !important;
+            width: 34px !important;
+            height: 34px !important;
+          }
+          .navbar-container .navbar-actions > .ant-space {
+            gap: 6px !important;
           }
         }
         @media (max-width: 576px) {
@@ -383,16 +386,13 @@ export default function Navbar({ onPublishClick, onSearchClick }: Props) {
           .navbar-container .navbar-logo .navbar-emoji {
             font-size: 24px !important;
           }
-          .navbar-container .navbar-logo span:last-child {
-            display: none !important;
-          }
-          .navbar-actions {
-            gap: 4px !important;
-          }
         }
         @media (max-width: 420px) {
           .navbar-container .navbar-logo .navbar-emoji {
             font-size: 20px !important;
+          }
+          .navbar-container .navbar-actions > .ant-space {
+            gap: 4px !important;
           }
         }
       `}</style>
