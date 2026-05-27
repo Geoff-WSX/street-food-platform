@@ -110,7 +110,8 @@
 }
 
 .posts-grid > * {
-  min-height: clamp(400px, 60vw, 520px);
+  min-height: 400px;
+  max-height: 520px;
   height: 100%;
 }
 
