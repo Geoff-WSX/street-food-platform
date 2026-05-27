@@ -101,10 +101,10 @@
   height: clamp(14px, 1.5vw, 18px);
 }
 
-/* ===== 动态网格 - 流体布局 ===== */
+/* ===== 动态网格 - 固定4列布局 ===== */
 .posts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: clamp(12px, 2vw, 24px);
   align-items: stretch;
 }
@@ -113,6 +113,27 @@
   min-height: 400px;
   max-height: 520px;
   height: 100%;
+}
+
+/* 平板 - 3列 */
+@media (max-width: 1200px) {
+  .posts-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 小平板 - 2列 */
+@media (max-width: 900px) {
+  .posts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 手机 - 1列 */
+@media (max-width: 600px) {
+  .posts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ===== 空状态 ===== */
