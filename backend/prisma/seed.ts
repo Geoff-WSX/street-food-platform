@@ -39,6 +39,11 @@ async function main() {
     { taskKey: 'comment_count', name: '评论数', description: '累计评论5条他人的美食动态，即可完成任务', expReward: 2, targetCount: 5, icon: '💬', isDaily: false },
     // 每日任务
     { taskKey: 'daily_view_posts', name: '浏览动态', description: '每日浏览10条美食动态，即可获得经验奖励', expReward: 5, targetCount: 10, icon: '👀', isDaily: true },
+    { taskKey: 'daily_like', name: '每日点赞', description: '每日点赞3条动态，即可获得经验奖励', expReward: 2, targetCount: 3, icon: '👍', isDaily: true },
+    { taskKey: 'daily_favorite', name: '每日收藏', description: '每日收藏1条动态，即可获得经验奖励', expReward: 2, targetCount: 1, icon: '⭐', isDaily: true },
+    { taskKey: 'daily_comment', name: '每日评论', description: '每日评论1条动态，即可获得经验奖励', expReward: 3, targetCount: 1, icon: '💬', isDaily: true },
+    { taskKey: 'daily_share', name: '每日分享', description: '每日分享1条动态，即可获得经验奖励', expReward: 2, targetCount: 1, icon: '🔗', isDaily: true },
+    { taskKey: 'daily_login', name: '每日登录', description: '每日首次登录，即可获得经验奖励', expReward: 3, targetCount: 1, icon: '🎯', isDaily: true },
   ];
 
   for (const task of tasks) {

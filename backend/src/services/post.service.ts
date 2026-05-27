@@ -3,7 +3,7 @@ import path from 'path';
 import prisma from '../services/db/prisma';
 import { CreatePostRequest, UpdatePostRequest } from '../types';
 import { addTagsToPost } from './tag.service';
-import { updateTaskProgress } from './level.service';
+import { updateTaskProgress, incrementTaskProgress } from './level.service';
 import { cacheGet, cacheSet } from './cache';
 
 /**
@@ -567,6 +567,8 @@ export const toggleLike = async (userId: number, postId: number) => {
       try {
         const likeCount = await prisma.like.count({ where: { userId } });
         await updateTaskProgress(userId, 'give_likes', likeCount);
+        // 更新每日点赞任务
+        await incrementTaskProgress(userId, 'daily_like');
       } catch (error) {
         console.error('更新等级任务进度失败:', error);
       }
@@ -623,6 +625,8 @@ export const toggleFavorite = async (userId: number, postId: number, folderId?: 
       try {
         const favoriteCount = await prisma.favorite.count({ where: { userId } });
         await updateTaskProgress(userId, 'give_favorites', favoriteCount);
+        // 更新每日收藏任务
+        await incrementTaskProgress(userId, 'daily_favorite');
       } catch (error) {
         console.error('更新等级任务进度失败:', error);
       }

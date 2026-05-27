@@ -1,4 +1,5 @@
 import prisma from '../services/db/prisma';
+import { incrementTaskProgress } from './level.service';
 
 /**
  * 安全解析 images 字段
@@ -88,6 +89,15 @@ export const shareToFriend = async (userId: number, postId: number, friendId: nu
     },
   });
 
+  // 异步更新每日分享任务
+  setImmediate(async () => {
+    try {
+      await incrementTaskProgress(userId, 'daily_share');
+    } catch (error) {
+      console.error('更新每日分享任务失败:', error);
+    }
+  });
+
   return {
     ...share,
     post: {
@@ -148,6 +158,15 @@ export const recommendPost = async (userId: number, postId: number) => {
         },
       },
     },
+  });
+
+  // 异步更新每日分享任务
+  setImmediate(async () => {
+    try {
+      await incrementTaskProgress(userId, 'daily_share');
+    } catch (error) {
+      console.error('更新每日分享任务失败:', error);
+    }
   });
 
   return {

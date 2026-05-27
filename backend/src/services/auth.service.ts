@@ -4,7 +4,7 @@ import { generateToken } from '../utils/jwt';
 import { RegisterRequest, LoginRequest } from '../types';
 import { isValidEmail, isValidUsername, isValidPassword } from '../utils/validator';
 import axios from 'axios';
-import { initUserLevel } from './level.service';
+import { initUserLevel, incrementTaskProgress } from './level.service';
 import { verifyCaptcha } from './captcha.service';
 
 /**
@@ -133,6 +133,15 @@ export const login = async (data: LoginRequest) => {
     username: user.username,
     email: user.email,
     role: user.role,
+  });
+
+  // 异步更新每日登录任务
+  setImmediate(async () => {
+    try {
+      await incrementTaskProgress(user.id, 'daily_login');
+    } catch (error) {
+      console.error('更新每日登录任务失败:', error);
+    }
   });
 
   return {
