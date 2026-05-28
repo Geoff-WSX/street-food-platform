@@ -476,11 +476,13 @@
   justify-content: center;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-height: 32px;
 }
 
 .profile-upload-buttons {
   display: inline-flex;
+  flex-shrink: 0;
 }
 
 .profile-stats-row {
