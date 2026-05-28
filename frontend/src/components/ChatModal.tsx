@@ -383,11 +383,13 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
         title={null}
         footer={null}
         width={chatMode === 'ai' ? 800 : 420}
-        style={{ top: 24, zIndex: 1050 }}
+        zIndex={1100}
+        centered
+        style={{ top: 24 }}
         styles={{
           body: { padding: 0, height: 560, display: 'flex', flexDirection: 'column' },
-          wrapper: { borderRadius: 16, overflow: 'hidden' },
-          mask: { zIndex: 1050 },
+          wrapper: { borderRadius: 16, overflow: 'hidden', pointerEvents: 'auto' as const },
+          mask: { zIndex: 1100 },
         }}
       >
         {/* Header */}
