@@ -727,7 +727,7 @@ export default function ProfilePage() {
         <Row gutter={[14, 14]}>
           {posts.map((p) => (
             <Col key={p.id} xs={24} sm={12} md={8} lg={6}>
-              <div style={{ height: 480, width: '100%' }}>
+              <div style={{ height: 'clamp(300px, 40vw, 420px)', width: '100%' }}>
                 <PostCard post={p} from="/profile" onUpdate={(u) => {
                   setMyPosts((prev) => prev.map((x) => x.id === u.id ? { ...x, ...u } : x));
                   if (onUpdate) {
