@@ -404,8 +404,15 @@ export const incrementTaskProgress = async (userId: number, taskKey: string, inc
     where: { userId },
   });
 
+  // 如果用户等级记录不存在，初始化它
   if (!userLevel) {
-    throw new Error('用户等级初始化失败');
+    await initUserLevel(userId);
+    userLevel = await prisma.userLevel.findUnique({
+      where: { userId },
+    });
+    if (!userLevel) {
+      throw new Error('用户等级初始化失败');
+    }
   }
 
   const task = await prisma.levelTask.findUnique({
