@@ -5,7 +5,6 @@ import { followUser, unfollowUser } from '../api/follow';
 import { useAuthStore } from '../store/auth';
 import { useFollowStore } from '../store/follow';
 import UserAvatar from './common/UserAvatar';
-import ChatModal from './ChatModal';
 import UserProfileModal from './common/UserProfileModal';
 import type { User } from '../types';
 
@@ -13,12 +12,14 @@ interface PostCardUserInfoProps {
   user: User;
   isFollowing: boolean;
   onFollowStatusChange?: (userId: number, status: boolean) => void;
+  onOpenChat?: (user: User) => void;
 }
 
 export default function PostCardUserInfo({
   user,
   isFollowing,
-  onFollowStatusChange
+  onFollowStatusChange,
+  onOpenChat
 }: PostCardUserInfoProps) {
   const navigate = useNavigate();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
@@ -28,7 +29,6 @@ export default function PostCardUserInfo({
 
   const [followLoading, setFollowLoading] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
-  const [showChatModal, setShowChatModal] = useState(false);
 
   const handleUserClick = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -95,17 +95,8 @@ export default function PostCardUserInfo({
         user={user}
         visible={showUserModal}
         onClose={() => setShowUserModal(false)}
-        onOpenChat={() => setShowChatModal(true)}
+        onOpenChat={() => onOpenChat?.(user)}
       />
-
-      {/* 私信弹窗 */}
-      {showChatModal && (
-        <ChatModal
-          visible={showChatModal}
-          onClose={() => setShowChatModal(false)}
-          otherUser={user}
-        />
-      )}
     </>
   );
 }

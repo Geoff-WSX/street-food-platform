@@ -4,11 +4,12 @@ import { ReloadOutlined, CaretDownOutlined } from '@ant-design/icons';
 import { getPosts, getRandomPosts } from '../api/post';
 import { cancelAllPendingRequests } from '../api/index';
 import PostCard from '../components/PostCard';
+import ChatModal from '../components/ChatModal';
 import FoodBackground from '../components/FoodBackground';
 import PostFilterBar from '../components/PostFilterBar';
 import { parseImages } from '../utils/images';
 import { useScreenSize } from '../hooks/useScreenSize';
-import type { Post } from '../types';
+import type { Post, User } from '../types';
 import '../styles/homePage.css';
 import '../styles/urbanFoodie.css';
 import '../styles/urbanInteractions.css';
@@ -153,6 +154,10 @@ export default function HomePage() {
   const loadPostsRequestIdRef = useRef<number>(0);
   const isMountedRef = useRef(true);
 
+  // Chat modal state
+  const [chatUser, setChatUser] = useState<User | null>(null);
+  const [showChatModal, setShowChatModal] = useState(false);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -268,6 +273,11 @@ export default function HomePage() {
 
   const handleRefresh = () => loadPosts(false, true);
 
+  const handleOpenChat = (user: User) => {
+    setChatUser(user);
+    setShowChatModal(true);
+  };
+
   const filterByLocation = (post: Post) => {
     if (!selectedLocation) return true;
     const address = post.address || '';
@@ -345,7 +355,7 @@ export default function HomePage() {
                   key={post.id}
                   className={`stagger-fade-in delay-${Math.min(index + 1, 8)}`}
                 >
-                  <PostCard post={post} from="/" onUpdate={handleUpdate} />
+                  <PostCard post={post} from="/" onUpdate={handleUpdate} onOpenChat={handleOpenChat} />
                 </div>
               ))}
             </div>
@@ -395,6 +405,15 @@ export default function HomePage() {
           className="refresh-button"
         />
       </FloatButton.Group>
+
+      {/* 私信弹窗 */}
+      {showChatModal && chatUser && (
+        <ChatModal
+          visible={showChatModal}
+          onClose={() => setShowChatModal(false)}
+          otherUser={chatUser}
+        />
+      )}
     </div>
   );
 }
