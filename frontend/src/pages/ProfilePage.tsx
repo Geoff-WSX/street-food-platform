@@ -1337,53 +1337,58 @@ export default function ProfilePage() {
         <div className="profile-header-banner" />
 
         <div className="profile-avatar-section">
-          {/* 头像 */}
-          <div style={{ position: 'relative', display: 'inline-block' }}>
-            <Avatar
-              size={120}
-              src={getAvatarUrl(profileUser)}
-              icon={<UserOutlined />}
-              style={{
-                border: '4px solid #fff',
-                boxShadow: '0 6px 20px rgba(0,0,0,0.15)'
-              }}
-            />
-            {/* 等级徽章 - 显示在头像底部，与头像融为一体 */}
-            {profileUser.level && (
-              <div
+          {/* 头像区域 - 独立一行 */}
+          <div className="profile-avatar-row">
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <Avatar
+                size={140}
+                src={getAvatarUrl(profileUser)}
+                icon={<UserOutlined />}
                 style={{
-                  position: 'absolute',
-                  bottom: -12,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 2,
-                  padding: '2px 10px',
-                  height: 22,
-                  borderRadius: 11,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  background: getLevelColor(profileUser.level.level),
-                  border: '2px solid #fff',
-                  color: '#fff',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                  whiteSpace: 'nowrap',
-                  lineHeight: 1,
+                  border: '4px solid #fff',
+                  boxShadow: '0 6px 20px rgba(0,0,0,0.15)'
                 }}
-              >
-                {getLevelIcon(profileUser.level.level)}Lv{profileUser.level.level}
-              </div>
-            )}
+              />
+              {/* 等级徽章 - 显示在头像底部，与头像融为一体 */}
+              {profileUser.level && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: -12,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 2,
+                    padding: '2px 10px',
+                    height: 22,
+                    borderRadius: 11,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background: getLevelColor(profileUser.level.level),
+                    border: '2px solid #fff',
+                    color: '#fff',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    whiteSpace: 'nowrap',
+                    lineHeight: 1,
+                  }}
+                >
+                  {getLevelIcon(profileUser.level.level)}Lv{profileUser.level.level}
+                </div>
+              )}
+            </div>
           </div>
 
-          <Title level={4} style={{ margin: '12px 0 4px 0', fontSize: 20 }}>
-            <span className="food-gradient-title">
-              {profileUser.username}
-            </span>
+          {/* 用户名和上传按钮 - 并排布局 */}
+          <div className="profile-user-row">
+            <Title level={4} style={{ margin: '8px 0 0 0', fontSize: 20, display: 'inline-block' }}>
+              <span className="food-gradient-title">
+                {profileUser.username}
+              </span>
+            </Title>
             {isOwner && (
-              <Space size={4} style={{ marginLeft: 8 }}>
+              <Space size={6} className="profile-upload-buttons">
                 <Upload
                   accept="image/*"
                   showUploadList={false}
@@ -1419,7 +1424,7 @@ export default function ProfilePage() {
                 </Tooltip>
               </Space>
             )}
-          </Title>
+          </div>
 
           {/* 等级详情按钮 - 所有者点击可查看详情 */}
           {isOwner && levelInfo && levelInfo.currentLevel && !levelLoading && (
@@ -1870,6 +1875,22 @@ export default function ProfilePage() {
 
       <style>{`
         @media (max-width: 768px) {
+          .profile-avatar-row {
+            min-height: 130px !important;
+          }
+          .profile-avatar-row .ant-avatar {
+            width: 100px !important;
+            height: 100px !important;
+            line-height: 100px !important;
+            font-size: 40px !important;
+          }
+          .profile-user-row {
+            flex-direction: column !important;
+            gap: 8px !important;
+          }
+          .profile-upload-buttons {
+            margin-top: 4px;
+          }
           .profile-stats-row {
             flex-wrap: wrap !important;
             gap: 8px !important;
@@ -1888,6 +1909,15 @@ export default function ProfilePage() {
         @media (max-width: 480px) {
           .profile-avatar-section {
             padding: 0 12px !important;
+          }
+          .profile-avatar-row {
+            min-height: 110px !important;
+          }
+          .profile-avatar-row .ant-avatar {
+            width: 90px !important;
+            height: 90px !important;
+            line-height: 90px !important;
+            font-size: 36px !important;
           }
           .profile-action-buttons .ant-btn {
             height: 32px !important;
