@@ -1341,7 +1341,7 @@ export default function ProfilePage() {
           <div className="profile-avatar-row">
             <div style={{ position: 'relative', display: 'inline-block' }}>
               <Avatar
-                size={140}
+                size={160}
                 src={getAvatarUrl(profileUser)}
                 icon={<UserOutlined />}
                 style={{
@@ -1400,6 +1400,10 @@ export default function ProfilePage() {
                       size="small"
                       shape="circle"
                       style={{
+                        width: 28,
+                        height: 28,
+                        minWidth: 28,
+                        padding: 0,
                         boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
                         background: 'linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%)',
                         border: '2px solid #fff',
@@ -1415,6 +1419,10 @@ export default function ProfilePage() {
                     shape="circle"
                     onClick={handleOpenAvatarModal}
                     style={{
+                      width: 28,
+                      height: 28,
+                      minWidth: 28,
+                      padding: 0,
                       boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
                       background: 'linear-gradient(135deg, #722ed1 0%, #b37feb 100%)',
                       border: '2px solid #fff',
@@ -1911,13 +1919,13 @@ export default function ProfilePage() {
             padding: 0 12px !important;
           }
           .profile-avatar-row {
-            min-height: 110px !important;
+            min-height: 130px !important;
           }
           .profile-avatar-row .ant-avatar {
-            width: 90px !important;
-            height: 90px !important;
-            line-height: 90px !important;
-            font-size: 36px !important;
+            width: 110px !important;
+            height: 110px !important;
+            line-height: 110px !important;
+            font-size: 44px !important;
           }
           .profile-action-buttons .ant-btn {
             height: 32px !important;
