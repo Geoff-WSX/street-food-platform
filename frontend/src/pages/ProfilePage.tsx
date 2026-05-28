@@ -1884,7 +1884,8 @@ export default function ProfilePage() {
       <style>{`
         @media (max-width: 768px) {
           .profile-avatar-row {
-            min-height: 130px !important;
+            min-height: 150px !important;
+            padding-bottom: 15px !important;
           }
           .profile-avatar-img {
             width: 120px !important;
@@ -1925,7 +1926,8 @@ export default function ProfilePage() {
             padding: 0 12px !important;
           }
           .profile-avatar-row {
-            min-height: 130px !important;
+            min-height: 140px !important;
+            padding-bottom: 10px !important;
           }
           .profile-avatar-img {
             width: 110px !important;
