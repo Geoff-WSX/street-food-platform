@@ -1341,9 +1341,9 @@ export default function ProfilePage() {
           <div className="profile-avatar-row">
             <div style={{ position: 'relative', display: 'inline-block' }}>
               <Avatar
-                size={160}
                 src={getAvatarUrl(profileUser)}
                 icon={<UserOutlined />}
+                className="profile-avatar-img"
                 style={{
                   border: '4px solid #fff',
                   boxShadow: '0 6px 20px rgba(0,0,0,0.15)'
@@ -1886,11 +1886,11 @@ export default function ProfilePage() {
           .profile-avatar-row {
             min-height: 130px !important;
           }
-          .profile-avatar-row .ant-avatar {
-            width: 100px !important;
-            height: 100px !important;
-            line-height: 100px !important;
-            font-size: 40px !important;
+          .profile-avatar-img {
+            width: 120px !important;
+            height: 120px !important;
+            line-height: 120px !important;
+            font-size: 48px !important;
           }
           .profile-user-row {
             flex-wrap: wrap !important;
@@ -1914,6 +1914,12 @@ export default function ProfilePage() {
             padding: 0 12px !important;
           }
         }
+        .profile-avatar-img {
+          width: 160px !important;
+          height: 160px !important;
+          line-height: 160px !important;
+          font-size: 64px !important;
+        }
         @media (max-width: 480px) {
           .profile-avatar-section {
             padding: 0 12px !important;
@@ -1921,7 +1927,7 @@ export default function ProfilePage() {
           .profile-avatar-row {
             min-height: 130px !important;
           }
-          .profile-avatar-row .ant-avatar {
+          .profile-avatar-img {
             width: 110px !important;
             height: 110px !important;
             line-height: 110px !important;
