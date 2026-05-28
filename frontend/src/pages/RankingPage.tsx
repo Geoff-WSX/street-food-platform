@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Row, Col, Card, Typography, Space, Empty, Skeleton, Button, FloatButton } from 'antd';
 import { StarFilled, FireOutlined, CrownOutlined, UpOutlined, DownOutlined } from '@ant-design/icons';
-import { getPosts, getPopularTags } from '../api/post';
+import { getPosts } from '../api/post';
 import PostCard from '../components/PostCard';
 import PostFilterBar from '../components/PostFilterBar';
 import FoodBackground from '../components/FoodBackground';
@@ -238,12 +238,9 @@ export default function RankingPage() {
   const [loading, setLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('combined');
-  const [popularTags, setPopularTags] = useState<{ id: number; name: string; postCount: number }[]>([]);
-  const [selectedTag, setSelectedTag] = useState<string>('');
 
   useEffect(() => {
     fetchPosts();
-    fetchPopularTags();
   }, []);
 
   const fetchPosts = async () => {
@@ -255,15 +252,6 @@ export default function RankingPage() {
       // 忽略错误
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchPopularTags = async () => {
-    try {
-      const data = await getPopularTags(20);
-      setPopularTags(data || []);
-    } catch {
-      // 忽略错误
     }
   };
 
@@ -285,13 +273,6 @@ export default function RankingPage() {
       // 选了省市区
       return address.includes(parts[0]) && address.includes(parts[1]) && address.includes(parts[2]);
     }
-  };
-
-  // 根据话题过滤
-  const filterByTag = (post: Post) => {
-    if (!selectedTag) return true;
-    if (!post.tags || post.tags.length === 0) return false;
-    return post.tags.some(t => t.name === selectedTag);
   };
 
   // 排序动态
@@ -327,7 +308,7 @@ export default function RankingPage() {
   };
 
   // 过滤和排序后的动态
-  const filteredPosts = sortPosts(posts.filter(post => filterByLocation(post) && filterByTag(post)));
+  const filteredPosts = sortPosts(posts.filter(post => filterByLocation(post)));
 
   if (loading) {
     return (
@@ -355,12 +336,12 @@ export default function RankingPage() {
       <FoodBackground count={15} minSize={20} maxSize={40} />
 
       {/* 页面标题 */}
-      <div style={{ marginBottom: 24, textAlign: 'center', position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 10 }}>
-          <CrownOutlined style={{ fontSize: 36, color: '#FFD700', animation: 'crownBounce 2s ease-in-out infinite' }} />
+      <div style={{ marginBottom: 24, textAlign: 'center', position: 'relative', zIndex: 1 }} className="ranking-header">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
+          <CrownOutlined style={{ fontSize: 32, color: '#FFD700', animation: 'crownBounce 2s ease-in-out infinite' }} />
           <Title level={1} style={{
             margin: 0,
-            fontSize: 36,
+            fontSize: 28,
             fontWeight: 800,
             background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF6B6B 100%)',
             WebkitBackgroundClip: 'text',
@@ -369,7 +350,7 @@ export default function RankingPage() {
           }}>
             🏆 美食风云榜
           </Title>
-          <CrownOutlined style={{ fontSize: 36, color: '#FFD700', animation: 'crownBounce 2s ease-in-out infinite 0.5s' }} />
+          <CrownOutlined style={{ fontSize: 32, color: '#FFD700', animation: 'crownBounce 2s ease-in-out infinite 0.5s' }} />
         </div>
         <Text type="secondary" style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>
           🔥 发现最受欢迎的美食
@@ -377,13 +358,10 @@ export default function RankingPage() {
       </div>
 
       {/* 筛选条件 */}
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 20px', position: 'relative', zIndex: 1 }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 20px', position: 'relative', zIndex: 1 }} className="ranking-container">
         <PostFilterBar
           selectedLocation={selectedLocation}
           onLocationChange={setSelectedLocation}
-          selectedTag={selectedTag}
-          onTagChange={setSelectedTag}
-          popularTags={popularTags}
           locationTreeData={LOCATION_DATA}
           variant="ranking"
           showStats={false}
@@ -397,8 +375,8 @@ export default function RankingPage() {
           flexWrap: 'wrap',
           gap: 12,
           marginBottom: 20,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        }} className="ranking-sort-bar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} className="ranking-sort-buttons">
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -406,7 +384,7 @@ export default function RankingPage() {
               padding: '6px 12px',
               background: 'linear-gradient(135deg, rgba(255, 77, 79, 0.08) 0%, rgba(255, 77, 79, 0.04) 100%)',
               borderRadius: 10,
-            }}>
+            }} className="ranking-sort-label">
               <StarFilled style={{ color: '#ff4d4f', fontSize: 14 }} />
               <Text strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>排序</Text>
             </div>
@@ -541,6 +519,34 @@ export default function RankingPage() {
           50% {
             transform: scale(1.08);
             filter: brightness(1.1);
+          }
+        }
+        @media (max-width: 768px) {
+          .ranking-container {
+            overflow-x: hidden;
+          }
+          .ranking-filter-bar {
+            padding: 0 12px !important;
+          }
+          .ranking-sort-buttons {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+          }
+          .ranking-sort-label {
+            display: none !important;
+          }
+          .posts-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .posts-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .ranking-sort-buttons .ant-btn {
+            height: 32px !important;
+            font-size: 12px !important;
+            padding: 0 10px !important;
           }
         }
       `}</style>

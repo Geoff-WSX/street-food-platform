@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Row, Col, Empty, Typography, Space, FloatButton, Button } from 'antd';
 import { ReloadOutlined, CaretDownOutlined } from '@ant-design/icons';
-import { getPosts, getPopularTags, getPostsByTag, getRandomPosts } from '../api/post';
+import { getPosts, getRandomPosts } from '../api/post';
 import { cancelAllPendingRequests } from '../api/index';
 import PostCard from '../components/PostCard';
+import ChatModal from '../components/ChatModal';
 import FoodBackground from '../components/FoodBackground';
 import PostFilterBar from '../components/PostFilterBar';
 import { parseImages } from '../utils/images';
 import { useScreenSize } from '../hooks/useScreenSize';
-import type { Post } from '../types';
+import type { Post, User } from '../types';
 import '../styles/homePage.css';
 import '../styles/urbanFoodie.css';
 import '../styles/urbanInteractions.css';
@@ -150,21 +151,17 @@ export default function HomePage() {
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
   const [loadInProgress, setLoadInProgress] = useState(false);
-  const [popularTags, setPopularTags] = useState<{ id: number; name: string; postCount: number }[]>([]);
-  const [selectedTag, setSelectedTag] = useState<string>('');
-  const selectedTagRef = useRef<string>('');
   const loadPostsRequestIdRef = useRef<number>(0);
   const isMountedRef = useRef(true);
+
+  // Chat modal state
+  const [chatUser, setChatUser] = useState<User | null>(null);
+  const [showChatModal, setShowChatModal] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-
-  // 同步 selectedTag 到 ref
-  useEffect(() => {
-    selectedTagRef.current = selectedTag;
-  }, [selectedTag]);
 
   const loadPosts = async (showLoading = true, isRefresh = false, page = 1) => {
     // 防止并发请求
@@ -175,9 +172,6 @@ export default function HomePage() {
 
     // 使用请求ID防止重复
     loadPostsRequestIdRef.current += 1;
-
-    // 使用 ref 中的 currentTag 避免闭包问题
-    const currentTag = selectedTagRef.current;
 
     // 如果是刷新操作，先清空现有数据
     if (isRefresh) {
@@ -199,28 +193,15 @@ export default function HomePage() {
       let data: Post[];
       let paginationInfo = { total: 0, totalPages: 0 };
 
-      if (currentTag) {
-        // 话题筛选模式：获取该话题的动态（分页）
-        const result = await getPostsByTag(currentTag, { page, pageSize: PAGE_SIZE, random: true });
+      // 刷新时随机获取推荐动态，否则分页获取
+      if (isRefresh) {
+        const result = await getRandomPosts({ limit: PAGE_SIZE });
+        data = result as Post[];
+        paginationInfo = { total: data.length, totalPages: 1 };
+      } else {
+        const result = await getPosts({ page, pageSize: PAGE_SIZE });
         data = result.data;
         paginationInfo = result.pagination || { total: 0, totalPages: 0 };
-      } else {
-        // 刷新时随机获取推荐动态，否则分页获取
-        if (isRefresh) {
-          const result = await getRandomPosts({ limit: PAGE_SIZE });
-          data = result as Post[];
-          paginationInfo = { total: data.length, totalPages: 1 };
-        } else {
-          const result = await getPosts({ page, pageSize: PAGE_SIZE });
-          data = result.data;
-          paginationInfo = result.pagination || { total: 0, totalPages: 0 };
-        }
-      }
-
-      // 双重检查：确保响应回来时 selectedTag 仍然是同一个
-      if (currentTag !== selectedTagRef.current) {
-        console.log('🔄 跳过过时的 API 响应:', currentTag, '->', selectedTagRef.current);
-        return;
       }
 
       let validPosts = (data || []).filter((post) => {
@@ -228,16 +209,10 @@ export default function HomePage() {
         return post?.content && post?.images && images.length > 0 && post?.user?.username;
       });
 
-      // 再次检查
-      if (currentTag !== selectedTagRef.current) {
-        console.log('🔄 跳过过时的数据更新:', currentTag, '->', selectedTagRef.current);
-        return;
-      }
-
       // 判断是否还有更多数据
       setHasMore(page < paginationInfo.totalPages);
 
-      console.log('✅ 帖子数量:', validPosts.length, '话题:', currentTag, '当前页:', page, '总页数:', paginationInfo.totalPages);
+      console.log('✅ 帖子数量:', validPosts.length, '当前页:', page, '总页数:', paginationInfo.totalPages);
 
       // 根据是刷新还是加载更多来决定是替换还是追加
       if (page === 1) {
@@ -290,15 +265,18 @@ export default function HomePage() {
     setCurrentPage(1);
     setHasMore(true);
     loadPosts(false, true);
-    // 获取热门话题
-    getPopularTags(20).then(setPopularTags).catch(() => {});
-  }, [selectedLocation, selectedTag]);
+  }, [selectedLocation]);
 
   const handleUpdate = (updated: Partial<Post> & { id: number }) => {
     setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
   };
 
   const handleRefresh = () => loadPosts(false, true);
+
+  const handleOpenChat = (user: User) => {
+    setChatUser(user);
+    setShowChatModal(true);
+  };
 
   const filterByLocation = (post: Post) => {
     if (!selectedLocation) return true;
@@ -307,13 +285,7 @@ export default function HomePage() {
     return parts.every((part) => address.includes(part));
   };
 
-  const filterByTag = (post: Post) => {
-    if (!selectedTag) return true;
-    if (!post.tags || post.tags.length === 0) return false;
-    return post.tags.some(t => t.name === selectedTag);
-  };
-
-  const filteredPosts = posts.filter(post => filterByLocation(post) && filterByTag(post));
+  const filteredPosts = posts.filter(post => filterByLocation(post));
 
   // 骨架屏加载状态
   if (initialLoading) {
@@ -341,9 +313,6 @@ export default function HomePage() {
         <PostFilterBar
           selectedLocation={selectedLocation}
           onLocationChange={setSelectedLocation}
-          selectedTag={selectedTag}
-          onTagChange={setSelectedTag}
-          popularTags={popularTags}
           locationTreeData={LOCATION_DATA}
           variant="home"
           showStats={false}
@@ -358,15 +327,15 @@ export default function HomePage() {
                 <Space direction="vertical" size={screenSize.isMobile ? 12 : 16}>
                   <div style={{ fontSize: screenSize.isMobile ? 56 : 68 }}>🍽️</div>
                   <Text style={{ fontSize: screenSize.isSmallMobile ? 16 : screenSize.isMobile ? 18 : 20, fontWeight: 500 }}>
-                    {selectedTag ? `#${selectedTag} 暂无美食动态` : selectedLocation ? `${selectedLocation.split('-').pop()}暂无美食动态` : '暂无美食动态'}
+                    {selectedLocation ? `${selectedLocation.split('-').pop()}暂无美食动态` : '暂无美食动态'}
                   </Text>
                   <Text type="secondary" style={{ fontSize: screenSize.isSmallMobile ? 14 : 16 }}>
-                    {selectedTag ? '🔄 试试切换其他话题' : selectedLocation ? '🔄 试试切换其他地区' : '✨ 成为第一个分享美食的人吧！'}
+                    {selectedLocation ? '🔄 试试切换其他地区' : '✨ 成为第一个分享美食的人吧！'}
                   </Text>
-                  {(selectedLocation || selectedTag) && (
+                  {selectedLocation && (
                     <Button
                       type="primary"
-                      onClick={() => { setSelectedLocation(''); setSelectedTag(''); }}
+                      onClick={() => setSelectedLocation('')}
                       size={screenSize.isMobile ? 'middle' : 'large'}
                       className="btn-primary"
                     >
@@ -386,7 +355,7 @@ export default function HomePage() {
                   key={post.id}
                   className={`stagger-fade-in delay-${Math.min(index + 1, 8)}`}
                 >
-                  <PostCard post={post} from="/" onUpdate={handleUpdate} />
+                  <PostCard post={post} from="/" onUpdate={handleUpdate} onOpenChat={handleOpenChat} />
                 </div>
               ))}
             </div>
@@ -436,6 +405,15 @@ export default function HomePage() {
           className="refresh-button"
         />
       </FloatButton.Group>
+
+      {/* 私信弹窗 */}
+      {showChatModal && chatUser && (
+        <ChatModal
+          visible={showChatModal}
+          onClose={() => setShowChatModal(false)}
+          otherUser={chatUser}
+        />
+      )}
     </div>
   );
 }

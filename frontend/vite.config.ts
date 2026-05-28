@@ -20,6 +20,12 @@ export default defineConfig({
       },
     },
   },
+  // 生产环境 API 配置
+  define: {
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(
+      process.env.VITE_API_BASE_URL || '/api'
+    ),
+  },
   optimizeDeps: {
     include: ['react', 'react-dom', 'antd'],
   },

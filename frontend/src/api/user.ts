@@ -43,7 +43,7 @@ export const updatePrivacySettings = (data: { hideFollowing?: boolean; hideFollo
 // 获取自定义头像列表
 export interface CustomAvatar {
   id: string;
-  data: string;
+  url: string;
   createdAt: string;
 }
 

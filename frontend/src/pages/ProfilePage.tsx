@@ -4,11 +4,10 @@ import {
   Avatar, Typography, Row, Col, Button, Form, Input,
   Upload, Spin, Empty, message, Modal, Card, Space, Tag, Select, Switch, List, Popconfirm, Tooltip
 } from 'antd';
-import { UserOutlined, EditOutlined, CameraOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined, TeamOutlined, FileTextOutlined, StarOutlined, PlusOutlined, SearchOutlined, DeleteOutlined, CaretDownOutlined } from '@ant-design/icons';
+import { UserOutlined, EditOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined, TeamOutlined, FileTextOutlined, StarOutlined, PlusOutlined, SearchOutlined, DeleteOutlined, CaretDownOutlined, RocketOutlined, UploadOutlined, SmileOutlined } from '@ant-design/icons';
 import { getUserById, updateProfile, updateAvatar, setDefaultAvatar, getDefaultAvatars, changePassword, updateMessageSettings, updatePrivacySettings, getCustomAvatars, addCustomAvatar, deleteCustomAvatar, type DefaultAvatar, type CustomAvatar } from '../api/user';
 import { getUserPosts, getUserFavorites } from '../api/post';
 import { getRecommendedPosts, deleteRecommend } from '../api/share';
-import { getUserFollowedTopics, type TopicRankingItem } from '../api/topic';
 import { cancelAllPendingRequests } from '../api/index';
 import { getBlockedList, unblockUser, blockUser } from '../api/block';
 import { getFollowing, getFollowers, followUser, unfollowUser } from '../api/follow';
@@ -20,6 +19,7 @@ import { useFriendStore } from '../store/friend';
 import PostCard from '../components/PostCard';
 import ChatModal from '../components/ChatModal';
 import ReportModal from '../components/ReportModal';
+import WelcomeModal from '../components/WelcomeModal';
 import { PageLayout } from '../components/layout';
 import { StatBadge } from '../components/common/StatBadge';
 import { LevelCard } from '../components/LevelCard';
@@ -134,8 +134,6 @@ export default function ProfilePage() {
   const [following, setFollowing] = useState<User[]>([]);
   const [followers, setFollowers] = useState<User[]>([]);
   const [followLoading, setFollowLoading] = useState(false);
-  const [followedTopics, setFollowedTopics] = useState<TopicRankingItem[]>([]);
-  const [followedTopicsLoading, setFollowedTopicsLoading] = useState(false);
   const [chatUser, setChatUser] = useState<User | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -146,6 +144,7 @@ export default function ProfilePage() {
   const [levelInfo, setLevelInfo] = useState<UserLevelInfo | null>(null);
   const [levelLoading, setLevelLoading] = useState(false);
   const [levelCardOpen, setLevelCardOpen] = useState(false);
+  const [welcomeVisible, setWelcomeVisible] = useState(false);
 
   // 好友 store
   const {
@@ -286,16 +285,6 @@ export default function ProfilePage() {
         // 获取推荐动态
         const recommendedData = await getRecommendedPosts({ pageSize: 50 });
         setRecommendedPosts(recommendedData.data);
-        // 获取关注的话题
-        setFollowedTopicsLoading(true);
-        try {
-          const topicsData = await getUserFollowedTopics();
-          setFollowedTopics(topicsData?.data || []);
-        } catch {
-          console.error('获取关注话题失败');
-        } finally {
-          setFollowedTopicsLoading(false);
-        }
         // 获取黑名单
         const blocked = await getBlockedList();
         setBlockedUsers(blocked);
@@ -738,7 +727,7 @@ export default function ProfilePage() {
         <Row gutter={[14, 14]}>
           {posts.map((p) => (
             <Col key={p.id} xs={24} sm={12} md={8} lg={6}>
-              <div style={{ height: 480, width: '100%' }}>
+              <div style={{ height: 'clamp(300px, 40vw, 420px)', width: '100%' }}>
                 <PostCard post={p} from="/profile" onUpdate={(u) => {
                   setMyPosts((prev) => prev.map((x) => x.id === u.id ? { ...x, ...u } : x));
                   if (onUpdate) {
@@ -1095,50 +1084,7 @@ export default function ProfilePage() {
         )
       )
     },
-    ...(isOwner ? [{
-      key: 'followedTopics',
-      label: `关注话题 ${followedTopics.length > 0 ? `(${followedTopics.length})` : ''}`,
-      children: (
-        followedTopicsLoading ? (
-          <div style={{ textAlign: 'center', padding: 40 }}>
-            <Spin />
-          </div>
-        ) : followedTopics.length === 0 ? (
-          <Empty description="暂无关注的话题" style={{ padding: '32px 0' }} />
-        ) : (
-          <Row gutter={[12, 12]}>
-            {followedTopics.map(topic => (
-              <Col key={topic.id} xs={12} sm={8} md={6} lg={4}>
-                <Card
-                  hoverable
-                  style={{ borderRadius: 12, textAlign: 'center', cursor: 'pointer' }}
-                  onClick={() => navigate(`/topic/${encodeURIComponent(topic.name)}?from=profile`)}
-                  bodyStyle={{ padding: 16 }}
-                >
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>
-                    {topic.name.includes('火锅') ? '🍲' :
-                     topic.name.includes('烧烤') ? '🍖' :
-                     topic.name.includes('小吃') ? '🍡' :
-                     topic.name.includes('甜点') ? '🍰' :
-                     topic.name.includes('咖啡') ? '☕' :
-                     topic.name.includes('奶茶') ? '🧋' :
-                     topic.name.includes('海鲜') ? '🦀' :
-                     topic.name.includes('日料') ? '🍣' :
-                     topic.name.includes('川菜') ? '🌶️' :
-                     topic.name.includes('粤菜') ? '🥘' :
-                     '🏷️'}
-                  </div>
-                  <Text strong style={{ fontSize: 13, display: 'block' }}>#{topic.name}</Text>
-                  <Text type="secondary" style={{ fontSize: 11 }}>
-                    {topic.postCount || 0} 动态 · {topic.followCount || 0} 关注
-                  </Text>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        )
-      )
-    }] : []), {
+    {
       key: 'settings',
       label: '设置',
       children: (
@@ -1357,6 +1303,23 @@ export default function ProfilePage() {
               />
             )}
           </Card>
+
+          {/* 关于平台 */}
+          <Card title="关于平台" size="small" style={{ borderRadius: 8 }}>
+            <Space direction="vertical" style={{ width: '100%' }} size={8}>
+              <Button
+                icon={<RocketOutlined />}
+                onClick={() => setWelcomeVisible(true)}
+                style={{ borderRadius: 8, height: 40 }}
+                block
+              >
+                查看网站介绍
+              </Button>
+              <Text type="secondary" style={{ fontSize: 11, display: 'block', textAlign: 'center' }}>
+                了解「食遇」平台功能和使用方法
+              </Text>
+            </Space>
+          </Card>
         </Space>
       )
     }] : []),
@@ -1374,23 +1337,58 @@ export default function ProfilePage() {
         <div className="profile-header-banner" />
 
         <div className="profile-avatar-section">
-          {/* 头像 */}
-          <div style={{ position: 'relative', display: 'inline-block' }}>
-            <Avatar
-              size={90}
-              src={getAvatarUrl(profileUser)}
-              icon={<UserOutlined />}
-              style={{
-                border: '4px solid #fff',
-                boxShadow: '0 6px 20px rgba(0,0,0,0.15)'
-              }}
-            />
+          {/* 头像区域 - 独立一行 */}
+          <div className="profile-avatar-row">
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <Avatar
+                src={getAvatarUrl(profileUser)}
+                icon={<UserOutlined />}
+                className="profile-avatar-img"
+                style={{
+                  border: '4px solid #fff',
+                  boxShadow: '0 6px 20px rgba(0,0,0,0.15)'
+                }}
+              />
+              {/* 等级徽章 - 显示在头像底部，与头像融为一体 */}
+              {profileUser.level && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: -12,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 2,
+                    padding: '2px 10px',
+                    height: 22,
+                    borderRadius: 11,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background: getLevelColor(profileUser.level.level),
+                    border: '2px solid #fff',
+                    color: '#fff',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    whiteSpace: 'nowrap',
+                    lineHeight: 1,
+                  }}
+                >
+                  {getLevelIcon(profileUser.level.level)}Lv{profileUser.level.level}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 用户名和上传按钮 - 并排布局 */}
+          <div className="profile-user-row" style={{ flexWrap: 'nowrap' }}>
+            <Title level={4} style={{ margin: 0, fontSize: 20, display: 'inline-block', flexShrink: 0, maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span className="food-gradient-title">
+                {profileUser.username}
+              </span>
+            </Title>
             {isOwner && (
-              <Space size={4} style={{
-                position: 'absolute',
-                bottom: 2,
-                right: -30,
-              }}>
+              <Space size={6} className="profile-upload-buttons">
                 <Upload
                   accept="image/*"
                   showUploadList={false}
@@ -1398,69 +1396,43 @@ export default function ProfilePage() {
                 >
                   <Tooltip title="上传自定义头像">
                     <Button
-                      icon={<CameraOutlined />}
+                      icon={<UploadOutlined />}
                       size="small"
                       shape="circle"
                       style={{
-                        boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
+                        width: 28,
+                        height: 28,
+                        minWidth: 28,
+                        padding: 0,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
                         background: 'linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%)',
                         border: '2px solid #fff',
-                        color: '#fff'
+                        color: '#fff',
                       }}
                     />
                   </Tooltip>
                 </Upload>
                 <Tooltip title="选择预设头像">
                   <Button
-                    icon={<StarOutlined />}
+                    icon={<SmileOutlined />}
                     size="small"
                     shape="circle"
                     onClick={handleOpenAvatarModal}
                     style={{
-                      boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
+                      width: 28,
+                      height: 28,
+                      minWidth: 28,
+                      padding: 0,
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
                       background: 'linear-gradient(135deg, #722ed1 0%, #b37feb 100%)',
                       border: '2px solid #fff',
-                      color: '#fff'
+                      color: '#fff',
                     }}
                   />
                 </Tooltip>
               </Space>
             )}
-            {/* 等级徽章 - 显示在头像底部，与头像融为一体 */}
-            {profileUser.level && (
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: -12,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 2,
-                  padding: '2px 10px',
-                  height: 22,
-                  borderRadius: 11,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  background: getLevelColor(profileUser.level.level),
-                  border: '2px solid #fff',
-                  color: '#fff',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                  whiteSpace: 'nowrap',
-                  lineHeight: 1,
-                }}
-              >
-                {getLevelIcon(profileUser.level.level)}Lv{profileUser.level.level}
-              </div>
-            )}
           </div>
-
-          <Title level={4} style={{ margin: '12px 0 4px 0', fontSize: 20 }}>
-            <span className="food-gradient-title">
-              {profileUser.username}
-            </span>
-          </Title>
 
           {/* 等级详情按钮 - 所有者点击可查看详情 */}
           {isOwner && levelInfo && levelInfo.currentLevel && !levelLoading && (
@@ -1503,7 +1475,7 @@ export default function ProfilePage() {
 
           {/* 操作按钮 */}
           {!isOwner && profileUser && (
-            <Space size={8} style={{ marginTop: 16 }} wrap>
+            <Space size={8} style={{ marginTop: 16 }} wrap className="profile-action-buttons">
               {/* 好友按钮 */}
               {isBlocked ? (
                 <Button icon={<StopOutlined />} disabled style={{ borderRadius: 18, height: 36 }}>
@@ -1588,7 +1560,7 @@ export default function ProfilePage() {
           )}
 
           {isOwner && (
-            <Space size={8} style={{ marginTop: 16 }}>
+            <Space size={8} style={{ marginTop: 16 }} wrap className="profile-action-buttons">
               <Button
                 icon={<EditOutlined />}
                 onClick={() => {
@@ -1813,21 +1785,21 @@ export default function ProfilePage() {
                         cursor: 'pointer',
                         borderRadius: 12,
                         padding: 8,
-                        border: profileUser?.avatar === avatar.data ? '2px solid #ff6b35' : '2px solid transparent',
-                        background: profileUser?.avatar === avatar.data ? '#fff7f3' : 'var(--bg-secondary)',
+                        border: profileUser?.avatar === avatar.url ? '2px solid #ff6b35' : '2px solid transparent',
+                        background: profileUser?.avatar === avatar.url ? '#fff7f3' : 'var(--bg-secondary)',
                         transition: 'all 0.2s',
                         textAlign: 'center',
                       }}
                     >
                       <img
-                        src={avatar.data}
+                        src={avatar.url}
                         alt="自定义头像"
                         onClick={async () => {
                           try {
                             // 设置自定义头像为当前头像
                             const formData = new FormData();
                             // 创建一个虚拟文件来触发 updateAvatar
-                            const res = await fetch(avatar.data);
+                            const res = await fetch(avatar.url);
                             const blob = await res.blob();
                             const file = new File([blob], 'avatar.webp', { type: 'image/webp' });
                             formData.append('avatar', file);
@@ -1902,6 +1874,74 @@ export default function ProfilePage() {
         visible={levelCardOpen}
         onClose={() => setLevelCardOpen(false)}
       />
+
+      {/* 欢迎弹窗 */}
+      <WelcomeModal
+        open={welcomeVisible}
+        onClose={() => setWelcomeVisible(false)}
+      />
+
+      <style>{`
+        @media (max-width: 768px) {
+          .profile-avatar-row {
+            min-height: 150px !important;
+            padding-bottom: 15px !important;
+          }
+          .profile-avatar-img {
+            width: 120px !important;
+            height: 120px !important;
+            line-height: 120px !important;
+            font-size: 48px !important;
+          }
+          .profile-user-row {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+          }
+          .profile-upload-buttons {
+            margin-top: 0;
+          }
+          .profile-stats-row {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+            justify-content: center !important;
+          }
+          .profile-action-buttons {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+          }
+          .profile-action-buttons .ant-btn {
+            height: 36px !important;
+            font-size: 13px !important;
+            padding: 0 12px !important;
+          }
+        }
+        .profile-avatar-img {
+          width: 160px !important;
+          height: 160px !important;
+          line-height: 160px !important;
+          font-size: 64px !important;
+        }
+        @media (max-width: 480px) {
+          .profile-avatar-section {
+            padding: 0 12px !important;
+          }
+          .profile-avatar-row {
+            min-height: 140px !important;
+            padding-bottom: 10px !important;
+          }
+          .profile-avatar-img {
+            width: 110px !important;
+            height: 110px !important;
+            line-height: 110px !important;
+            font-size: 44px !important;
+          }
+          .profile-action-buttons .ant-btn {
+            height: 32px !important;
+            font-size: 12px !important;
+            padding: 0 8px !important;
+          }
+        }
+      `}</style>
     </PageLayout>
   );
 }

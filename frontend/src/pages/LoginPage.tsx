@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Form, Input, Button, message, Divider, Typography, Checkbox } from 'antd';
+import { Form, Input, Button, message, Divider, Typography, Modal } from 'antd';
 import { MailOutlined, LockOutlined, UserOutlined, FireOutlined, RocketOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { login, register, getCaptcha, type CaptchaData } from '../api/auth';
@@ -8,11 +8,13 @@ import { useThemeStore } from '../store/theme';
 import { getErrorMessage } from '../utils/error';
 import FoodBackground from '../components/FoodBackground';
 import ThemeSwitcher from '../components/ThemeSwitcher';
+import WelcomeModal from '../components/WelcomeModal';
 import { getAnimationStyle, getRandomFoods } from '../utils/foodAnimations';
 
 const { Text } = Typography;
 
-const TRUSTED_DEVICE_KEY = 'sf_trusted_device';
+// localStorage key for welcome modal
+const WELCOME_MODAL_KEY = 'shiyu_welcome_shown';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -22,9 +24,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [captcha, setCaptcha] = useState<CaptchaData | null>(null);
-  const [trustDevice, setTrustDevice] = useState(false);
-  const [skipCaptcha, setSkipCaptcha] = useState(false);
-  const [trustedDeviceToken, setTrustedDeviceToken] = useState<string | null>(null);
+  const [captchaLoading, setCaptchaLoading] = useState(false);
+  const [warningVisible, setWarningVisible] = useState(false);
+  const [welcomeVisible, setWelcomeVisible] = useState(false);
   const [screenSize, setScreenSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -33,22 +35,31 @@ export default function LoginPage() {
   });
 
   // 加载验证码
-  const loadCaptcha = async () => {
+  const loadCaptcha = async (retryCount = 0) => {
+    if (captchaLoading) {
+      return;
+    }
+    setCaptchaLoading(true);
     try {
       const data = await getCaptcha();
       setCaptcha(data);
     } catch (error) {
-      console.error('获取验证码失败:', error);
+      console.error('[Captcha] 获取验证码失败:', error);
+      if (retryCount < 3) {
+        setTimeout(() => loadCaptcha(retryCount + 1), 2000);
+      }
+    } finally {
+      setCaptchaLoading(false);
     }
   };
 
-  // 检查是否有信任设备令牌
+  // 每次打开登录页都显示测试网站警告
   useEffect(() => {
-    const savedToken = localStorage.getItem(TRUSTED_DEVICE_KEY);
-    if (savedToken) {
-      setTrustedDeviceToken(savedToken);
-      setSkipCaptcha(true);
-    }
+    setWarningVisible(true);
+  }, []);
+
+  // 初始化验证码
+  useEffect(() => {
     loadCaptcha();
   }, []);
 
@@ -68,31 +79,27 @@ export default function LoginPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleLogin = async (values: { email: string; password: string; captchaCode?: string }) => {
+  const handleLogin = async (values: { email: string; password: string; captchaCode: string }) => {
     setLoading(true);
     try {
       const res = await login({
         email: values.email,
         password: values.password,
-        captchaId: skipCaptcha && trustedDeviceToken ? '' : (captcha?.id || ''),
-        captchaCode: skipCaptcha && trustedDeviceToken ? '' : (values.captchaCode || ''),
-        trustedDeviceToken: skipCaptcha && trustedDeviceToken ? trustedDeviceToken : undefined,
-        trustDevice: trustDevice,
+        captchaId: captcha?.id || '',
+        captchaCode: values.captchaCode || '',
       });
-      // 保存信任设备令牌
-      if (res.trustedDeviceToken) {
-        localStorage.setItem(TRUSTED_DEVICE_KEY, res.trustedDeviceToken);
-        setTrustedDeviceToken(res.trustedDeviceToken);
-      }
       loginStore(res.token, res.user);
-      navigate('/');
+      // 检查是否显示过欢迎弹窗
+      const hasShownWelcome = localStorage.getItem(WELCOME_MODAL_KEY);
+      if (!hasShownWelcome) {
+        localStorage.setItem(WELCOME_MODAL_KEY, 'true');
+        setWelcomeVisible(true);
+      } else {
+        navigate('/');
+      }
     } catch (error: unknown) {
       const errorMsg = getErrorMessage(error);
-      // 如果是验证码错误或token失效，刷新验证码并显示输入框
-      if (errorMsg.includes('验证码') || errorMsg.includes('信任设备') || errorMsg.includes('token')) {
-        setSkipCaptcha(false);
-        setTrustedDeviceToken(null);
-        localStorage.removeItem(TRUSTED_DEVICE_KEY);
+      if (errorMsg.includes('验证码')) {
         await loadCaptcha();
       }
       void message.error(errorMsg);
@@ -106,7 +113,14 @@ export default function LoginPage() {
     try {
       const res = await register(values);
       loginStore(res.token, res.user);
-      navigate('/');
+      // 检查是否显示过欢迎弹窗
+      const hasShownWelcome = localStorage.getItem(WELCOME_MODAL_KEY);
+      if (!hasShownWelcome) {
+        localStorage.setItem(WELCOME_MODAL_KEY, 'true');
+        setWelcomeVisible(true);
+      } else {
+        navigate('/');
+      }
     } catch (error: unknown) {
       const errorMsg = getErrorMessage(error);
       void message.error(errorMsg);
@@ -224,6 +238,40 @@ export default function LoginPage() {
           />
         </>
       )}
+
+      {/* 测试网站警告弹窗 */}
+      <Modal
+        title={<span style={{ color: '#ff4d4f' }}>⚠️ 测试网站提示</span>}
+        open={warningVisible}
+        onOk={() => setWarningVisible(false)}
+        onCancel={() => setWarningVisible(false)}
+        okText="我已知晓"
+        cancelText={null}
+        centered
+        width={400}
+        zIndex={9999}
+        maskStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      >
+        <div style={{ fontSize: 14, lineHeight: 1.8 }}>
+          <p>👋 欢迎访问「食遇」测试网站！</p>
+          <p style={{ color: '#ff4d4f', fontWeight: 600 }}>⚠️ 请勿输入真实个人信息！</p>
+          <ul style={{ paddingLeft: 20, margin: '10px 0' }}>
+            <li>不要使用真实手机号码</li>
+            <li>不要输入真实密码</li>
+            <li>不要上传真实头像照片</li>
+          </ul>
+          <p style={{ color: '#666', fontSize: 13 }}>本平台仍在测试阶段，所有数据可能会被随时清除。</p>
+        </div>
+      </Modal>
+
+      {/* 欢迎弹窗 */}
+      <WelcomeModal
+        open={welcomeVisible}
+        onClose={() => {
+          setWelcomeVisible(false);
+          navigate('/');
+        }}
+      />
 
       {/* 主卡片 */}
       <div
@@ -357,8 +405,10 @@ export default function LoginPage() {
               <Text style={{ fontSize: 13, color: isDark ? 'rgba(255,255,255,0.65)' : undefined }}>开启美食探索之旅</Text>
             </div>
           )}
-          {isLogin ? (
-            <Form layout="vertical" onFinish={handleLogin}>
+
+          {/* 邮箱登录表单 */}
+          {isLogin && (
+            <Form layout="vertical" onFinish={handleLogin} className="form-fade-in">
               <Form.Item
                 name="email"
                 rules={[{ required: true, message: '请输入邮箱' }, { type: 'email', message: '邮箱格式不正确' }]}
@@ -391,73 +441,51 @@ export default function LoginPage() {
                   }}
                 />
               </Form.Item>
-              {skipCaptcha && trustedDeviceToken ? (
-                <Form.Item style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '8px 12px',
-                    background: '#f6ffed',
-                    border: '1px solid #b7eb8f',
-                    borderRadius: 8,
-                    color: '#52c41a',
-                    fontSize: 13,
-                  }}>
-                    ✓ 已开启免验证登录（7天内有效）
+              <Form.Item
+                name="captchaCode"
+                rules={[{ required: true, message: '请输入验证码' }]}
+                style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
+              >
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Input
+                    size={screenSize.isSmallMobile ? 'middle' : 'large'}
+                    placeholder="验证码"
+                    maxLength={4}
+                    style={{
+                      flex: 1,
+                      borderRadius: screenSize.isMobile ? 8 : 10,
+                      padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
+                      fontSize: screenSize.isSmallMobile ? 13 : 14,
+                    }}
+                  />
+                  <div
+                    style={{
+                      cursor: 'pointer',
+                      borderRadius: screenSize.isMobile ? 8 : 10,
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      minWidth: 80,
+                      justifyContent: 'center',
+                    }}
+                    title="点击刷新验证码"
+                  >
+                    {captcha ? (
+                      <img
+                        src={`data:image/svg+xml;utf8,${encodeURIComponent(captcha.data)}`}
+                        alt="验证码"
+                        style={{ height: screenSize.isSmallMobile ? 32 : 38, display: 'block', cursor: 'pointer' }}
+                        onClick={() => loadCaptcha()}
+                        title="点击刷新验证码"
+                      />
+                    ) : captchaLoading ? (
+                      <ReloadOutlined style={{ fontSize: 20, padding: '0 10px' }} spin />
+                    ) : (
+                      <span style={{ fontSize: 12, color: '#999', padding: '0 8px', cursor: 'pointer' }} onClick={() => loadCaptcha()}>点击刷新</span>
+                    )}
                   </div>
-                </Form.Item>
-              ) : (
-                <Form.Item
-                  name="captchaCode"
-                  rules={[{ required: true, message: '请输入验证码' }]}
-                  style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
-                >
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Input
-                      size={screenSize.isSmallMobile ? 'middle' : 'large'}
-                      placeholder="验证码"
-                      maxLength={4}
-                      style={{
-                        flex: 1,
-                        borderRadius: screenSize.isMobile ? 8 : 10,
-                        padding: screenSize.isSmallMobile ? '8px 12px' : '10px 14px',
-                        fontSize: screenSize.isSmallMobile ? 13 : 14,
-                      }}
-                    />
-                    <div
-                      style={{
-                        cursor: 'pointer',
-                        borderRadius: screenSize.isMobile ? 8 : 10,
-                        overflow: 'hidden',
-                        flexShrink: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                      }}
-                      title="点击刷新验证码"
-                    >
-                      {captcha ? (
-                        <img
-                          src={`data:image/svg+xml;utf8,${encodeURIComponent(captcha.data)}`}
-                          alt="验证码"
-                          style={{ height: screenSize.isSmallMobile ? 32 : 38, display: 'block', cursor: 'pointer' }}
-                          onClick={loadCaptcha}
-                          title="点击刷新验证码"
-                        />
-                      ) : (
-                        <ReloadOutlined style={{ fontSize: 20, padding: '0 10px' }} spin />
-                      )}
-                    </div>
-                  </div>
-                </Form.Item>
-              )}
-              <Form.Item style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}>
-                <Checkbox
-                  checked={trustDevice}
-                  onChange={(e) => setTrustDevice(e.target.checked)}
-                >
-                  <Text style={{ fontSize: 13 }}>信任此设备（7天内无需验证码）</Text>
-                </Checkbox>
+                </div>
               </Form.Item>
               <Form.Item style={{ marginBottom: 6 }}>
                 <Button
@@ -481,8 +509,11 @@ export default function LoginPage() {
                 </Button>
               </Form.Item>
             </Form>
-          ) : (
-            <Form layout="vertical" onFinish={handleRegister}>
+          )}
+
+          {/* 邮箱注册表单 */}
+          {!isLogin && (
+            <Form layout="vertical" onFinish={handleRegister} className="form-fade-in">
               <Form.Item
                 name="username"
                 style={{ marginBottom: screenSize.isSmallMobile ? 12 : 14 }}
@@ -616,6 +647,19 @@ export default function LoginPage() {
           50% {
             transform: translateY(-10px);
           }
+        }
+        @keyframes formFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .form-fade-in {
+          animation: formFadeIn 0.25s ease-out forwards;
         }
         input::-webkit-input-placeholder {
           color: ${isDark ? '#6b7280' : '#bfbfbf'};

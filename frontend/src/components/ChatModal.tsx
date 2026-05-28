@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Modal, Input, Button, message, Avatar, Typography, Space, Empty, Spin, Tag, Dropdown, type MenuProps, Tooltip, Switch } from 'antd';
-import { SendOutlined, UserOutlined, ArrowLeftOutlined, WarningOutlined, MoreOutlined, StopOutlined, DeleteOutlined, SearchOutlined, CloseOutlined, RobotOutlined, MessageOutlined } from '@ant-design/icons';
+import { SendOutlined, UserOutlined, WarningOutlined, MoreOutlined, StopOutlined, DeleteOutlined, SearchOutlined, CloseOutlined, RobotOutlined, MessageOutlined } from '@ant-design/icons';
 import { getMessages, sendMessage, checkCanSendMessage, markAsRead, deleteMessage, recallMessage, blockUser, getConversations, searchMessages, type Message, type SearchResult } from '../api/message';
 import { useAuthStore } from '../store/auth';
 import { getErrorMessage } from '../utils/error';
@@ -383,19 +383,20 @@ export default function ChatModal({ visible, onClose, otherUser }: Props) {
         title={null}
         footer={null}
         width={chatMode === 'ai' ? 800 : 420}
+        zIndex={1100}
+        centered
         style={{ top: 24 }}
         styles={{
           body: { padding: 0, height: 560, display: 'flex', flexDirection: 'column' },
-          wrapper: { borderRadius: 16, overflow: 'hidden' },
+          wrapper: { borderRadius: 16, overflow: 'hidden', pointerEvents: 'auto' as const },
+          mask: { zIndex: 1100 },
         }}
       >
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
-          <Button
-            icon={<ArrowLeftOutlined />}
-            type="text"
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border-color)', background: 'var(--card-bg)', position: 'relative' }}>
+          <CloseOutlined
             onClick={onClose}
-            style={{ fontSize: 16, padding: '4px 8px' }}
+            style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', fontSize: 18, cursor: 'pointer', color: 'var(--text-secondary)', zIndex: 1 }}
           />
           {chatMode === 'user' ? (
             <>

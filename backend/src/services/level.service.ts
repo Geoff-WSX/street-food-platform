@@ -404,8 +404,15 @@ export const incrementTaskProgress = async (userId: number, taskKey: string, inc
     where: { userId },
   });
 
+  // 如果用户等级记录不存在，初始化它
   if (!userLevel) {
-    throw new Error('用户等级初始化失败');
+    await initUserLevel(userId);
+    userLevel = await prisma.userLevel.findUnique({
+      where: { userId },
+    });
+    if (!userLevel) {
+      throw new Error('用户等级初始化失败');
+    }
   }
 
   const task = await prisma.levelTask.findUnique({
@@ -440,6 +447,7 @@ export const incrementTaskProgress = async (userId: number, taskKey: string, inc
     });
   }
 
+  // 计算新的进度
   const currentCount = progress?.currentCount || 0;
   const newCount = Math.min(currentCount + increment, task.targetCount);
 
@@ -484,6 +492,7 @@ export const incrementTaskProgress = async (userId: number, taskKey: string, inc
       },
     });
   } else {
+    // 创建新记录时，currentCount 直接设为 newCount（包含 increment）
     await prisma.userLevelProgress.create({
       data: {
         userLevelId: userLevel.id,

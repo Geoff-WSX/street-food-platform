@@ -101,6 +101,56 @@ const typingAnimationStyle = `
     0%, 60%, 100% { transform: translateY(0); }
     30% { transform: translateY(-4px); }
   }
+  @media (max-width: 768px) {
+    .ai-page-container {
+      top: 60px !important;
+    }
+    .ai-session-panel {
+      position: fixed !important;
+      left: 0 !important;
+      top: 60px !important;
+      bottom: 0 !important;
+      width: 280px !important;
+      z-index: 1001 !important;
+      transform: translateX(-100%) !important;
+      transition: transform 0.3s ease !important;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.15) !important;
+    }
+    .ai-session-panel.ai-session-panel-open {
+      transform: translateX(0) !important;
+    }
+    .ai-session-panel:not(.ai-session-panel-open) {
+      transform: translateX(-100%) !important;
+    }
+    .ai-suggestions-panel,
+    .ai-suggestions-toggle {
+      display: none !important;
+    }
+    .ai-main-content {
+      width: 100% !important;
+      flex: 1 !important;
+    }
+    .ai-chat-container {
+      width: 100% !important;
+      flex: 1 !important;
+    }
+    .ai-top-bar {
+      padding: 0 8px !important;
+    }
+    .ai-input-area {
+      padding: 8px 12px !important;
+    }
+  }
+  @media (max-width: 480px) {
+    .ai-page-container {
+      top: 60px !important;
+    }
+    .ai-message-content {
+      max-width: 90% !important;
+      font-size: 13px !important;
+      padding: 8px 12px !important;
+    }
+  }
 `;
 
 export default function AIAssistantPage() {
@@ -128,7 +178,7 @@ export default function AIAssistantPage() {
       return null;
     }
   });
-  const [showSessionPanel, setShowSessionPanel] = useState(true);
+  const [showSessionPanel, setShowSessionPanel] = useState(false);
 
   // 当前会话状态 - 从保存的会话中初始化
   const getInitialState = () => {
@@ -879,9 +929,9 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
         overflow: 'hidden',
         background: 'var(--bg-primary)',
         zIndex: 1000
-      }}>
+      }} className="ai-page-container">
       {/* 顶部导航栏 */}
-      <div style={{ height: 50, background: 'var(--navbar-bg)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 12, flexShrink: 0 }}>
+      <div style={{ height: 50, background: 'var(--navbar-bg)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 12, flexShrink: 0 }} className="ai-top-bar">
         <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(fromPath)} style={{ color: 'var(--text-primary)' }} title="返回" />
         <Button type="text" icon={<HistoryOutlined />} onClick={() => setShowSessionPanel(!showSessionPanel)} style={{ color: 'var(--text-primary)' }} />
         <Avatar
@@ -891,11 +941,11 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
           style={{ cursor: 'pointer' }}
           onClick={() => setShowSessionPanel(!showSessionPanel)}
         />
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <span style={{ color: 'var(--text-primary)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             小边 {xiaobianMode === 'foodie' ? '🍜' : '🛠️'}
           </span>
-          <Tag color={xiaobianMode === 'foodie' ? 'orange' : 'blue'} style={{ fontSize: 11 }}>
+          <Tag color={xiaobianMode === 'foodie' ? 'orange' : 'blue'} style={{ fontSize: 11, flexShrink: 0 }}>
             {xiaobianMode === 'foodie' ? '美食助手' : '管理模式'}
           </Tag>
         </div>
@@ -921,9 +971,9 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
       </div>
 
       {/* 主内容区域 */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }} className="ai-main-content">
         {/* 左侧会话列表 */}
-        <div style={{ width: showSessionPanel ? 260 : 0, background: 'var(--bg-secondary)', borderRight: showSessionPanel ? '1px solid var(--border-color)' : 'none', transition: 'width 0.2s', overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div style={{ width: showSessionPanel ? 260 : 0, background: 'var(--bg-secondary)', borderRight: showSessionPanel ? '1px solid var(--border-color)' : 'none', transition: 'width 0.2s', overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0 }} className={`ai-session-panel ${showSessionPanel ? 'ai-session-panel-open' : ''}`}>
           <div style={{ padding: '12px' }}>
             <Button type="primary" icon={<PlusOutlined />} onClick={handleNewChat} style={{ width: '100%', height: 36, background: 'var(--navbar-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13 }}>
               新建对话
@@ -1000,8 +1050,8 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
         </div>
 
         {/* 中间聊天区域 */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--bg-primary)', overflow: 'hidden' }}>
-          <div ref={messagesContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--bg-primary)', overflow: 'hidden' }} className="ai-chat-container">
+          <div ref={messagesContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {messages.map((msg, index) => {
               const messageStatus = (msg as MessageWithStatus).status;
               const showStatus = messageStatus && messageStatus !== 'success';
@@ -1009,7 +1059,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
               return (
                 <div key={index} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%', alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
                   {msg.role === 'assistant' && (
-                    <Avatar size={28} src="https://api.dicebear.com/7.x/bottts/svg?seed=Xiaobian" icon={<RobotOutlined />} style={{ marginRight: 10, flexShrink: 0 }} />
+                    <Avatar size={28} src="https://api.dicebear.com/7.x/bottts/svg?seed=Xiaobian" icon={<RobotOutlined />} style={{ marginRight: 8, flexShrink: 0 }} />
                   )}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
                     <div style={{
@@ -1022,8 +1072,9 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
                       lineHeight: 1.5,
                       fontSize: 14,
                       opacity: messageStatus === 'sending' ? 0.7 : 1,
-                      border: messageStatus === 'error' ? '1px solid var(--color-error)' : 'none'
-                    }}>
+                      border: messageStatus === 'error' ? '1px solid var(--color-error)' : 'none',
+                      maxWidth: '100%'
+                    }} className="ai-message-content">
                       {msg.content}
                     </div>
 
@@ -1132,10 +1183,10 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
             </div>
           )}
 
-          <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-color)', background: 'var(--navbar-bg)', flexShrink: 0 }}>
+          <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-color)', background: 'var(--navbar-bg)', flexShrink: 0 }} className="ai-input-area">
             <Space.Compact style={{ width: '100%' }}>
-              <Input ref={inputRef} size="large" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onPressEnter={() => handleSend()} placeholder={dynamicPlaceholder} disabled={loading} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '6px 0 0 6px', fontSize: 14 }} />
-              <Button type="primary" size="large" icon={<SendOutlined />} onClick={() => handleSend()} loading={loading} style={{ background: 'var(--color-primary)', border: 'none', borderRadius: '0 6px 6px 0' }}>
+              <Input ref={inputRef} size="large" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onPressEnter={() => handleSend()} placeholder={dynamicPlaceholder} disabled={loading} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '6px 0 0 6px', fontSize: 14, flex: 1 }} />
+              <Button type="primary" size="large" icon={<SendOutlined />} onClick={() => handleSend()} loading={loading} style={{ background: 'var(--color-primary)', border: 'none', borderRadius: '0 6px 6px 0', flexShrink: 0 }}>
                 发送
               </Button>
             </Space.Compact>
@@ -1144,7 +1195,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
 
         {/* 右侧推荐区域 */}
         {showSuggestions ? (
-          <div style={{ width: 360, background: 'var(--card-bg)', borderLeft: '1px solid var(--border-color)', transition: 'width 0.3s', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ width: 360, background: 'var(--card-bg)', borderLeft: '1px solid var(--border-color)', transition: 'width 0.3s', flexShrink: 0, display: 'flex', flexDirection: 'column' }} className="ai-suggestions-panel">
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', flexShrink: 0 }}>
               <Space>
                 <BulbOutlined style={{ color: 'var(--color-warning)' }} />
@@ -1254,7 +1305,7 @@ ${suggestedPosts.filter(p => !excludedPostIds.has(p.id)).map((p, i) => `${i + 1}
             </div>
           </div>
         ) : (
-          <div style={{ width: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} className="ai-suggestions-toggle">
             {suggestedPosts.length > 0 && (
               <Tooltip title="展开推荐列表" placement="left">
                 <Button

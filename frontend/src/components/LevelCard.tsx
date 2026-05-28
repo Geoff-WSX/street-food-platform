@@ -1,10 +1,23 @@
 import { memo, useState, useEffect } from 'react';
 import { Card, Progress, List, Tag, Space, Typography, Spin, Empty, Modal, Button } from 'antd';
-import { CheckCircleFilled, ClockCircleOutlined, TrophyOutlined, CrownOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, ClockCircleOutlined, TrophyOutlined, CrownOutlined, FireOutlined, FileTextOutlined, LikeOutlined, StarOutlined, UserAddOutlined, CommentOutlined } from '@ant-design/icons';
 import type { UserLevelInfo, Level } from '../api/level';
 import { getMyLevelInfo, getAllLevels } from '../api/level';
 
 const { Title, Text } = Typography;
+
+// 任务图标映射
+const TASK_ICONS: Record<string, React.ReactNode> = {
+  daily_login: <CheckCircleFilled style={{ color: '#52c41a' }} />,
+  post_count: <FileTextOutlined style={{ color: '#1890ff' }} />,
+  received_likes: <LikeOutlined style={{ color: '#ff6b35' }} />,
+  received_favorites: <StarOutlined style={{ color: '#fa8c16' }} />,
+  comment_count: <CommentOutlined style={{ color: '#722ed1' }} />,
+  following_count: <UserAddOutlined style={{ color: '#13c2c2' }} />,
+  default: <FireOutlined style={{ color: '#ff6b35' }} />,
+};
+
+const getTaskIcon = (taskKey: string) => TASK_ICONS[taskKey] || TASK_ICONS.default;
 
 // 等级颜色映射
 const LEVEL_COLORS: Record<number, string> = {
@@ -322,57 +335,70 @@ export const LevelCard = memo<LevelCardProps>(({ visible, onClose }) => {
                   <List
                     size="small"
                     dataSource={pendingTasks}
-                    renderItem={(task) => (
-                      <List.Item
-                        style={{ padding: '10px 0', borderBottom: '1px solid #f5f5f5' }}
-                      >
-                        <List.Item.Meta
-                          avatar={
-                            <div
-                              style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: 8,
-                                background: `${levelColor}15`,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: 16,
-                              }}
-                            >
-                              {task.icon || '📝'}
-                            </div>
-                          }
-                          title={
-                            <Space>
-                              <Text style={{ fontSize: 13 }}>{task.taskName}</Text>
-                              <Tag color="blue" style={{ fontSize: 10, marginLeft: 4 }}>
-                                +{task.expReward} EXP
-                              </Tag>
-                            </Space>
-                          }
-                          description={
-                            <>
-                              {task.description && (
-                                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 2 }}>
-                                  {task.description}
-                                </Text>
-                              )}
-                              <Text type="secondary" style={{ fontSize: 11 }}>
-                                <ClockCircleOutlined /> {task.currentCount}/{task.targetCount}
-                                <Progress
-                                  percent={Math.round((task.currentCount / task.targetCount) * 100)}
-                                  size="small"
-                                  strokeColor={levelColor}
-                                  showInfo={false}
-                                  style={{ marginLeft: 8, width: 60, display: 'inline-block', verticalAlign: 'middle' }}
-                                />
-                              </Text>
-                            </>
-                          }
-                        />
-                      </List.Item>
-                    )}
+                    renderItem={(task) => {
+                      const taskProgress = Math.round((task.currentCount / task.targetCount) * 100);
+                      const isDailyTask = task.taskKey.startsWith('daily_');
+                      return (
+                        <List.Item
+                          style={{
+                            padding: '12px 0',
+                            borderBottom: '1px solid #f5f5f5',
+                          }}
+                        >
+                          <List.Item.Meta
+                            avatar={
+                              <div
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 10,
+                                  background: `${levelColor}15`,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: 18,
+                                  border: `2px solid ${levelColor}30`,
+                                }}
+                              >
+                                {getTaskIcon(task.taskKey)}
+                              </div>
+                            }
+                            title={
+                              <Space size={8} style={{ width: '100%', justifyContent: 'space-between' }}>
+                                <Text style={{ fontSize: 14, fontWeight: 500 }}>{task.taskName}</Text>
+                                <Tag color={isDailyTask ? 'orange' : 'blue'} style={{ fontSize: 11, marginRight: 0 }}>
+                                  +{task.expReward} EXP
+                                </Tag>
+                              </Space>
+                            }
+                            description={
+                              <>
+                                {task.description && (
+                                  <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>
+                                    {task.description}
+                                  </Text>
+                                )}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <Progress
+                                    percent={taskProgress}
+                                    size="small"
+                                    strokeColor={levelColor}
+                                    trailColor="#f0f0f0"
+                                    format={() => `${task.currentCount}/${task.targetCount}`}
+                                    style={{ flex: 1, marginBottom: 0 }}
+                                  />
+                                </div>
+                                {isDailyTask && (
+                                  <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 4 }}>
+                                    <ClockCircleOutlined /> 每日重置
+                                  </Text>
+                                )}
+                              </>
+                            }
+                          />
+                        </List.Item>
+                      );
+                    }}
                     style={{ marginBottom: 16 }}
                   />
                 </>
@@ -387,48 +413,57 @@ export const LevelCard = memo<LevelCardProps>(({ visible, onClose }) => {
                   <List
                     size="small"
                     dataSource={completedTasks}
-                    renderItem={(task) => (
-                      <List.Item
-                        style={{ padding: '10px 0', borderBottom: '1px solid #f5f5f5', opacity: 0.6 }}
-                      >
-                        <List.Item.Meta
-                          avatar={
-                            <div
-                              style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: 8,
-                                background: '#52c41a15',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: 16,
-                              }}
-                            >
-                              {task.icon || '✅'}
-                            </div>
-                          }
-                          title={
-                            <Space>
-                              <Text delete style={{ fontSize: 13 }}>{task.taskName}</Text>
-                              <CheckCircleFilled style={{ color: '#52c41a', fontSize: 12 }} />
-                            </Space>
-                          }
-                          description={
-                            <>
-                              {task.description && (
-                                <Text type="secondary" delete style={{ fontSize: 11, display: 'block', marginBottom: 2 }}>
-                                  {task.description}
+                    renderItem={(task) => {
+                      const isDailyTask = task.taskKey.startsWith('daily_');
+                      return (
+                        <List.Item
+                          style={{
+                            padding: '10px 0',
+                            borderBottom: '1px solid #f5f5f5',
+                            opacity: 0.7,
+                          }}
+                        >
+                          <List.Item.Meta
+                            avatar={
+                              <div
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 10,
+                                  background: '#52c41a15',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: 18,
+                                  border: '2px solid #52c41a30',
+                                }}
+                              >
+                                {task.icon || <CheckCircleFilled style={{ color: '#52c41a' }} />}
+                              </div>
+                            }
+                            title={
+                              <Space size={8}>
+                                <Text delete style={{ fontSize: 14, fontWeight: 500 }}>{task.taskName}</Text>
+                                <CheckCircleFilled style={{ color: '#52c41a', fontSize: 12 }} />
+                              </Space>
+                            }
+                            description={
+                              <>
+                                {task.description && (
+                                  <Text type="secondary" delete style={{ fontSize: 11, display: 'block', marginBottom: 2 }}>
+                                    {task.description}
+                                  </Text>
+                                )}
+                                <Text style={{ fontSize: 11, color: '#52c41a' }}>
+                                  已获得 +{task.expReward} EXP
+                                  {isDailyTask && ' · 明日可再次完成'}
                                 </Text>
-                              )}
-                              <Text type="secondary" style={{ fontSize: 11 }}>
-                                已获得 +{task.expReward} EXP
-                              </Text>
-                            </>
-                          }
-                        />
-                      </List.Item>
-                    )}
+                              </>
+                            }
+                          />
+                        </List.Item>
+                      );
+                    }}
                   />
                 </>
               )}

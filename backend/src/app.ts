@@ -33,7 +33,7 @@ import {
   applySecurityMiddleware,
   apiLimiter,
   authLimiter,
-  loginLimiter,
+  progressiveLoginLimiter,
   uploadLimiter,
   aiLimiter,
   searchLimiter,
@@ -62,11 +62,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // 请求体清理（防止注入攻击）
 app.use(sanitizeBody);
 
-// 静态文件（上传的图片）
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
-// 静态文件（上传的图片）
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// 静态文件（开发环境本地图片，生产环境使用七牛云 CDN）
+if (process.env.NODE_ENV === 'development') {
+  app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+}
 
 // ========== 路由（应用限流和安全检查）==========
 
@@ -74,7 +73,9 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/captcha', captchaRoutes);
 
 // 认证路由（严格限流 + 登录限制）
-app.use('/api/auth', loginLimiter, authLimiter, authRoutes);
+app.use('/api/auth', progressiveLoginLimiter, authLimiter, authRoutes);
+
+// 短信路由（登录限制 + 限流）
 
 // 用户路由（通用限流 + 黑名单检查）
 app.use('/api/users', apiLimiter, checkBlacklist, userRoutes);

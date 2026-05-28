@@ -56,13 +56,3 @@ export const getAddressByLocation = (lat: number, lng: number) =>
 
 export const getRandomPosts = (params?: { limit?: number; excludeIds?: string }) =>
   api.get<ApiResponse<{ data: Post[] }>>('/posts/random', { params }).then((r) => r.data.data?.data || []);
-
-// 标签相关 API
-export const getPopularTags = (limit?: number) =>
-  api.get<ApiResponse<{ id: number; name: string; postCount: number }[]>>('/tags/popular', { params: { limit } }).then((r) => r.data.data);
-
-export const getPostsByTag = (tag: string, params?: { page?: number; pageSize?: number; random?: boolean }) =>
-  api.get<ApiResponse<PaginatedPosts>>(`/tags/${tag}/posts`, { params }).then((r) => r.data.data);
-
-export const getPostsByTagAndRegion = (tag: string, region?: string, params?: { page?: number; pageSize?: number }) =>
-  api.get<ApiResponse<PaginatedPosts>>('/posts/by-tag-and-region', { params: { tag, region, ...params } }).then((r) => r.data.data);

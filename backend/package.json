@@ -18,6 +18,9 @@
     "test:coverage": "jest --coverage",
     "test:websocket": "jest --testPathPattern=websocket"
   },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "keywords": [
     "street-food",
     "express",
@@ -43,7 +46,9 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "openai": "^6.32.0",
+    "pg": "^8.20.0",
     "pinyin-pro": "^3.28.0",
+    "qiniu": "^7.15.2",
     "react-lazy-load-image-component": "^1.6.3",
     "sharp": "^0.34.5",
     "svg-captcha": "^1.4.0",

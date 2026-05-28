@@ -463,6 +463,28 @@
   text-align: center;
 }
 
+.profile-avatar-row {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  min-height: 180px;
+  padding-bottom: 20px;
+}
+
+.profile-user-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+  min-height: 32px;
+}
+
+.profile-upload-buttons {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
 .profile-stats-row {
   display: flex;
   gap: 12px;

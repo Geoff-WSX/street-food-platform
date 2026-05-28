@@ -43,8 +43,11 @@ export interface LoginRequest {
   password: string;
   captchaId: string;
   captchaCode: string;
-  trustedDeviceToken?: string;
-  trustDevice?: boolean;
+}
+
+// 发送短信验证码请求
+export interface SendSmsCodeRequest {
+  phone: string;
 }
 
 // 更新用户资料请求

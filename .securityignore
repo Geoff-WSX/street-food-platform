@@ -1,0 +1,9 @@
+node_modules/**
+node_modules_part_*
+dist/**
+build/**
+.git/**
+vendor/**
+vendor/bundle/**
+__pycache__/**
+*.pyc

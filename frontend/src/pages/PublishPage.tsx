@@ -28,7 +28,7 @@ export default function PublishPage() {
     setPreviewImage(file.url || (file.originFileObj && URL.createObjectURL(file.originFileObj)) || '');
   };
 
-  const getCurrentLocation = () => {
+  const getCurrentLocation = async () => {
     setLocationLoading(true);
     void message.loading({ content: '正在获取位置，请稍候...', key: 'location', duration: 0 });
 
@@ -38,6 +38,30 @@ export default function PublishPage() {
       return;
     }
 
+    // 检查定位权限状态
+    let permissionStatus: PermissionState = 'prompt';
+    try {
+      const result = await navigator.permissions.query({ name: 'geolocation' });
+      permissionStatus = result.state;
+      result.addEventListener('change', () => {
+        permissionStatus = result.state;
+      });
+    } catch {
+      // 浏览器不支持 permissions API，继续尝试获取位置
+    }
+
+    // 如果已经明确拒绝，显示手动输入提示
+    if (permissionStatus === 'denied') {
+      void message.warning({
+        content: '定位权限已被拒绝，请手动输入地址或清除浏览器设置中的定位限制',
+        key: 'location',
+        duration: 4
+      });
+      setLocationLoading(false);
+      return;
+    }
+
+    // 权限为 prompt 时，浏览器会弹出授权请求
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
@@ -80,7 +104,7 @@ export default function PublishPage() {
         let errorMsg = '获取位置失败';
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            errorMsg = '定位权限被拒绝，请在浏览器设置中允许定位';
+            errorMsg = '定位权限被拒绝，请手动输入地址或重试';
             break;
           case error.POSITION_UNAVAILABLE:
             errorMsg = '无法获取位置信息，请检查网络和GPS是否开启';
@@ -122,14 +146,14 @@ export default function PublishPage() {
   };
 
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto', padding: '20px 16px', paddingBottom: 80 }}>
+    <div style={{ maxWidth: 680, margin: '0 auto', padding: '16px 12px', paddingBottom: 80 }} className="publish-container">
       <Card
         bordered={false}
         style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)', borderRadius: 12 }}
       >
         {/* 页面标题 */}
         <div style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #f0f0f0' }}>
-          <Title level={3} style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>
+          <Title level={3} style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>
             🍜 发布美食动态
           </Title>
           <Text type="secondary" style={{ fontSize: 14, marginTop: 8, display: 'block' }}>
@@ -141,7 +165,7 @@ export default function PublishPage() {
           {/* 图片上传 */}
           <Form.Item
             label={
-              <Space>
+              <Space size={4}>
                 <span style={{ fontWeight: 500 }}>美食图片</span>
                 <Text type="secondary" style={{ fontSize: 12 }}>至少上传1张，最多9张</Text>
               </Space>
@@ -160,9 +184,9 @@ export default function PublishPage() {
               style={{ width: '100%' }}
             >
               {fileList.length < 9 && (
-                <div style={{ width: 104, height: 104 }}>
-                  <PlusOutlined style={{ fontSize: 24, color: '#d9d9d9' }} />
-                  <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>上传图片</div>
+                <div style={{ width: 80, height: 80 }}>
+                  <PlusOutlined style={{ fontSize: 20, color: '#d9d9d9' }} />
+                  <div style={{ marginTop: 4, fontSize: 11, color: '#999' }}>上传</div>
                 </div>
               )}
             </Upload>

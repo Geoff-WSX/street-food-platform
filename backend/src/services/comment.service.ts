@@ -1,6 +1,6 @@
 import prisma from '../services/db/prisma';
 import { createNotification, NotificationType, EntityType } from './notification.service';
-import { updateTaskProgress } from './level.service';
+import { updateTaskProgress, incrementTaskProgress } from './level.service';
 
 /**
  * 敏感词库 - 文字审查
@@ -379,6 +379,8 @@ export const createComment = async (userId: number, data: {
     try {
       const commentCount = await prisma.comment.count({ where: { userId } });
       await updateTaskProgress(userId, 'comment_count', commentCount);
+      // 更新每日评论任务
+      await incrementTaskProgress(userId, 'daily_comment');
     } catch (error) {
       console.error('更新等级任务进度失败:', error);
     }
@@ -416,7 +418,8 @@ export const deleteComment = async (commentId: number, userId: number, userRole:
   const canDelete =
     comment.userId === userId ||
     comment.post.userId === userId ||
-    userRole === 'admin';
+    userRole === 'admin' ||
+    userRole === 'super_admin';
 
   if (!canDelete) {
     throw new Error('无权删除此评论');

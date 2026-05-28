@@ -294,6 +294,7 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
 
   const renderCommentItem = (comment: Comment, isReply: boolean = false) => {
     const isMyComment = user?.id === comment.user.id;
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
     const isLoadingReplies = loadingReplies.has(comment.id);
     const isExpanded = expandedReplies.has(comment.id);
     const showLoadMore = !isExpanded && (comment.replyCount || 0) > (comment.replies?.length || 0);
@@ -362,7 +363,7 @@ export default function CommentSection({ postId, highlightCommentId, onCommentCo
                   回复
                 </Button>
               )}
-              {isMyComment && (
+              {(isMyComment || isAdmin) && (
                 <Popconfirm
                   title="确定删除这条评论？"
                   onConfirm={() => handleDeleteComment(comment.id, comment.parentId || undefined)}

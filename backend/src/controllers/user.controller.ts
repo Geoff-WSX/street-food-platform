@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../types';
 import * as userService from '../services/user.service';
 import { successResponse, errorResponse } from '../utils/response';
-import path from 'path';
+import { processAvatarUpload } from '../middleware/upload';
 
 export const getProfile = async (req: AuthRequest, res: Response) => {
   try {
@@ -39,41 +39,14 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 
 export const updateAvatar = async (req: AuthRequest, res: Response) => {
   try {
-    console.log('[DEBUG] Avatar upload request:', {
-      hasFile: !!req.file,
-      file: req.file ? {
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size,
-        path: req.file.path
-      } : null,
-      headers: req.headers['content-type'],
-      bodyKeys: Object.keys(req.body)
-    });
-
     if (!req.file) {
-      console.log('[DEBUG] No file in request');
       return errorResponse(res, '请上传头像图片', 'NO_FILE');
     }
 
-    // 将图片转换为 Base64 存储到数据库
-    const fs = await import('fs');
-    const imageBuffer = fs.readFileSync(req.file.path);
+    // Sharp 压缩后上传七牛，返回 CDN URL
+    const avatarUrl = await processAvatarUpload(req.file, req.user!.userId);
 
-    // 压缩图片
-    const sharp = await import('sharp');
-    const compressedImage = await sharp.default(imageBuffer)
-      .resize(400, 400, { fit: 'cover', position: 'centre' })
-      .webp({ quality: 85 })
-      .toBuffer();
-
-    // 转换为 Base64
-    const base64Image = `data:image/webp;base64,${compressedImage.toString('base64')}`;
-
-    // 删除临时文件
-    fs.unlinkSync(req.file.path);
-
-    const user = await userService.updateAvatar(req.user!.userId, base64Image);
+    const user = await userService.updateAvatar(req.user!.userId, avatarUrl);
     return successResponse(res, user, '头像更新成功');
   } catch (error: any) {
     return errorResponse(res, error.message, 'UPDATE_FAILED');
@@ -281,23 +254,10 @@ export const addCustomAvatar = async (req: AuthRequest, res: Response) => {
       return errorResponse(res, '请上传头像图片', 'NO_FILE');
     }
 
-    // 将图片转换为 Base64
-    const fs = await import('fs');
-    const imageBuffer = fs.readFileSync(req.file.path);
+    // Sharp 压缩后上传七牛，返回 CDN URL
+    const avatarUrl = await processAvatarUpload(req.file, req.user!.userId);
 
-    // 压缩图片
-    const sharp = await import('sharp');
-    const compressedImage = await sharp.default(imageBuffer)
-      .resize(400, 400, { fit: 'cover', position: 'centre' })
-      .webp({ quality: 85 })
-      .toBuffer();
-
-    const base64Image = `data:image/webp;base64,${compressedImage.toString('base64')}`;
-
-    // 删除临时文件
-    fs.unlinkSync(req.file.path);
-
-    const avatar = await userService.addCustomAvatar(req.user!.userId, base64Image);
+    const avatar = await userService.addCustomAvatar(req.user!.userId, avatarUrl);
     return successResponse(res, avatar, '头像保存成功');
   } catch (error: any) {
     return errorResponse(res, error.message, 'ADD_CUSTOM_AVATAR_FAILED');

@@ -3,6 +3,7 @@ import * as authService from '../services/auth.service';
 import { successResponse, errorResponse } from '../utils/response';
 import { AuthRequest } from '../types';
 import { addToBlacklist } from '../utils/jwtBlacklist';
+import { recordLoginSuccess, recordLoginFailure } from '../middleware/security';
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -16,8 +17,10 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   try {
     const result = await authService.login(req.body);
+    recordLoginSuccess(req);
     return successResponse(res, result, '登录成功');
   } catch (error: any) {
+    recordLoginFailure(req);
     return errorResponse(res, error.message, 'LOGIN_FAILED', 401);
   }
 };

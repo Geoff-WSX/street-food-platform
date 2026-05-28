@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AuthRequest } from '../types';
 import * as postService from '../services/post.service';
 import * as tagService from '../services/tag.service';
+import * as levelService from '../services/level.service';
 import { successResponse, errorResponse } from '../utils/response';
 import { processPostImagesUpload } from '../middleware/upload';
 
@@ -55,6 +56,16 @@ export const getPostById = async (req: AuthRequest, res: Response) => {
       return errorResponse(res, '无效的动态ID', 'INVALID_PARAM');
     }
     const post = await postService.getPostById(postId, req.user?.userId);
+
+    // 增加每日浏览任务进度（失败不影响主功能）
+    if (req.user?.userId) {
+      try {
+        await levelService.incrementTaskProgress(req.user.userId, 'daily_view_posts', 1);
+      } catch (levelError) {
+        console.error('更新浏览任务进度失败:', levelError);
+      }
+    }
+
     return successResponse(res, post);
   } catch (error: any) {
     return errorResponse(res, error.message, 'NOT_FOUND', 404);
@@ -116,7 +127,7 @@ export const deletePost = async (req: AuthRequest, res: Response) => {
     if (isNaN(postId)) {
       return errorResponse(res, '无效的动态ID', 'INVALID_PARAM');
     }
-    const result = await postService.deletePost(postId, req.user!.userId);
+    const result = await postService.deletePost(postId, req.user!.userId, req.user!.role);
     return successResponse(res, result, '删除成功');
   } catch (error: any) {
     return errorResponse(res, error.message, 'DELETE_FAILED');

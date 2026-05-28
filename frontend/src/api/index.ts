@@ -5,8 +5,8 @@ const generateRequestId = () => `req_${Date.now()}_${Math.random().toString(36).
 
 // 根据环境动态设置 baseURL
 const api = axios.create({
-  baseURL: import.meta.env.MODE === 'production' ? '/api' : '/api',
-  timeout: 30000,
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  timeout: 60000,
 });
 
 // 请求ID映射，用于匹配响应
@@ -61,7 +61,13 @@ api.interceptors.response.use(
 
     console.error('❌ API Error:', error.config?.url, error.message, 'id:', requestId);
     if (error.response?.data) {
-      console.error('❌ API Error Details:', error.response?.data);
+      // 只记录安全的错误信息，不记录完整响应数据
+      const safeError = {
+        status: error.response?.status,
+        code: error.response?.data?.code,
+        message: error.response?.data?.message || error.response?.data?.error,
+      };
+      console.error('❌ API Error Details:', safeError);
     }
 
     // 只在已登录但 token 失效或账号被禁用时才跳转到登录页

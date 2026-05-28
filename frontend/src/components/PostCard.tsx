@@ -10,7 +10,7 @@ import PostCardUserInfo from './PostCardUserInfo';
 import PostCardActions from './PostCardActions';
 import FavoriteFolderSelect from './FavoriteFolderSelect';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
-import type { Post } from '../types';
+import type { Post, User } from '../types';
 
 interface Props {
   post: Post;
@@ -18,9 +18,10 @@ interface Props {
   showRank?: boolean;
   rank?: number;
   from?: string;
+  onOpenChat?: (user: User) => void;
 }
 
-export default function PostCard({ post, onUpdate, showRank, rank, from = '/' }: Props) {
+export default function PostCard({ post, onUpdate, showRank, rank, from = '/', onOpenChat }: Props) {
   const navigate = useNavigate();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const followStatus = useFollowStore((s) => s.followStatus);
@@ -133,6 +134,7 @@ export default function PostCard({ post, onUpdate, showRank, rank, from = '/' }:
         <PostCardUserInfo
           user={post.user}
           isFollowing={isFollowing}
+          onOpenChat={onOpenChat}
         />
 
         {/* 交互按钮 */}

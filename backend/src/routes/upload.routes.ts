@@ -3,37 +3,15 @@ import { AuthRequest } from '../types';
 import { successResponse, errorResponse } from '../utils/response';
 import { authenticate } from '../middleware/auth';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import sharp from 'sharp';
+import { qiniuService } from '../services/qiniu.service';
 
 const router = Router();
 
-// 确保上传目录存在
-const uploadDir = path.join(__dirname, '../../uploads/posts');
-const thumbnailDir = path.join(__dirname, '../../uploads/thumbnails');
-
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-if (!fs.existsSync(thumbnailDir)) {
-  fs.mkdirSync(thumbnailDir, { recursive: true });
-}
-
-// 配置磁盘存储
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname) || '.jpg';
-    cb(null, `upload-${uniqueSuffix}${ext}`);
-  },
-});
+const memoryStorage = multer.memoryStorage();
 
 const uploadMiddleware = multer({
-  storage,
+  storage: memoryStorage,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB
   },
@@ -47,41 +25,34 @@ const uploadMiddleware = multer({
   },
 });
 
-// 处理图片压缩
-async function processUploadImage(inputPath: string): Promise<{ original: string; thumbnail: string }> {
-  const baseFilename = path.basename(inputPath, path.extname(inputPath));
-  const uniqueFilename = `${baseFilename}-${Date.now()}`;
+// 处理图片压缩并上传七牛
+async function processUploadImage(buffer: Buffer): Promise<{ original: string; thumbnail: string }> {
+  const ts = Date.now();
+  const random = Math.round(Math.random() * 1e9);
+  const baseKey = `posts/${ts}-${random}`;
 
-  // 原图路径 - 使用新文件名避免冲突
-  const originalPath = path.join(uploadDir, `${uniqueFilename}.webp`);
-  // 缩略图路径
-  const thumbPath = path.join(thumbnailDir, `${uniqueFilename}.webp`);
-
-  // 处理原图 - 最大 1920px, 质量 80
-  await sharp(inputPath)
+  // 原图 — 最大 1920px, 质量 80
+  const originalBuffer = await sharp(buffer)
     .resize(1920, 1920, {
       fit: 'inside',
       withoutEnlargement: true,
     })
     .webp({ quality: 80 })
-    .toFile(originalPath);
+    .toBuffer();
 
-  // 处理缩略图 - 400px, 质量 70
-  await sharp(inputPath)
+  // 缩略图 — 400px, 质量 70
+  const thumbnailBuffer = await sharp(buffer)
     .resize(400, 400, {
       fit: 'cover',
       position: 'centre',
     })
     .webp({ quality: 70 })
-    .toFile(thumbPath);
+    .toBuffer();
 
-  // 删除原始上传文件
-  fs.unlinkSync(inputPath);
+  const originalUrl = await qiniuService.uploadBuffer(`${baseKey}.webp`, originalBuffer);
+  const thumbnailUrl = await qiniuService.uploadBuffer(`thumbnails/${ts}-${random}.webp`, thumbnailBuffer);
 
-  return {
-    original: `posts/${uniqueFilename}.webp`,
-    thumbnail: `thumbnails/${uniqueFilename}.webp`,
-  };
+  return { original: originalUrl, thumbnail: thumbnailUrl };
 }
 
 // 通用上传接口 - 支持小程序使用
@@ -91,12 +62,11 @@ router.post('/', authenticate, uploadMiddleware.single('file'), async (req: Auth
       return errorResponse(res, '没有上传文件', 'NO_FILE');
     }
 
-    // 处理图片
-    const result = await processUploadImage(req.file.path);
+    const result = await processUploadImage(req.file.buffer);
 
     return successResponse(res, {
-      url: `/uploads/${result.original}`,
-      thumbnail: `/uploads/${result.thumbnail}`,
+      url: result.original,
+      thumbnail: result.thumbnail,
     }, '上传成功');
   } catch (error: any) {
     console.error('上传错误:', error);

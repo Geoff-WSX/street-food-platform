@@ -32,8 +32,6 @@ const AIAssistantPage = lazy(() => import('./pages/AIAssistantPage'));
 const ThemeTestPage = lazy(() => import('./pages/ThemeTestPage'));
 const AdminBackground = lazy(() => import('./components/AdminBackground'));
 const FavoritesPage = lazy(() => import('./pages/FavoritesPage'));
-const TopicsSquarePage = lazy(() => import('./pages/TopicsSquarePage'));
-const TopicDetailPage = lazy(() => import('./pages/TopicDetailPage'));
 
 const { Content } = Layout;
 
@@ -125,17 +123,12 @@ function AppContent() {
         return 'home-page-bg';
       case '/login':
         return 'login-page-bg';
-      case '/topics':
-        return 'home-page-bg';
       case '/admin':
       case '/reports':
         return 'admin-page-bg';
       default:
         if (location.pathname.startsWith('/post/')) {
           return 'post-detail-bg';
-        }
-        if (location.pathname.startsWith('/topic/')) {
-          return 'home-page-bg';
         }
         return 'food-decorative-bg';
     }
@@ -217,8 +210,6 @@ function AppContent() {
             <Route path="/friends" element={<AuthGuard><Navigate to={"/profile?tab=friends"} replace /></AuthGuard>} />
             <Route path="/friends/requests" element={<AuthGuard><FriendRequestsPage /></AuthGuard>} />
             <Route path="/notifications" element={<AuthGuard><NotificationsPage /></AuthGuard>} />
-            <Route path="/topics" element={<TopicsSquarePage />} />
-            <Route path="/topic/:name" element={<TopicDetailPage />} />
             <Route
               path="/favorites"
               element={

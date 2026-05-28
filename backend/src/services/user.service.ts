@@ -228,14 +228,14 @@ export const updateProfile = async (
 };
 
 /**
- * 更新头像（存储 Base64 到数据库）
+ * 更新头像（存储 CDN URL 到数据库）
  */
 export const updateAvatar = async (userId: number, avatarData: string) => {
   const user = await prisma.user.update({
     where: { id: userId },
     data: {
       avatar: null, // 清空旧路径
-      avatarData: avatarData, // 存储 Base64 数据
+      avatarData: avatarData, // 存储 CDN URL
     },
     select: {
       id: true,
@@ -678,7 +678,7 @@ export const addCustomAvatar = async (userId: number, avatarData: string) => {
   // 生成新头像ID
   const newAvatar = {
     id: `custom_${Date.now()}`,
-    data: avatarData,
+    url: avatarData,
     createdAt: new Date().toISOString(),
   };
 
@@ -717,6 +717,16 @@ export const deleteCustomAvatar = async (userId: number, avatarId: string) => {
 
   if (filteredAvatars.length === avatars.length) {
     throw new Error('头像不存在');
+  }
+
+  // 删除七牛云上的文件
+  const deletedAvatar = avatars.find((a: any) => a.id === avatarId);
+  if (deletedAvatar?.url) {
+    const { qiniuService } = await import('./qiniu.service');
+    const key = qiniuService.extractKeyFromUrl(deletedAvatar.url);
+    if (key) {
+      await qiniuService.deleteFile(key).catch(() => {});
+    }
   }
 
   await prisma.user.update({
