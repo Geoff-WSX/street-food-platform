@@ -440,6 +440,7 @@ export const incrementTaskProgress = async (userId: number, taskKey: string, inc
     });
   }
 
+  // 计算新的进度
   const currentCount = progress?.currentCount || 0;
   const newCount = Math.min(currentCount + increment, task.targetCount);
 
@@ -484,6 +485,7 @@ export const incrementTaskProgress = async (userId: number, taskKey: string, inc
       },
     });
   } else {
+    // 创建新记录时，currentCount 直接设为 newCount（包含 increment）
     await prisma.userLevelProgress.create({
       data: {
         userLevelId: userLevel.id,
