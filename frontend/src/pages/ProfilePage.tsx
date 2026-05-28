@@ -1340,7 +1340,7 @@ export default function ProfilePage() {
           {/* 头像 */}
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <Avatar
-              size={90}
+              size={120}
               src={getAvatarUrl(profileUser)}
               icon={<UserOutlined />}
               style={{
