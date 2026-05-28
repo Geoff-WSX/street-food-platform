@@ -1885,11 +1885,11 @@ export default function ProfilePage() {
             font-size: 40px !important;
           }
           .profile-user-row {
-            flex-direction: column !important;
+            flex-wrap: wrap !important;
             gap: 8px !important;
           }
           .profile-upload-buttons {
-            margin-top: 4px;
+            margin-top: 0;
           }
           .profile-stats-row {
             flex-wrap: wrap !important;
