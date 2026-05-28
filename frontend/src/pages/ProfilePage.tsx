@@ -4,7 +4,7 @@ import {
   Avatar, Typography, Row, Col, Button, Form, Input,
   Upload, Spin, Empty, message, Modal, Card, Space, Tag, Select, Switch, List, Popconfirm, Tooltip
 } from 'antd';
-import { UserOutlined, EditOutlined, CameraOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined, TeamOutlined, FileTextOutlined, StarOutlined, PlusOutlined, SearchOutlined, DeleteOutlined, CaretDownOutlined, RocketOutlined } from '@ant-design/icons';
+import { UserOutlined, EditOutlined, EnvironmentOutlined, LogoutOutlined, StopOutlined, MessageOutlined, UserAddOutlined, CheckOutlined, MessageOutlined as MessageIcon, WarningOutlined, TeamOutlined, FileTextOutlined, StarOutlined, PlusOutlined, SearchOutlined, DeleteOutlined, CaretDownOutlined, RocketOutlined, UploadOutlined, SmileOutlined } from '@ant-design/icons';
 import { getUserById, updateProfile, updateAvatar, setDefaultAvatar, getDefaultAvatars, changePassword, updateMessageSettings, updatePrivacySettings, getCustomAvatars, addCustomAvatar, deleteCustomAvatar, type DefaultAvatar, type CustomAvatar } from '../api/user';
 import { getUserPosts, getUserFavorites } from '../api/post';
 import { getRecommendedPosts, deleteRecommend } from '../api/share';
@@ -1348,47 +1348,6 @@ export default function ProfilePage() {
                 boxShadow: '0 6px 20px rgba(0,0,0,0.15)'
               }}
             />
-            {isOwner && (
-              <Space size={4} style={{
-                position: 'absolute',
-                bottom: 2,
-                right: -30,
-              }}>
-                <Upload
-                  accept="image/*"
-                  showUploadList={false}
-                  beforeUpload={(file) => { void handleAvatarChange(file); return false; }}
-                >
-                  <Tooltip title="上传自定义头像">
-                    <Button
-                      icon={<CameraOutlined />}
-                      size="small"
-                      shape="circle"
-                      style={{
-                        boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
-                        background: 'linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%)',
-                        border: '2px solid #fff',
-                        color: '#fff'
-                      }}
-                    />
-                  </Tooltip>
-                </Upload>
-                <Tooltip title="选择预设头像">
-                  <Button
-                    icon={<StarOutlined />}
-                    size="small"
-                    shape="circle"
-                    onClick={handleOpenAvatarModal}
-                    style={{
-                      boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
-                      background: 'linear-gradient(135deg, #722ed1 0%, #b37feb 100%)',
-                      border: '2px solid #fff',
-                      color: '#fff'
-                    }}
-                  />
-                </Tooltip>
-              </Space>
-            )}
             {/* 等级徽章 - 显示在头像底部，与头像融为一体 */}
             {profileUser.level && (
               <div
@@ -1423,6 +1382,43 @@ export default function ProfilePage() {
             <span className="food-gradient-title">
               {profileUser.username}
             </span>
+            {isOwner && (
+              <Space size={4} style={{ marginLeft: 8 }}>
+                <Upload
+                  accept="image/*"
+                  showUploadList={false}
+                  beforeUpload={(file) => { void handleAvatarChange(file); return false; }}
+                >
+                  <Tooltip title="上传自定义头像">
+                    <Button
+                      icon={<UploadOutlined />}
+                      size="small"
+                      shape="circle"
+                      style={{
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                        background: 'linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%)',
+                        border: '2px solid #fff',
+                        color: '#fff',
+                      }}
+                    />
+                  </Tooltip>
+                </Upload>
+                <Tooltip title="选择预设头像">
+                  <Button
+                    icon={<SmileOutlined />}
+                    size="small"
+                    shape="circle"
+                    onClick={handleOpenAvatarModal}
+                    style={{
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                      background: 'linear-gradient(135deg, #722ed1 0%, #b37feb 100%)',
+                      border: '2px solid #fff',
+                      color: '#fff',
+                    }}
+                  />
+                </Tooltip>
+              </Space>
+            )}
           </Title>
 
           {/* 等级详情按钮 - 所有者点击可查看详情 */}
