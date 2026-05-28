@@ -1381,8 +1381,8 @@ export default function ProfilePage() {
           </div>
 
           {/* 用户名和上传按钮 - 并排布局 */}
-          <div className="profile-user-row">
-            <Title level={4} style={{ margin: 0, fontSize: 20, display: 'inline-block' }}>
+          <div className="profile-user-row" style={{ flexWrap: 'nowrap' }}>
+            <Title level={4} style={{ margin: 0, fontSize: 20, display: 'inline-block', flexShrink: 0, maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               <span className="food-gradient-title">
                 {profileUser.username}
               </span>
